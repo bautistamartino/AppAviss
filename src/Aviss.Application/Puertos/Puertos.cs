@@ -1,4 +1,5 @@
 using Aviss.Application.Comun;
+using Aviss.Application.Importacion;
 using Aviss.Domain.Entidades;
 using Aviss.Domain.Reglas;
 
@@ -42,6 +43,11 @@ public interface IRodeoRepository
     Task<IReadOnlyList<Rodeo>> ListarPorEstablecimientoAsync(Guid establecimientoId, CancellationToken ct = default);
     /// <summary>Cantidad de animales no anulados del rodeo (incluye las altas en campo).</summary>
     Task<int> ContarAnimalesAsync(Guid rodeoId, CancellationToken ct = default);
+    /// <summary>
+    /// Rodeos guardados con esa huella SHA-256 (de cualquier establecimiento), más recientes primero (RF-16).
+    /// Devuelve solo nombre y fecha: no trae el archivo guardado.
+    /// </summary>
+    Task<IReadOnlyList<RodeoImportadoResumen>> BuscarPorHashAsync(string hash, CancellationToken ct = default);
     void Agregar(Rodeo rodeo);
 }
 
@@ -75,6 +81,8 @@ public interface IAnimalRepository
     Task<bool> ExisteIdElectronicoAsync(Guid rodeoId, string idElectronico, Guid? excluirAnimalId, CancellationToken ct = default);
     Task<bool> TieneTactosVigentesAsync(Guid animalId, CancellationToken ct = default);
     void Agregar(Animal animal);
+    /// <summary>Marca muchos animales de una vez (importación). Se guardan con el SaveChanges de la transacción.</summary>
+    void AgregarVarios(IEnumerable<Animal> animales);
 }
 
 public interface ITactoRepository
@@ -107,6 +115,16 @@ public interface IArranqueService
 {
     /// <summary>Crea o actualiza la base al abrir la app (RF-19, RF-20, RF-22, RF-27) y deja el resultado en <see cref="IArranqueResultado"/>.</summary>
     Task<ResultadoArranque> IniciarAsync(CancellationToken ct = default);
+}
+
+/// <summary>Un archivo elegido por el veterinario: su nombre y un flujo de lectura (en Android no hay ruta, es un content://).</summary>
+public sealed record ArchivoElegido(string Nombre, Stream Contenido);
+
+/// <summary>Selector de archivos de la plataforma (en la app, el de Android). Existe como puerto para probar los ViewModels.</summary>
+public interface ISelectorArchivo
+{
+    /// <summary>Devuelve el archivo elegido o nulo si el veterinario cancela.</summary>
+    Task<ArchivoElegido?> ElegirAsync(CancellationToken ct = default);
 }
 
 /// <summary>Resultado del último arranque, para que una pantalla lo muestre (RF-28).</summary>

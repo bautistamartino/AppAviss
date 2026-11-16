@@ -1,3 +1,4 @@
+using Aviss.Application.Importacion;
 using Aviss.Application.Puertos;
 using Aviss.Domain.Entidades;
 using Aviss.Domain.Enums;
@@ -38,6 +39,18 @@ internal sealed class RodeoRepository : IRodeoRepository
 
     public Task<int> ContarAnimalesAsync(Guid rodeoId, CancellationToken ct = default)
         => _db.Animales.CountAsync(a => a.RodeoId == rodeoId && !a.Anulado, ct);
+
+    // Proyecta solo nombre y fecha: el blob del archivo (hasta 25 MB) no se lee.
+    public async Task<IReadOnlyList<RodeoImportadoResumen>> BuscarPorHashAsync(string hash, CancellationToken ct = default)
+    {
+        var filas = await _db.Rodeos.AsNoTracking()
+            .Where(r => r.ArchivoOrigenHash == hash)
+            .Select(r => new { r.Nombre, r.FechaImportacionUtc })
+            .ToListAsync(ct);
+        // El orden se hace en memoria (más reciente primero): SQLite no ordena bien DateTime guardado como texto en todos los casos.
+        return filas.OrderByDescending(r => r.FechaImportacionUtc)
+            .Select(r => new RodeoImportadoResumen(r.Nombre, r.FechaImportacionUtc)).ToList();
+    }
 
     public void Agregar(Rodeo rodeo) => _db.Rodeos.Add(rodeo);
 }
@@ -114,6 +127,15 @@ internal sealed class AnimalRepository : IAnimalRepository
         => _db.Tactos.AnyAsync(t => t.AnimalId == animalId && t.Tipo == TipoTacto.Normal && !t.Anulado, ct);
 
     public void Agregar(Animal animal) => _db.Animales.Add(animal);
+
+    // La detección automática de cambios se apaga solo durante la carga: con 20.000 animales, Add() sin esto es muy lento.
+    public void AgregarVarios(IEnumerable<Animal> animales)
+    {
+        var anterior = _db.ChangeTracker.AutoDetectChangesEnabled;
+        _db.ChangeTracker.AutoDetectChangesEnabled = false;
+        try { _db.Animales.AddRange(animales); }
+        finally { _db.ChangeTracker.AutoDetectChangesEnabled = anterior; }
+    }
 }
 
 internal sealed class TactoRepository : ITactoRepository
