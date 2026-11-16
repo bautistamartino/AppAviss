@@ -2,7 +2,8 @@
 
 namespace Aviss.App;
 
-public partial class App : Application
+// Nombre completo: dentro de Aviss.* "Application" se confunde con el espacio de nombres Aviss.Application.
+public partial class App : Microsoft.Maui.Controls.Application
 {
 	public App()
 	{

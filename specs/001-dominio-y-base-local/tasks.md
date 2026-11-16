@@ -2,7 +2,7 @@
 
 Tests primero en cada tarea de lógica. Ninguna tarea se da por terminada con `dotnet build` o `dotnet test` en rojo. No hay pantallas en esta spec.
 
-- [ ] **T1** — Dominio y contratos de Application: entidades con fábricas que validan, enums, `Caravana` (validación y clave), `IdElectronico`, `ReglasTacto` (validación de RF-8b, último vigente), `EstadosIniciales`, `Resultado`/`CodigoError`, puertos (`IRelojService`, `IDispositivoService`, `IUnitOfWork`, repositorios, `IBackupService`, `IArranqueService`, `IArranqueResultado`), interfaces de servicios y comandos, `ResultadoArranque`. Tests primero en `Aviss.Domain.Tests`.
+- [x] **T1** — Dominio y contratos de Application: entidades con fábricas que validan, enums, `Caravana` (validación y clave), `IdElectronico`, `ReglasTacto` (validación de RF-8b, último vigente), `EstadosIniciales`, `Resultado`/`CodigoError`, puertos (`IRelojService`, `IDispositivoService`, `IUnitOfWork`, repositorios, `IBackupService`, `IArranqueService`, `IArranqueResultado`), interfaces de servicios y comandos, `ResultadoArranque`. Tests primero en `Aviss.Domain.Tests`.
   - RF: RF-3, RF-4, RF-4b, RF-5 (formato), RF-7, RF-8b (reglas puras), RF-13 y RF-14 (reglas puras), RF-17, RF-18
   - Hecho cuando: los tests de `CaravanaTests`, `IdElectronicoTests`, `EstadoReproductivoTests`, `AnimalTests` y `ReglasTactoTests` pasan (bordes de 20/21 caracteres, "0123"≠"123", Ñ, +5 min, 0/300 días, desempate por orden); `Domain` no referencia nada y `Application` solo a `Domain`; `dotnet build` en verde.
 
