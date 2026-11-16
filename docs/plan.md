@@ -8,7 +8,7 @@ Cada ítem es una spec o un paso chico. Se marca con `[x]` cuando está terminad
 - [x] 0.3 Solución .NET vacía con los proyectos, `dotnet build` y `dotnet test` en verde, y comandos confirmados en `CLAUDE.md`.
 
 ## Etapa 1 — Dominio y base local
-- [ ] 1.1 Entidades, catálogo de estados y SQLite con migraciones (spec 001): Establecimiento, Rodeo, Animal, Tacto, Historial, Usuario; triggers de inmutabilidad; backups.
+- [x] 1.1 Entidades, catálogo de estados y SQLite con migraciones (spec 001): Establecimiento, Rodeo, Animal, Tacto, Historial, Usuario; triggers de inmutabilidad; backups.
 
 ## Etapa 2 — Importación
 - [ ] 2.1 Importar el `.xls` de Dairy Comp con vista previa y errores por fila, y guardar el original (spec 002).
