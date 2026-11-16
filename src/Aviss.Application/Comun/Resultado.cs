@@ -36,7 +36,11 @@ public enum CodigoError
     // Anular tacto (RF-14)
     TactoYaAnulado,
     TactoDeAnulacion,
-    TactoNoEsElUltimo
+    TactoNoEsElUltimo,
+
+    // Copias de seguridad (RF-21)
+    SinEspacioParaCopia,
+    CopiaFallida
 }
 
 /// <summary>Resultado de una operación sin valor de retorno. El mensaje está en español y nunca lleva datos de animales ni de tambos.</summary>

@@ -1,5 +1,7 @@
 using Aviss.Application.Puertos;
 using Aviss.Application.Servicios;
+using Aviss.Infrastructure.Arranque;
+using Aviss.Infrastructure.Backups;
 using Aviss.Infrastructure.Persistencia;
 using Aviss.Infrastructure.Repositorios;
 using Aviss.Infrastructure.Servicios;
@@ -39,7 +41,14 @@ public static class DependencyInjection
         servicios.AddScoped<IAnimalService, AnimalService>();
         servicios.AddScoped<ITrabajoCampoService, TrabajoCampoService>();
 
-        // El arranque (migraciones, backups) se registra en la tarea T4.
+        // Arranque y copias de seguridad: no usan el DbContext del contenedor (trabajan sobre rutas de archivo), así que son singleton.
+        servicios.AddSingleton<IEspacioLibreProvider, EspacioLibreProvider>();
+        servicios.AddSingleton<IMigrador, MigradorEf>();
+        servicios.AddSingleton<SembradorInicial>();
+        servicios.AddSingleton<IBackupService, BackupService>();
+        servicios.AddSingleton<ArranqueResultado>();
+        servicios.AddSingleton<IArranqueResultado>(p => p.GetRequiredService<ArranqueResultado>());
+        servicios.AddSingleton<IArranqueService, ArranqueService>();
         return servicios;
     }
 }
