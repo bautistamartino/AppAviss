@@ -7,7 +7,8 @@ Estado actual y decisiones importantes. La actualiza el implementador al termina
 - **Etapa 0 — Cimientos** (ver [docs/plan.md](docs/plan.md))
   - Hecho (2026-11-16): esquema de trabajo SDD, constitución, requerimientos, arquitectura y plan.
   - Hecho (2026-11-16): 0.1 entorno. .NET SDK 10.0.404 (winget), carga de trabajo `maui-android`, Android Studio 2026.2.2.9 con SDK en `%LOCALAPPDATA%\Android\Sdk` (imagen `android-37.0 google_apis_playstore x86_64`) y emulador de tablet **`Tablet_Aviss`** (2560x1600, horizontal, 4 GB). Arrancó y `adb` lo ve (`emulator-5554`).
-  - Pendiente: 0.2 prueba de reimportación en Dairy Comp, 0.3 solución vacía (ahí se confirma que MAUI encuentra el SDK y el JDK; si no, definir `JAVA_HOME` con el `jbr` de Android Studio y `AndroidSdkDirectory`).
+  - Hecho (2026-11-16): 0.3 solución vacía (`Aviss.slnx`): 6 proyectos en `src/`, 5 de tests xUnit en `tests/` con las referencias entre capas de la constitución. `dotnet build` y `dotnet test` en verde y la app MAUI vacía corre en el emulador `Tablet_Aviss` (`com.aviss.app`).
+  - Pendiente: 0.2 prueba de reimportación en Dairy Comp (la hace el usuario).
 
 ## Decisiones
 
@@ -18,6 +19,8 @@ Estado actual y decisiones importantes. La actualiza el implementador al termina
 - **2026-11-16 — Sin hardware por ahora:** no hay bastón ni tablet. Se desarrolla con emulador y `FakeRfidReader`; el Bluetooth real se valida al final (etapa 5).
 
 - **2026-11-16 — Emulador:** el AVD `Tablet_Aviss` se creó a mano (no hay `cmdline-tools`/`avdmanager`), copiando la config del AVD `Medium_Phone`. Se lanza con `%LOCALAPPDATA%\Android\Sdk\emulator\emulator.exe -avd Tablet_Aviss`. Si en algún momento falla, recrearlo desde Android Studio › Device Manager con el perfil "Pixel Tablet".
+
+- **2026-11-16 — Compilar Android en esta PC:** .NET 10 exige **JDK 21** (el de Android Studio es el 25 y en Windows hay un Java 8: ninguno sirve). Se instaló Microsoft OpenJDK 21 (`C:\Program Files\Microsoft\jdk-21.0.13.21-hotspot`) y la plataforma Android **36** con `dotnet build -t:InstallAndroidDependencies -p:AcceptAndroidSDKLicenses=True -p:AndroidInstallJavaDependencies=false` (también bajó `cmdline-tools`, así que ya hay `sdkmanager` y `avdmanager`). Las rutas van en `Directory.Build.props` (solo si existen). La app MAUI es solo Android (`net10.0-android`); se borraron las plataformas iOS, Mac y Windows de la plantilla.
 
 ## Riesgos abiertos
 

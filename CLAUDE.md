@@ -16,12 +16,12 @@ Requisitos: [docs/requerimientos.md](docs/requerimientos.md) · Arquitectura: [d
 
 ## Comandos
 
-(Se confirman en la spec 001, cuando exista la solución .NET.)
+Probados el 2026-11-16. Las rutas del JDK 21 y del SDK de Android las pone `Directory.Build.props`.
 
-- `dotnet build`: compila la solución.
+- `dotnet build`: compila la solución (`Aviss.slnx`), incluida la app Android.
 - `dotnet test`: tests de todos los proyectos de `tests/`.
-- `dotnet ef migrations add <Nombre> -p src/Aviss.Infrastructure -s src/Aviss.App`: nueva migración.
-- `dotnet build src/Aviss.App -f net10.0-android`: compila la app Android.
+- `dotnet build src/Aviss.App -f net10.0-android -t:Run`: compila, instala y abre la app en el emulador (o dispositivo) conectado.
+- `dotnet ef migrations add <Nombre> -p src/Aviss.Infrastructure -s src/Aviss.App`: nueva migración (aún sin probar; se confirma en la spec 001).
 - Emulador de tablet: `& "$env:LOCALAPPDATA\Android\Sdk\emulator\emulator.exe" -avd Tablet_Aviss`. `adb` está en `%LOCALAPPDATA%\Android\Sdk\platform-tools`.
 
 ## Stack

@@ -1,0 +1,17 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Aviss.App/Aviss.App.csproj" />
+    <Project Path="src/Aviss.Application/Aviss.Application.csproj" />
+    <Project Path="src/Aviss.Domain/Aviss.Domain.csproj" />
+    <Project Path="src/Aviss.Excel/Aviss.Excel.csproj" />
+    <Project Path="src/Aviss.Infrastructure/Aviss.Infrastructure.csproj" />
+    <Project Path="src/Aviss.Rfid/Aviss.Rfid.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Aviss.Application.Tests/Aviss.Application.Tests.csproj" />
+    <Project Path="tests/Aviss.Domain.Tests/Aviss.Domain.Tests.csproj" />
+    <Project Path="tests/Aviss.Excel.Tests/Aviss.Excel.Tests.csproj" />
+    <Project Path="tests/Aviss.Infrastructure.Tests/Aviss.Infrastructure.Tests.csproj" />
+    <Project Path="tests/Aviss.Rfid.Tests/Aviss.Rfid.Tests.csproj" />
+  </Folder>
+</Solution>

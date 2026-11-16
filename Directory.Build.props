@@ -1,0 +1,11 @@
+<Project>
+  <!--
+    Rutas del JDK 21 y del SDK de Android para compilar la app MAUI desde la línea de comandos.
+    Solo se aplican si existen en esta PC; en otra máquina hay que ajustarlas (o pasarlas con -p:).
+    El JDK debe ser el 21: .NET 10 no compila con otras versiones (ver MEMORY.md).
+  -->
+  <PropertyGroup>
+    <JavaSdkDirectory Condition="'$(JavaSdkDirectory)' == '' And Exists('C:\Program Files\Microsoft\jdk-21.0.13.21-hotspot')">C:\Program Files\Microsoft\jdk-21.0.13.21-hotspot</JavaSdkDirectory>
+    <AndroidSdkDirectory Condition="'$(AndroidSdkDirectory)' == '' And Exists('$(LOCALAPPDATA)\Android\Sdk')">$(LOCALAPPDATA)\Android\Sdk</AndroidSdkDirectory>
+  </PropertyGroup>
+</Project>
