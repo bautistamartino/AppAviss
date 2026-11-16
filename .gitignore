@@ -1,0 +1,33 @@
+# Builds de .NET
+bin/
+obj/
+*.user
+*.suo
+.vs/
+TestResults/
+
+# Android
+*.apk
+*.aab
+*.keystore
+*.jks
+
+# Secretos: nunca se suben
+.env
+.env.*
+!.env.example
+
+# Excel reales de tambos (datos privados). Solo se versionan las muestras anonimizadas.
+*.xls
+*.xlsx
+!tests/muestras/**
+
+# Logs
+*.log
+
+# Editor y sistema
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
