@@ -16,6 +16,8 @@ Estado actual y decisiones importantes. La actualiza el implementador al termina
 
 ## Decisiones
 
+- **2026-11-17 — Permisos de red quitados (corrección tras validar la spec 003):** se sacaron `INTERNET` y `ACCESS_NETWORK_STATE` de `AndroidManifest.xml` (la app es 100 % offline, constitución §1). Venían de la plantilla MAUI del commit 0.3. Queda `VIBRATE`. Si algún día la recarga en caliente de Debug necesitara `INTERNET`, no se vuelve a agregar: se despliega sin recarga en caliente.
+
 - **2026-11-17 — Resto de pantallas y cierre (spec 003, T5):**
   - **Las capas de "Finalizar manga" y "Terminar el tacto" ya estaban en `TrabajoPage` (T4)**; T5 sumó `EleccionTrabajoPage` (tres columnas: veterinario con alta, establecimiento, rodeo con avance; "Volver" y "Empezar a trabajar"), `MovimientosPage` (lista con "Deshacer" y "Al cerrar: N · Hoy: M") y el botón "Trabajar". `EleccionTrabajoViewModel` sumó `VolverAlInicioCommand` (con test).
   - **Navegación:** la elección se abre con la ruta absoluta `//Inicio/EleccionTrabajo` (así "Salir" del trabajo no apila una elección sobre otra); "Volver" de movimientos es `Shell.GoToAsync("..")` desde el code-behind (navegación pura, sin lógica). El `Shell` no muestra barra de navegación: el "Volver" es un botón grande y también anda el botón Atrás de Android.
@@ -74,6 +76,7 @@ Estado actual y decisiones importantes. La actualiza el implementador al termina
 
 ## Riesgos abiertos
 
+- **Advertencia NU1903 en `System.Security.Cryptography.Xml 8.0.2`:** dependencia transitiva (probablemente de NPOI) con una vulnerabilidad alta conocida. Fuera del alcance de la spec 003; revisar en la etapa 6 junto con las demás advertencias de dependencias (ver riesgos de la spec 002).
 - **Supuestos de la spec 001 a validar con datos reales:**
   - El código de Dairy Comp de cada estado es igual al nombre que aparece en el Excel (PREÑADA, INSEMIN, ...); si Dairy Comp usa otros códigos al reimportar, se corrige en el catálogo (el código es editable).
   - La caravana se guarda tal cual, sin normalizar ceros ("0123" y "123" son animales distintos). Si el bastón o Dairy Comp los tratan igual, hará falta una regla de equivalencia en la importación/búsqueda.
