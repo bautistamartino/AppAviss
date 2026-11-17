@@ -1,4 +1,8 @@
-﻿using Aviss.Application.Puertos;
+﻿using Aviss.App.Paginas;
+using Aviss.App.Servicios;
+using Aviss.App.ViewModels;
+using Aviss.Application.Puertos;
+using Aviss.Excel;
 using Aviss.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -25,6 +29,18 @@ public static class MauiProgram
 		// Todo lo de datos vive en el almacenamiento privado de la app (en Android, /data/data/com.aviss.app/files).
 		// Infrastructure no conoce MAUI: acá se le pasa la carpeta.
 		builder.Services.AddAvissInfrastructure(new RutasAviss(FileSystem.AppDataDirectory));
+
+		// Importación de Dairy Comp (spec 002): el perfil de Excel (NPOI) y lo propio de la plataforma Android.
+		builder.Services.AddAvissExcel();
+		builder.Services.AddSingleton<ISelectorArchivo, SelectorArchivoMaui>();
+		builder.Services.AddSingleton<INavegacion, NavegacionShell>();
+
+		// ViewModels y páginas transitorios: cada vez que se abre la pantalla arranca limpia en el paso 1.
+		// (La vista previa sobrevive a rotar y a pasar a segundo plano porque la pantalla sigue abierta.)
+		builder.Services.AddTransient<InicioViewModel>();
+		builder.Services.AddTransient<ImportarViewModel>();
+		builder.Services.AddTransient<InicioPage>();
+		builder.Services.AddTransient<ImportarPage>();
 
 		var app = builder.Build();
 

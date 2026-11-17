@@ -3,12 +3,14 @@
     x:Class="Aviss.App.AppShell"
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-    xmlns:local="clr-namespace:Aviss.App"
-    Title="Aviss.App">
+    xmlns:paginas="clr-namespace:Aviss.App.Paginas"
+    Shell.NavBarIsVisible="False"
+    Title="Aviss">
 
+    <!-- Inicio es la raíz; "Importar" se registra como ruta en el código (se abre encima, con el botón Atrás de Android). -->
     <ShellContent
-        Title="Home"
-        ContentTemplate="{DataTemplate local:MainPage}"
-        Route="MainPage" />
+        Title="Inicio"
+        ContentTemplate="{DataTemplate paginas:InicioPage}"
+        Route="Inicio" />
 
 </Shell>

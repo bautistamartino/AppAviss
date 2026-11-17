@@ -1,0 +1,195 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:Aviss.App.ViewModels"
+             xmlns:imp="clr-namespace:Aviss.Application.Importacion;assembly=Aviss.Application"
+             x:Class="Aviss.App.Paginas.ImportarPage"
+             x:DataType="vm:ImportarViewModel"
+             Title="Importar rodeo">
+
+    <ContentPage.Resources>
+        <!-- Interfaz de campo (constitución 9): texto grande, botones altos y alto contraste. -->
+        <Style x:Key="BotonGrande" TargetType="Button">
+            <Setter Property="FontSize" Value="22" />
+            <Setter Property="FontAttributes" Value="Bold" />
+            <Setter Property="HeightRequest" Value="72" />
+        </Style>
+        <Style x:Key="Texto" TargetType="Label">
+            <Setter Property="FontSize" Value="20" />
+        </Style>
+        <Style x:Key="Titulo" TargetType="Label">
+            <Setter Property="FontSize" Value="26" />
+            <Setter Property="FontAttributes" Value="Bold" />
+        </Style>
+        <Style x:Key="Campo" TargetType="Entry">
+            <Setter Property="FontSize" Value="22" />
+            <Setter Property="HeightRequest" Value="64" />
+        </Style>
+    </ContentPage.Resources>
+
+    <Grid RowDefinitions="Auto,*,Auto" Padding="24,16" RowSpacing="12">
+
+        <!-- Mensaje de error / rechazo: fondo rojo oscuro con texto blanco (alto contraste). -->
+        <Border Grid.Row="0"
+                IsVisible="{Binding HayMensajeError}"
+                BackgroundColor="#B00020" StrokeThickness="0" Padding="16">
+            <Label Text="{Binding MensajeError}" TextColor="White" FontSize="20" FontAttributes="Bold"
+                   SemanticProperties.Description="Mensaje de error" />
+        </Border>
+
+        <!-- ============ PASO 1: elegir el archivo ============ -->
+        <ScrollView Grid.Row="1" IsVisible="{Binding EsPasoElegir}">
+            <VerticalStackLayout Spacing="28" MaximumWidthRequest="720" VerticalOptions="Center">
+                <Label Text="Importar rodeo" Style="{StaticResource Titulo}" FontSize="34"
+                       SemanticProperties.HeadingLevel="Level1" />
+                <Label Style="{StaticResource Texto}"
+                       Text="Elegí el archivo .xls que exportaste de Dairy Comp. Antes de guardar nada vas a ver una vista previa." />
+                <Button Text="Elegir archivo .xls"
+                        Style="{StaticResource BotonGrande}"
+                        Command="{Binding ElegirArchivoCommand}" />
+                <HorizontalStackLayout Spacing="12" IsVisible="{Binding EstaOcupado}">
+                    <ActivityIndicator IsRunning="{Binding EstaOcupado}" HeightRequest="40" WidthRequest="40" />
+                    <Label Text="Leyendo el archivo..." Style="{StaticResource Texto}" VerticalOptions="Center" />
+                </HorizontalStackLayout>
+            </VerticalStackLayout>
+        </ScrollView>
+
+        <!-- ============ PASO 2: vista previa ============ -->
+        <!-- Una sola lista que se desplaza (las filas excluidas pueden ser miles); lo demás va en el encabezado de la lista. -->
+        <CollectionView Grid.Row="1"
+                        IsVisible="{Binding EsPasoVistaPrevia}"
+                        ItemsSource="{Binding Vista.Excluidas}"
+                        SelectionMode="None">
+            <CollectionView.Header>
+                <VerticalStackLayout Spacing="16" Padding="0,0,0,12">
+                    <Label Text="Vista previa" Style="{StaticResource Titulo}" FontSize="32"
+                           SemanticProperties.HeadingLevel="Level1" />
+                    <Label Text="{Binding Vista.NombreArchivo}" Style="{StaticResource Texto}" FontAttributes="Italic" />
+
+                    <!-- Resumen -->
+                    <Label Text="{Binding FilasLeidas, StringFormat='Filas leídas: {0}'}" Style="{StaticResource Texto}" />
+                    <Label Text="{Binding FilasAImportar, StringFormat='Animales a importar: {0}'}" Style="{StaticResource Titulo}" />
+                    <Label Text="{Binding FilasExcluidas, StringFormat='Filas excluidas: {0}'}" Style="{StaticResource Texto}" />
+
+                    <!-- Archivo ya importado (RF-16) -->
+                    <Border IsVisible="{Binding EsArchivoRepetido}" BackgroundColor="#FFE082" StrokeThickness="0" Padding="16">
+                        <VerticalStackLayout Spacing="12">
+                            <Label Text="{Binding RodeoRepetidoTexto}" TextColor="Black" FontSize="20" FontAttributes="Bold" />
+                            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
+                                <Switch IsToggled="{Binding ConfirmaImportarIgual}" VerticalOptions="Center" />
+                                <Label Grid.Column="1" Text="Importar igual (se crea un rodeo nuevo)" TextColor="Black" FontSize="20"
+                                       VerticalOptions="Center" />
+                            </Grid>
+                        </VerticalStackLayout>
+                    </Border>
+
+                    <!-- Conteo por estado -->
+                    <VerticalStackLayout Spacing="4" IsVisible="{Binding HayConteoEstados}">
+                        <Label Text="Vacas por estado" Style="{StaticResource Titulo}" />
+                        <VerticalStackLayout BindableLayout.ItemsSource="{Binding Vista.ConteoPorEstado}">
+                            <BindableLayout.ItemTemplate>
+                                <DataTemplate x:DataType="imp:ConteoEstado">
+                                    <Label Style="{StaticResource Texto}">
+                                        <Label.FormattedText>
+                                            <FormattedString>
+                                                <Span Text="{Binding Nombre}" FontAttributes="Bold" />
+                                                <Span Text="{Binding Cantidad, StringFormat=': {0}'}" />
+                                            </FormattedString>
+                                        </Label.FormattedText>
+                                    </Label>
+                                </DataTemplate>
+                            </BindableLayout.ItemTemplate>
+                        </VerticalStackLayout>
+                    </VerticalStackLayout>
+
+                    <!-- Advertencias -->
+                    <VerticalStackLayout Spacing="6" IsVisible="{Binding HayAdvertencias}">
+                        <Label Text="Advertencias (no impiden importar)" Style="{StaticResource Titulo}" />
+                        <VerticalStackLayout BindableLayout.ItemsSource="{Binding AdvertenciasTexto}">
+                            <BindableLayout.ItemTemplate>
+                                <DataTemplate x:DataType="x:String">
+                                    <Label Text="{Binding .}" Style="{StaticResource Texto}" />
+                                </DataTemplate>
+                            </BindableLayout.ItemTemplate>
+                        </VerticalStackLayout>
+                    </VerticalStackLayout>
+
+                    <!-- Dónde se guarda -->
+                    <Label Text="Establecimiento" Style="{StaticResource Titulo}" />
+                    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12" IsVisible="{Binding HayEstablecimientos}">
+                        <Switch IsToggled="{Binding UsarEstablecimientoNuevo}" VerticalOptions="Center" />
+                        <Label Grid.Column="1" Text="Crear un establecimiento nuevo" Style="{StaticResource Texto}" VerticalOptions="Center" />
+                    </Grid>
+                    <Picker Title="Elegí un establecimiento"
+                            FontSize="22" HeightRequest="64"
+                            IsVisible="{Binding PuedeElegirExistente}"
+                            ItemsSource="{Binding Establecimientos}"
+                            ItemDisplayBinding="{Binding Nombre, x:DataType=imp:EstablecimientoResumen}"
+                            SelectedItem="{Binding EstablecimientoSeleccionado}" />
+                    <Entry Placeholder="Nombre del establecimiento nuevo"
+                           Style="{StaticResource Campo}"
+                           MaxLength="100"
+                           IsVisible="{Binding UsarEstablecimientoNuevo}"
+                           Text="{Binding NuevoEstablecimientoNombre}" />
+
+                    <Label Text="Nombre del rodeo" Style="{StaticResource Titulo}" />
+                    <Entry Placeholder="Nombre del rodeo"
+                           Style="{StaticResource Campo}"
+                           MaxLength="100"
+                           Text="{Binding NombreRodeo}" />
+
+                    <Label Text="Filas excluidas (no se importan)" Style="{StaticResource Titulo}"
+                           IsVisible="{Binding HayExcluidas}" />
+                </VerticalStackLayout>
+            </CollectionView.Header>
+            <CollectionView.ItemTemplate>
+                <DataTemplate x:DataType="imp:FilaExcluida">
+                    <Label Padding="0,6" Style="{StaticResource Texto}">
+                        <Label.FormattedText>
+                            <FormattedString>
+                                <Span Text="{Binding NumeroFila, StringFormat='Fila {0}: '}" FontAttributes="Bold" />
+                                <Span Text="{Binding Mensaje}" />
+                            </FormattedString>
+                        </Label.FormattedText>
+                    </Label>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+
+        <!-- Barra de botones del paso 2: siempre a la vista. -->
+        <Grid Grid.Row="2" IsVisible="{Binding EsPasoVistaPrevia}" ColumnDefinitions="*,*" ColumnSpacing="16">
+            <Button Grid.Column="0" Text="Cancelar" Style="{StaticResource BotonGrande}"
+                    BackgroundColor="#455A64" TextColor="White"
+                    Command="{Binding CancelarCommand}" />
+            <Button Grid.Column="1" Style="{StaticResource BotonGrande}"
+                    Command="{Binding ConfirmarCommand}">
+                <Button.Triggers>
+                    <DataTrigger TargetType="Button" Binding="{Binding EstaConfirmando}" Value="True">
+                        <Setter Property="Text" Value="Guardando..." />
+                    </DataTrigger>
+                    <DataTrigger TargetType="Button" Binding="{Binding EstaConfirmando}" Value="False">
+                        <Setter Property="Text" Value="Confirmar importación" />
+                    </DataTrigger>
+                </Button.Triggers>
+            </Button>
+        </Grid>
+
+        <!-- ============ PASO 3: resultado ============ -->
+        <ScrollView Grid.Row="1" Grid.RowSpan="2" IsVisible="{Binding EsPasoResultado}">
+            <VerticalStackLayout Spacing="20" MaximumWidthRequest="720" VerticalOptions="Center">
+                <Label Text="Importación terminada" Style="{StaticResource Titulo}" FontSize="34"
+                       SemanticProperties.HeadingLevel="Level1" />
+                <Label Text="{Binding Resultado.NombreRodeo, StringFormat='Rodeo creado: {0}'}" Style="{StaticResource Titulo}" />
+                <Label Text="{Binding Resultado.FilasLeidas, StringFormat='Filas leídas: {0}'}" Style="{StaticResource Texto}" />
+                <Label Text="{Binding Resultado.AnimalesImportados, StringFormat='Animales importados: {0}'}" Style="{StaticResource Texto}" />
+                <Label Text="{Binding Resultado.FilasExcluidas, StringFormat='Filas excluidas: {0}'}" Style="{StaticResource Texto}" />
+                <Label Text="{Binding Resultado.Advertencias.Count, StringFormat='Advertencias: {0}'}" Style="{StaticResource Texto}" />
+                <Button Text="Importar otro archivo" Style="{StaticResource BotonGrande}"
+                        Command="{Binding ImportarOtroCommand}" />
+                <Button Text="Volver al inicio" Style="{StaticResource BotonGrande}"
+                        BackgroundColor="#455A64" TextColor="White"
+                        Command="{Binding VolverAlInicioCommand}" />
+            </VerticalStackLayout>
+        </ScrollView>
+    </Grid>
+</ContentPage>
