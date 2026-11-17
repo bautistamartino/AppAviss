@@ -18,7 +18,7 @@ Tests primero en cada tarea de lógica. Ninguna tarea se da por terminada con `d
     - `UsuarioNombreUnicoTests`: repetido con otras mayúsculas o espacios, contra un usuario de baja, contra "Sin asignar" y directo en la base.
     - `dotnet ef migrations has-pending-model-changes -p src/Aviss.Infrastructure -s src/Aviss.Infrastructure` no informa cambios; los 526+ tests anteriores siguen en verde; `dotnet build` y `dotnet test` en verde.
 
-- [ ] **T2** — Servicios de campo y fachada `ICampoService`.
+- [x] **T2** — Servicios de campo y fachada `ICampoService`.
   - Qué se hace (en este orden, cada bloque con sus tests primero):
     - **Contratos en `Application`:** puertos de campo (`IRfidReader`, `TagRead`, `ISimuladorLecturas`, `IZonaHoraria`, `IPreferenciasDispositivo`, `IAvisosCampo`, `IPantalla`, `ITemporizador`), repositorios nuevos, `ICampoService`, comandos y DTOs, códigos de error con mensaje fijo, `ConstructorFicha` y `ReglasAviso`.
     - **Marca y lectura:** `MarcaPasadaService` (procesar lectura, marca automática con manga y historial en una transacción, aviso repetido o ya pasó, desmarcar) y repositorios con el cálculo del orden compartido y el último registro vigente.

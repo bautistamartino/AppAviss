@@ -495,6 +495,8 @@ namespace Aviss.Infrastructure.Migrations
 
                     b.HasIndex("EstadoNuevoId");
 
+                    b.HasIndex("FechaHoraUtc");
+
                     b.HasIndex("OrdenInsercion")
                         .IsUnique();
 

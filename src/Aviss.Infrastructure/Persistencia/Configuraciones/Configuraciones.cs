@@ -146,6 +146,9 @@ internal sealed class TactoConfig : IEntityTypeConfiguration<Tacto>
         b.HasIndex(e => e.OrdenInsercion).IsUnique();
         // Para encontrar rápido el "último tacto vigente" de un animal.
         b.HasIndex(e => new { e.AnimalId, e.FechaHoraUtc, e.OrdenInsercion });
+        // Para el avance del día y los últimos movimientos (tactos dentro de un rango de fechas, spec 003): sin este índice
+        // SQLite recorre todos los tactos y con 100.000 registros el avance pasaba de los 200 ms de RF-37.
+        b.HasIndex(e => e.FechaHoraUtc);
         // Un tacto se anula una sola vez.
         b.HasIndex(e => e.TactoAnuladoId).IsUnique().HasFilter("TactoAnuladoId IS NOT NULL");
         b.HasIndex(e => e.EstadoAnteriorId);

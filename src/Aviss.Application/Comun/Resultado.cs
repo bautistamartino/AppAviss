@@ -48,7 +48,20 @@ public enum CodigoError
     ImportacionEnCurso,
     ImportacionYaConfirmada,
     ArchivoRepetidoSinConfirmar,
-    SinFilasValidas
+    SinFilasValidas,
+
+    // Flujo de campo (spec 003); los mensajes fijos están en MensajesCampo
+    NoHayMangaAbierta,
+    CantidadInvalida,
+    MarcaYaAnulada,
+    MarcaNoEsLaUltima,
+    AnimalConMarcasVigentes,
+    CierreYaAnulado,
+    CierreNoEsElUltimo,
+    CierreAutomaticoNoSeDeshace,
+    CierreDeOtroDia,
+    HayOtraMangaAbierta,
+    FechaAnteriorAlUltimoRegistro
 }
 
 /// <summary>Resultado de una operación sin valor de retorno. El mensaje está en español y nunca lleva datos de animales ni de tambos.</summary>

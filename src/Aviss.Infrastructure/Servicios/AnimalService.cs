@@ -1,3 +1,4 @@
+using Aviss.Application.Campo;
 using Aviss.Application.Comandos;
 using Aviss.Application.Comun;
 using Aviss.Application.Puertos;
@@ -28,41 +29,52 @@ internal sealed class AnimalService : IAnimalService
     public Task<Resultado<Guid>> AltaEnCampoAsync(AltaEnCampoCommand c, CancellationToken ct = default)
         => _uow.EjecutarAsync(async () =>
         {
-            var errorUsuario = await Ayudas.ValidarUsuarioAsync(_usuarios, c.UsuarioId, ct);
-            if (errorUsuario is not null) return Resultado.Error<Guid>(errorUsuario.Codigo!.Value, errorUsuario.Mensaje!);
-
-            var rodeo = await _rodeos.ObtenerAsync(c.RodeoId, ct);
-            if (rodeo is null) return Resultado.Error<Guid>(CodigoError.NoEncontrado, "El rodeo no existe.");
-            if (!rodeo.Activo) return Resultado.Error<Guid>(CodigoError.RodeoDeBaja, "El rodeo está dado de baja y no admite altas.");
-            var est = await _establecimientos.ObtenerAsync(rodeo.EstablecimientoId, ct);
-            if (est is null || !est.Activo)
-                return Resultado.Error<Guid>(CodigoError.EstablecimientoDeBaja, "El establecimiento está dado de baja y no admite altas.");
-
-            if (!Caravana.TryCrear(c.NumeroCaravana, out var caravana, out var errorCaravana))
-                return Resultado.Error<Guid>(CodigoError.CaravanaInvalida, errorCaravana!);
-
-            string? idElec = null;
-            if (!string.IsNullOrWhiteSpace(c.IdElectronico))
-            {
-                if (!IdElectronico.TryCrear(c.IdElectronico, out var id, out var errorId))
-                    return Resultado.Error<Guid>(CodigoError.IdElectronicoInvalido, errorId!);
-                idElec = id.Valor;
-            }
-
-            if (await _animales.ObtenerPorCaravanaAsync(c.RodeoId, caravana, ct) is not null)
-                return Resultado.Error<Guid>(CodigoError.CaravanaDuplicada, "Ya hay un animal con esa caravana en el rodeo.");
-            if (idElec is not null && await _animales.ExisteIdElectronicoAsync(c.RodeoId, idElec, null, ct))
-                return Resultado.Error<Guid>(CodigoError.IdElectronicoDuplicado, "Ya hay un animal con ese identificador electrónico en el rodeo.");
-
-            var ahora = _reloj.UtcAhora;
-            Animal animal;
-            try { animal = Animal.CrearAltaEnCampo(c.RodeoId, caravana, idElec, c.Observaciones, ahora); }
-            catch (DominioException ex) { return Ayudas.DatosInvalidos<Guid>(ex); }
-
-            _animales.Agregar(animal);
-            _historial.Agregar(Historial.Crear("Animal", animal.Id, "Alta", null, animal.NumeroCaravana, ahora, c.UsuarioId, AccionHistorial.Alta));
-            return Resultado.Ok(animal.Id);
+            var r = await CrearAltaAsync(c, ct);
+            return r.EsCorrecto ? Resultado.Ok(r.Valor.Id) : Resultado.Error<Guid>(r.Codigo!.Value, r.Mensaje!);
         }, ct);
+
+    /// <summary>
+    /// El núcleo del alta en campo: valida, crea el animal y su registro de historial, pero NO abre una transacción
+    /// propia. Lo usan <see cref="AltaEnCampoAsync"/> (que lo envuelve en una) y el alta con marca de la spec 003
+    /// (que le suma la marca y la manga en la MISMA transacción: si falla una parte, no queda ninguna).
+    /// </summary>
+    internal async Task<Resultado<Animal>> CrearAltaAsync(AltaEnCampoCommand c, CancellationToken ct)
+    {
+        var errorUsuario = await Ayudas.ValidarUsuarioAsync(_usuarios, c.UsuarioId, ct);
+        if (errorUsuario is not null) return Resultado.Error<Animal>(errorUsuario.Codigo!.Value, errorUsuario.Mensaje!);
+
+        var rodeo = await _rodeos.ObtenerAsync(c.RodeoId, ct);
+        if (rodeo is null) return Resultado.Error<Animal>(CodigoError.NoEncontrado, "El rodeo no existe.");
+        if (!rodeo.Activo) return Resultado.Error<Animal>(CodigoError.RodeoDeBaja, "El rodeo está dado de baja y no admite altas.");
+        var est = await _establecimientos.ObtenerAsync(rodeo.EstablecimientoId, ct);
+        if (est is null || !est.Activo)
+            return Resultado.Error<Animal>(CodigoError.EstablecimientoDeBaja, "El establecimiento está dado de baja y no admite altas.");
+
+        if (!Caravana.TryCrear(c.NumeroCaravana, out var caravana, out var errorCaravana))
+            return Resultado.Error<Animal>(CodigoError.CaravanaInvalida, errorCaravana!);
+
+        string? idElec = null;
+        if (!string.IsNullOrWhiteSpace(c.IdElectronico))
+        {
+            if (!IdElectronico.TryCrear(c.IdElectronico, out var id, out var errorId))
+                return Resultado.Error<Animal>(CodigoError.IdElectronicoInvalido, errorId!);
+            idElec = id.Valor;
+        }
+
+        if (await _animales.ObtenerPorCaravanaAsync(c.RodeoId, caravana, ct) is not null)
+            return Resultado.Error<Animal>(CodigoError.CaravanaDuplicada, "Ya hay un animal con esa caravana en el rodeo.");
+        if (idElec is not null && await _animales.ExisteIdElectronicoAsync(c.RodeoId, idElec, null, ct))
+            return Resultado.Error<Animal>(CodigoError.IdElectronicoDuplicado, "Ya hay un animal con ese identificador electrónico en el rodeo.");
+
+        var ahora = _reloj.UtcAhora;
+        Animal animal;
+        try { animal = Animal.CrearAltaEnCampo(c.RodeoId, caravana, idElec, c.Observaciones, ahora); }
+        catch (DominioException ex) { return Ayudas.DatosInvalidos<Animal>(ex); }
+
+        _animales.Agregar(animal);
+        _historial.Agregar(Historial.Crear("Animal", animal.Id, "Alta", null, animal.NumeroCaravana, ahora, c.UsuarioId, AccionHistorial.Alta));
+        return Resultado.Ok(animal);
+    }
 
     public Task<Resultado> EditarAsync(EditarAnimalCommand c, CancellationToken ct = default)
         => _uow.EjecutarAsync(async () =>
@@ -141,6 +153,10 @@ internal sealed class AnimalService : IAnimalService
 
             if (await _animales.TieneTactosVigentesAsync(animal.Id, ct))
                 return Resultado.Error(CodigoError.AnimalConTactosVigentes, "El animal tiene tactos vigentes: anulá primero esos tactos.");
+            // Desde la spec 003 una vaca con marcas de pasada vigentes tampoco se anula acá: hay que desmarcarla antes
+            // (o anular el alta junto con su marca, que hace AltaCampoService).
+            if (await _animales.TieneMarcasVigentesAsync(animal.Id, ct))
+                return Resultado.Error(CodigoError.AnimalConMarcasVigentes, MensajesCampo.Para(CodigoError.AnimalConMarcasVigentes));
 
             var ahora = _reloj.UtcAhora;
             try { animal.Anular(ahora); }

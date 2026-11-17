@@ -1,3 +1,4 @@
+using Aviss.Application.Campo;
 using Aviss.Application.Importacion;
 using Aviss.Application.Puertos;
 using Aviss.Domain.Entidades;
@@ -140,6 +141,12 @@ internal sealed class AnimalRepository : IAnimalRepository
     public Task<bool> TieneTactosVigentesAsync(Guid animalId, CancellationToken ct = default)
         => _db.Tactos.AnyAsync(t => t.AnimalId == animalId && t.Tipo == TipoTacto.Normal && !t.Anulado, ct);
 
+    public Task<bool> TieneMarcasVigentesAsync(Guid animalId, CancellationToken ct = default)
+        => _db.MarcasPasada.AnyAsync(m => m.AnimalId == animalId && !m.Anulado, ct);
+
+    public Task<Animal?> ObtenerPorIdElectronicoAsync(Guid rodeoId, string idElectronico, CancellationToken ct = default)
+        => _db.Animales.FirstOrDefaultAsync(a => a.RodeoId == rodeoId && !a.Anulado && a.IdElectronico == idElectronico, ct);
+
     public void Agregar(Animal animal) => _db.Animales.Add(animal);
 
     // La detección automática de cambios se apaga solo durante la carga: con 20.000 animales, Add() sin esto es muy lento.
@@ -174,8 +181,15 @@ internal sealed class TactoRepository : ITactoRepository
             .OrderByDescending(t => t.FechaHoraUtc).ThenByDescending(t => t.OrdenInsercion)
             .FirstOrDefaultAsync(ct);
 
-    public async Task<long> SiguienteOrdenInsercionAsync(CancellationToken ct = default)
-        => (await _db.Tactos.MaxAsync(t => (long?)t.OrdenInsercion, ct) ?? 0) + 1;
+    // El orden de guardado es UNO solo para tactos y marcas de pasada (spec 003, RF-21): ver OrdenCompartido.
+    public Task<long> SiguienteOrdenInsercionAsync(CancellationToken ct = default)
+        => OrdenCompartido.SiguienteAsync(_db, ct);
+
+    public async Task<IReadOnlyList<Tacto>> ListarPorAnimalAsync(Guid animalId, CancellationToken ct = default)
+        => await _db.Tactos.AsNoTracking()
+            .Where(t => t.AnimalId == animalId && t.Tipo == TipoTacto.Normal)
+            .OrderBy(t => t.FechaHoraUtc).ThenBy(t => t.OrdenInsercion)
+            .ToListAsync(ct);
 
     public void Agregar(Tacto tacto) => _db.Tactos.Add(tacto);
 }
@@ -187,4 +201,153 @@ internal sealed class HistorialRepository : IHistorialRepository
     public HistorialRepository(AvissDbContext db) => _db = db;
 
     public void Agregar(Historial registro) => _db.Historiales.Add(registro);
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// Spec 003: mangas, marcas de pasada y consultas sobre todos los registros de campo.
+// ---------------------------------------------------------------------------------------------------------------
+
+/// <summary>
+/// El orden de guardado compartido (RF-21): el máximo de <c>OrdenInsercion</c> entre tactos y marcas, más uno. No hay
+/// tabla de secuencia: se calcula DENTRO de la transacción de cada operación (SQLite admite un solo escritor), y cada
+/// tabla conserva su índice único. La spec 004 suma sus tablas acá.
+/// </summary>
+internal static class OrdenCompartido
+{
+    public static async Task<long> SiguienteAsync(AvissDbContext db, CancellationToken ct)
+    {
+        var tactos = await db.Tactos.MaxAsync(t => (long?)t.OrdenInsercion, ct) ?? 0;
+        var marcas = await db.MarcasPasada.MaxAsync(m => (long?)m.OrdenInsercion, ct) ?? 0;
+        return Math.Max(tactos, marcas) + 1;
+    }
+}
+
+internal sealed class MangaRepository : IMangaRepository
+{
+    private readonly AvissDbContext _db;
+    public MangaRepository(AvissDbContext db) => _db = db;
+
+    public Task<Manga?> ObtenerAsync(Guid id, CancellationToken ct = default)
+        => _db.Mangas.AsNoTracking().FirstOrDefaultAsync(m => m.Id == id, ct);
+
+    // Abierta = sin ningún cierre vigente. Una manga nunca cambia, así que se lee sin seguimiento.
+    public Task<Manga?> ObtenerAbiertaAsync(Guid rodeoId, CancellationToken ct = default)
+        => _db.Mangas.AsNoTracking()
+            .Where(m => m.RodeoId == rodeoId && !_db.CierresManga.Any(c => c.MangaId == m.Id && !c.Anulado))
+            .OrderByDescending(m => m.Numero)
+            .FirstOrDefaultAsync(ct);
+
+    public async Task<int> SiguienteNumeroAsync(Guid rodeoId, CancellationToken ct = default)
+        => (await _db.Mangas.Where(m => m.RodeoId == rodeoId).MaxAsync(m => (int?)m.Numero, ct) ?? 0) + 1;
+
+    // Con seguimiento: quien lo pide puede anularlo.
+    public Task<CierreManga?> ObtenerCierreAsync(Guid cierreId, CancellationToken ct = default)
+        => _db.CierresManga.FirstOrDefaultAsync(c => c.Id == cierreId, ct);
+
+    public Task<CierreManga?> ObtenerUltimoCierreVigenteDelRodeoAsync(Guid rodeoId, CancellationToken ct = default)
+        => (from c in _db.CierresManga.AsNoTracking()
+            join m in _db.Mangas on c.MangaId equals m.Id
+            where m.RodeoId == rodeoId && !c.Anulado
+            // Por fecha y hora; con el mismo instante, la manga de número mayor (la que se cerró después).
+            orderby c.FechaHoraUtc descending, m.Numero descending, c.CreadoEnUtc descending
+            select c).FirstOrDefaultAsync(ct);
+
+    public Task<int> ContarVacasAsync(Guid mangaId, CancellationToken ct = default)
+        => _db.MarcasPasada.CountAsync(m => m.MangaId == mangaId && !m.Anulado, ct);
+
+    public async Task<IReadOnlyList<string>> ListarCaravanasMarcadasAsync(Guid mangaId, CancellationToken ct = default)
+        => await (from m in _db.MarcasPasada.AsNoTracking()
+                  join a in _db.Animales on m.AnimalId equals a.Id
+                  where m.MangaId == mangaId && !m.Anulado
+                  orderby m.OrdenInsercion
+                  select a.NumeroCaravana).ToListAsync(ct);
+
+    public void Agregar(Manga manga) => _db.Mangas.Add(manga);
+    public void AgregarCierre(CierreManga cierre) => _db.CierresManga.Add(cierre);
+}
+
+internal sealed class MarcaPasadaRepository : IMarcaPasadaRepository
+{
+    private readonly AvissDbContext _db;
+    public MarcaPasadaRepository(AvissDbContext db) => _db = db;
+
+    public Task<MarcaPasada?> ObtenerAsync(Guid id, CancellationToken ct = default)
+        => _db.MarcasPasada.FirstOrDefaultAsync(m => m.Id == id, ct);
+
+    public Task<MarcaPasada?> ObtenerVigenteEnRangoAsync(Guid animalId, RangoUtc rango, CancellationToken ct = default)
+    {
+        var desde = rango.Desde;
+        var hasta = rango.Hasta;
+        return _db.MarcasPasada.AsNoTracking()
+            .Where(m => m.AnimalId == animalId && !m.Anulado && m.FechaHoraUtc >= desde && m.FechaHoraUtc < hasta)
+            .OrderByDescending(m => m.FechaHoraUtc).ThenByDescending(m => m.OrdenInsercion)
+            .FirstOrDefaultAsync(ct);
+    }
+
+    public Task<MarcaPasada?> ObtenerVigenteEnMangaAsync(Guid animalId, Guid mangaId, CancellationToken ct = default)
+        => _db.MarcasPasada.AsNoTracking().FirstOrDefaultAsync(m => m.AnimalId == animalId && m.MangaId == mangaId && !m.Anulado, ct);
+
+    // Con seguimiento: quien las pide (anular un alta) las modifica.
+    public async Task<IReadOnlyList<MarcaPasada>> ListarVigentesDeAnimalAsync(Guid animalId, CancellationToken ct = default)
+        => await _db.MarcasPasada.Where(m => m.AnimalId == animalId && !m.Anulado).ToListAsync(ct);
+
+    public void Agregar(MarcaPasada marca) => _db.MarcasPasada.Add(marca);
+}
+
+/// <summary>
+/// Lo que mira todos los tipos de registro de campo juntos. Hoy son dos (tacto y marca de pasada); la spec 004 suma
+/// los suyos acá y el resto de la lógica no se entera.
+/// </summary>
+internal sealed class RegistroCampoRepository : IRegistroCampoRepository
+{
+    private readonly AvissDbContext _db;
+    public RegistroCampoRepository(AvissDbContext db) => _db = db;
+
+    public async Task<RegistroCampoVigente?> ObtenerUltimoVigenteAsync(Guid animalId, CancellationToken ct = default)
+    {
+        // El último vigente de cada tipo sale de su índice (AnimalId, FechaHoraUtc, OrdenInsercion); después se comparan
+        // los dos por (fecha, orden). Como el orden es compartido, nunca empatan.
+        var tacto = await _db.Tactos.AsNoTracking()
+            .Where(t => t.AnimalId == animalId && t.Tipo == TipoTacto.Normal && !t.Anulado)
+            .OrderByDescending(t => t.FechaHoraUtc).ThenByDescending(t => t.OrdenInsercion)
+            .Select(t => new RegistroCampoVigente(TipoRegistroCampo.Tacto, t.Id, t.FechaHoraUtc, t.OrdenInsercion, t.UsuarioId, t.EstadoNuevoId, null))
+            .FirstOrDefaultAsync(ct);
+        var marca = await _db.MarcasPasada.AsNoTracking()
+            .Where(m => m.AnimalId == animalId && !m.Anulado)
+            .OrderByDescending(m => m.FechaHoraUtc).ThenByDescending(m => m.OrdenInsercion)
+            .Select(m => new RegistroCampoVigente(TipoRegistroCampo.Marca, m.Id, m.FechaHoraUtc, m.OrdenInsercion, m.UsuarioId, null, m.MangaId))
+            .FirstOrDefaultAsync(ct);
+
+        if (tacto is null) return marca;
+        if (marca is null) return tacto;
+        return (marca.FechaHoraUtc, marca.OrdenInsercion).CompareTo((tacto.FechaHoraUtc, tacto.OrdenInsercion)) > 0 ? marca : tacto;
+    }
+
+    public Task<long> SiguienteOrdenAsync(CancellationToken ct = default) => OrdenCompartido.SiguienteAsync(_db, ct);
+
+    public Task<bool> TieneTactoVigenteEnRangoAsync(Guid animalId, RangoUtc rango, CancellationToken ct = default)
+    {
+        var desde = rango.Desde;
+        var hasta = rango.Hasta;
+        return _db.Tactos.AnyAsync(
+            t => t.AnimalId == animalId && t.Tipo == TipoTacto.Normal && !t.Anulado && t.FechaHoraUtc >= desde && t.FechaHoraUtc < hasta, ct);
+    }
+
+    // Procesadas hoy: vacas no anuladas con una marca o un tacto normal vigente dentro del día. El UNION saca los
+    // repetidos (una vaca con marca y tacto cuenta una sola vez).
+    public Task<int> ContarProcesadasAsync(Guid rodeoId, RangoUtc rango, CancellationToken ct = default)
+    {
+        var desde = rango.Desde;
+        var hasta = rango.Hasta;
+        var porMarca = from m in _db.MarcasPasada
+                       join a in _db.Animales on m.AnimalId equals a.Id
+                       where a.RodeoId == rodeoId && !a.Anulado && !m.Anulado && m.FechaHoraUtc >= desde && m.FechaHoraUtc < hasta
+                       select a.Id;
+        var porTacto = from t in _db.Tactos
+                       join a in _db.Animales on t.AnimalId equals a.Id
+                       where a.RodeoId == rodeoId && !a.Anulado && t.Tipo == TipoTacto.Normal && !t.Anulado
+                             && t.FechaHoraUtc >= desde && t.FechaHoraUtc < hasta
+                       select a.Id;
+        return porMarca.Union(porTacto).CountAsync(ct);
+    }
 }

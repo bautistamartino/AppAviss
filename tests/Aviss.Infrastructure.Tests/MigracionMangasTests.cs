@@ -157,6 +157,8 @@ public sealed class MigracionMangasTests : IDisposable
     {
         MigrarHasta(null);
         MigrarHasta(null);
-        Assert.Equal(2, _db.Contar("SELECT COUNT(*) FROM __EFMigrationsHistory"));
+        // Una fila por migración del proyecto (Inicial, Mangas, IndiceTactoFecha...): aplicar de nuevo no agrega ninguna.
+        using var ctx = _db.NuevoContexto();
+        Assert.Equal(ctx.Database.GetMigrations().Count(), _db.Contar("SELECT COUNT(*) FROM __EFMigrationsHistory"));
     }
 }

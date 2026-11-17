@@ -44,7 +44,7 @@ internal static class Ayudas
         MotivoRechazoTacto.EstadoNuevoDeBaja => (CodigoError.EstadoDeBaja, "El estado elegido está dado de baja."),
         MotivoRechazoTacto.EstadoAnteriorNoCoincide => (CodigoError.EstadoAnteriorNoCoincide, "El estado del animal cambió: volvé a leerlo antes de registrar el tacto."),
         MotivoRechazoTacto.FechaFutura => (CodigoError.FechaFutura, "La hora de la tablet está adelantada. Revisá la fecha y la hora del dispositivo."),
-        MotivoRechazoTacto.FechaAnteriorAlUltimoTacto => (CodigoError.FechaAnteriorAlUltimoTacto, "La hora de la tablet es anterior al último tacto de este animal. Revisá la fecha y la hora del dispositivo."),
+        MotivoRechazoTacto.FechaAnteriorAlUltimoTacto => (CodigoError.FechaAnteriorAlUltimoTacto, "La hora de la tablet es anterior al último registro de este animal. Revisá la fecha y la hora del dispositivo."),
         MotivoRechazoTacto.DiasPrenezFueraDeRango => (CodigoError.DiasPrenezFueraDeRango, "Los días de preñez deben estar entre 0 y 300."),
         _ => (CodigoError.DatosInvalidos, "El tacto no es válido.")
     };

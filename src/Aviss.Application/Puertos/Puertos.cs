@@ -85,6 +85,10 @@ public interface IAnimalRepository
     /// <summary>¿Otro animal no anulado del rodeo ya tiene ese identificador electrónico?</summary>
     Task<bool> ExisteIdElectronicoAsync(Guid rodeoId, string idElectronico, Guid? excluirAnimalId, CancellationToken ct = default);
     Task<bool> TieneTactosVigentesAsync(Guid animalId, CancellationToken ct = default);
+    /// <summary>¿Tiene el animal alguna marca de pasada vigente? (spec 003)</summary>
+    Task<bool> TieneMarcasVigentesAsync(Guid animalId, CancellationToken ct = default);
+    /// <summary>Busca entre los animales NO anulados del rodeo por identificador electrónico (spec 003, RF-11).</summary>
+    Task<Animal?> ObtenerPorIdElectronicoAsync(Guid rodeoId, string idElectronico, CancellationToken ct = default);
     void Agregar(Animal animal);
     /// <summary>Marca muchos animales de una vez (importación). Se guardan con el SaveChanges de la transacción.</summary>
     void AgregarVarios(IEnumerable<Animal> animales);
@@ -96,7 +100,9 @@ public interface ITactoRepository
     Task<Tacto?> ObtenerUltimoVigenteAsync(Guid animalId, CancellationToken ct = default);
     /// <summary>Último vigente del animal sin contar el tacto indicado (el que se está anulando).</summary>
     Task<Tacto?> ObtenerVigenteAnteriorAsync(Guid animalId, Guid excluirTactoId, CancellationToken ct = default);
-    /// <summary>Máximo OrdenInsercion + 1; se llama dentro de la transacción.</summary>
+    /// <summary>Todos los tactos del animal (sin seguimiento de cambios), para armar el historial de la ficha.</summary>
+    Task<IReadOnlyList<Tacto>> ListarPorAnimalAsync(Guid animalId, CancellationToken ct = default);
+    /// <summary>Orden de guardado compartido con las marcas de pasada (máximo de los dos + 1); se llama dentro de la transacción.</summary>
     Task<long> SiguienteOrdenInsercionAsync(CancellationToken ct = default);
     void Agregar(Tacto tacto);
 }

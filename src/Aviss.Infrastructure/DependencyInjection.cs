@@ -23,6 +23,8 @@ public static class DependencyInjection
         servicios.AddSingleton(rutas);
         servicios.AddSingleton<IRelojService, RelojSistema>();
         servicios.AddSingleton<IDispositivoService, DispositivoService>();
+        // La zona horaria real; la app de pruebas o la plataforma pueden registrar otra antes (TryAdd).
+        servicios.TryAddSingleton<IZonaHoraria, ZonaHorariaSistema>();
 
         servicios.AddDbContext<AvissDbContext>(opciones => ConfiguracionDb.Configurar(opciones, rutas.BaseDeDatos));
         servicios.AddScoped<IUnitOfWork, UnitOfWork>();
@@ -34,13 +36,28 @@ public static class DependencyInjection
         servicios.AddScoped<IAnimalRepository, AnimalRepository>();
         servicios.AddScoped<ITactoRepository, TactoRepository>();
         servicios.AddScoped<IHistorialRepository, HistorialRepository>();
+        servicios.AddScoped<IMangaRepository, MangaRepository>();
+        servicios.AddScoped<IMarcaPasadaRepository, MarcaPasadaRepository>();
+        servicios.AddScoped<IRegistroCampoRepository, RegistroCampoRepository>();
 
         servicios.AddScoped<IEstablecimientoService, EstablecimientoService>();
         servicios.AddScoped<IRodeoService, RodeoService>();
         servicios.AddScoped<IUsuarioService, UsuarioService>();
         servicios.AddScoped<ICatalogoEstadosService, CatalogoEstadosService>();
-        servicios.AddScoped<IAnimalService, AnimalService>();
+        // AnimalService también se pide por su clase: el alta con marca reutiliza su núcleo dentro de su propia transacción.
+        servicios.AddScoped<AnimalService>();
+        servicios.AddScoped<IAnimalService>(p => p.GetRequiredService<AnimalService>());
         servicios.AddScoped<ITrabajoCampoService, TrabajoCampoService>();
+
+        // Flujo de campo (spec 003): servicios por operación (scoped) y la fachada singleton que los usa (ICampoService).
+        servicios.AddScoped<CalculadorAvance>();
+        servicios.AddScoped<ArmadorFicha>();
+        servicios.AddScoped<Marcador>();
+        servicios.AddScoped<MarcaPasadaService>();
+        servicios.AddScoped<MangaService>();
+        servicios.AddScoped<AltaCampoService>();
+        servicios.AddScoped<ConsultaCampoService>();
+        servicios.AddSingleton<ICampoService, CampoService>();
 
         // Importación: singleton (guarda la vista previa en memoria) que abre un scope por operación. Necesita un IExcelProfile (AddAvissExcel).
         servicios.AddSingleton<IImportacionService, ImportacionService>();

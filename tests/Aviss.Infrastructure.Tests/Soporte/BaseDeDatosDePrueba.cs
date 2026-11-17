@@ -114,7 +114,7 @@ public sealed class BaseDeDatosDePrueba : IDisposable
     }
 
     public Guid Animal(Guid rodeoId, string caravana, string origen = "AltaEnCampo", string? idElectronico = null,
-        bool anulado = false, Guid? estadoId = null)
+        bool anulado = false, Guid? estadoId = null, string? datosOriginalesJson = null)
     {
         var id = Guid.NewGuid();
         Ejecutar(@"INSERT INTO Animal (Id, RodeoId, NumeroCaravana, IdElectronico, EstadoReproductivoId, Origen, Anulado, AnuladoEnUtc,
@@ -122,7 +122,7 @@ public sealed class BaseDeDatosDePrueba : IDisposable
                    VALUES ($id, $r, $c, $ie, $es, $o, $an, $anf, $j, $f, $f)",
             ("$id", id), ("$r", rodeoId), ("$c", caravana), ("$ie", idElectronico), ("$es", estadoId), ("$o", origen),
             ("$an", anulado ? 1 : 0), ("$anf", anulado ? Fecha(Reloj.UtcAhora) : null),
-            ("$j", origen == "Importado" ? "{}" : null), ("$f", Fecha(Reloj.UtcAhora)));
+            ("$j", datosOriginalesJson ?? (origen == "Importado" ? "{}" : null)), ("$f", Fecha(Reloj.UtcAhora)));
         return id;
     }
 
