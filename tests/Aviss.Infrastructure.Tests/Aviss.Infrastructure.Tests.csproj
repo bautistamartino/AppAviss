@@ -23,6 +23,7 @@
     <ProjectReference Include="..\..\src\Aviss.Infrastructure\Aviss.Infrastructure.csproj" />
     <ProjectReference Include="..\..\src\Aviss.Application\Aviss.Application.csproj" />
     <ProjectReference Include="..\..\src\Aviss.Domain\Aviss.Domain.csproj" />
+    <ProjectReference Include="..\..\src\Aviss.Excel\Aviss.Excel.csproj" />
   </ItemGroup>
 
 </Project>
