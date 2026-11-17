@@ -181,6 +181,10 @@ public sealed partial class EleccionTrabajoViewModel : ObservableObject
         await _navegacion.IrATrabajoAsync();
     }
 
+    /// <summary>Volver a la pantalla de inicio sin empezar a trabajar.</summary>
+    [RelayCommand]
+    private Task VolverAlInicioAsync() => _navegacion.IrAInicioAsync();
+
     /// <summary>Sin rodeos importados se ofrece ir a importar (RF-2).</summary>
     [RelayCommand]
     private Task IrAImportarAsync() => _navegacion.IrAImportarAsync();

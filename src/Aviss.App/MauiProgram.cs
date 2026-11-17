@@ -68,6 +68,8 @@ public static class MauiProgram
 		builder.Services.AddTransient<InicioPage>();
 		builder.Services.AddTransient<ImportarPage>();
 		builder.Services.AddTransient<TrabajoPage>();
+		builder.Services.AddTransient<EleccionTrabajoPage>();
+		builder.Services.AddTransient<MovimientosPage>();
 
 		var app = builder.Build();
 

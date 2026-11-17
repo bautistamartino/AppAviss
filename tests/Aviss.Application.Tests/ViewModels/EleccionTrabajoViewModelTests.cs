@@ -200,6 +200,18 @@ public class EleccionTrabajoViewModelTests
     }
 
     [Fact]
+    public async Task Volver_al_inicio_navega_sin_empezar_a_trabajar()
+    {
+        var b = new Banco();
+        await b.Vm.CargarAsync();
+
+        await b.Vm.VolverAlInicioCommand.ExecuteAsync(null);
+
+        Assert.Equal(["Inicio"], b.Navegacion.Destinos);
+        Assert.False(b.Sesion.EstaLista);
+    }
+
+    [Fact]
     public async Task Una_falla_al_cargar_muestra_un_mensaje_fijo()
     {
         var b = new Banco();

@@ -268,7 +268,7 @@ public static class GeneradorMuestras
                 (double)lactancia,                      // LACT
                 (double)del,                            // DEL
                 FechaComoTexto(azar),                   // FCELO
-                FechaComoTexto(azar),                   // VINS
+                (double)azar.Next(0, 7),                // VINS: cantidad de inseminaciones (número, no fecha)
                 $"TORO{azar.Next(1, 20)}",              // UTORO
                 i % 17 == 0 ? "Revisar pata" : null,    // COM
                 estado.Length > 0 ? estado : null,      // RPRO

@@ -49,6 +49,10 @@ Todas con `Guid Id`, `CreadoEnUtc`, `ActualizadoEnUtc`.
 - **Usuario** (veterinario): `Nombre`, `Matricula`. Se elige al abrir la app.
 - **LecturaRfid**: log crudo (`Codigo`, `FechaHoraUtc`, `AnimalId?`, `Resultado`) para diagnóstico y recuperación.
 - **Exportacion**: `RodeoId`, `FechaUtc`, `ArchivoNombre`, `Hash`.
+- **Manga** (spec 003): `RodeoId`, `Numero` (único por rodeo), `AbiertaPorUsuarioId`, `DispositivoId`. Nunca cambia. Se crea con la **primera marca** de la manga: la "manga por empezar" no existe en la base.
+- **CierreManga** (spec 003): `MangaId`, `Tipo` (Manual / TerminoElTacto / Automatico), `FechaHoraUtc`, `CantidadAviss`, `CantidadConfirmada?`, `Diferencia?`, `UsuarioId`, `Anulado`. Una manga está cerrada si tiene un cierre con `Anulado = 0` (un índice único parcial garantiza uno solo). Reabrir = anular el cierre; nunca se modifica ni se borra.
+- **MarcaPasada** (spec 003): `AnimalId`, `MangaId`, `FechaHoraUtc`, `OrdenInsercion`, `UsuarioId`, `Anulado`. Una marca vigente por vaca y manga (índice único parcial); un trigger impide marcar una vaca en la manga de otro rodeo. Comparte con `Tacto` el **orden de guardado** (`OrdenInsercion` = máximo entre ambas tablas + 1, dentro de la transacción).
+- **Día local** (spec 003): "hoy" es el día calendario de la zona horaria del dispositivo (`DiaLocal`, convierte a un rango UTC; maneja días de 23 o 25 horas). No se guarda ningún "día": el avance y el contador se calculan por consulta. Una manga abierta no se cierra a medianoche: se cierra sola (tipo `Automatico`) al volver a entrar a trabajar un día posterior.
 
 ## 4. DTOs
 
@@ -61,6 +65,8 @@ Todas con `Guid Id`, `CreadoEnUtc`, `ActualizadoEnUtc`.
 
 Servicios (Application): `IImportacionService`, `ITrabajoCampoService` (`ProcesarLecturaAsync`, `RegistrarTactoAsync`; es el corazón), `IAnimalService`, `IRodeoService`, `IHistorialService`, `IExportacionService`, `IBackupService`, `IRelojService`, `IUsuarioActualService`.
 
+**Fachada de campo (spec 003):** los ViewModels solo conocen `ICampoService` (en `Application`). Es un singleton que abre un scope (un `DbContext` y una transacción) por operación y delega en servicios internos (`MarcaPasadaService`, `MangaService`, `AltaCampoService`, `ConsultaCampoService`, `TrabajoCampoService`); las escrituras se serializan porque SQLite admite un solo escritor. Cubre iniciar trabajo, procesar lecturas (marca automática), ficha, tacto, alta con marca, deshacer, cierre y reapertura de mangas, movimientos y avance.
+
 Repositorios: `IEstablecimientoRepository`, `IRodeoRepository`, `IAnimalRepository` (por caravana e ID electrónico), `ITactoRepository`, `IHistorialRepository`. Un `IUnitOfWork` abre una transacción por caso de uso; no hay repositorios genéricos.
 
 ## 6. Lector RFID (XRS2)
@@ -72,6 +78,7 @@ ITagParser       TruTestAsciiParser, Iso11784Parser
 INormalizadorDeId  convierte el código leído al NumeroCaravana (regla configurable)
 ```
 
+- `IRfidReader` y `TagRead` viven en `Aviss.Application` (los puertos los define `Application`); `Aviss.Rfid` los implementa. Hoy hay `FakeRfidReader` (simulador, solo en compilaciones `DEBUG`) y `LectorNoDisponible` (el que se registra en la versión que se distribuye hasta que exista el lector real).
 - Hipótesis (confianza media, **sin validar**): el XRS2 usa Bluetooth clásico SPP y manda el ID como texto. No hay SDK .NET público conocido.
 - `TruTestXrs2Reader` = transporte + parser. Cambiar de método es cambiar una línea de DI.
 - Conexión robusta: servicio en primer plano, reconexión con backoff, debounce de lecturas repetidas.
@@ -81,7 +88,7 @@ INormalizadorDeId  convierte el código leído al NumeroCaravana (regla configur
 
 ## 7. Excel
 
-Archivo de muestra (Dairy Comp, `.xls`): una hoja, 226 vacas, columnas `ID, CVET, FPART, LACT, DEL, FCELO, VINS, UTORO, COM, RPRO, FAPAR`, fechas como **texto con espacios** (`" 5/11/26"`) y una fila final `Total:N`.
+Archivo de muestra (Dairy Comp, `.xls`): una hoja, 226 vacas, columnas `ID, CVET, FPART, LACT, DEL, FCELO, VINS, UTORO, COM, RPRO, FAPAR`, fechas como **texto con espacios** (`" 5/11/26"`) y una fila final `Total:N`. `VINS` es un **número** (cantidad de inseminaciones), no una fecha.
 
 **Importación**
 1. Se lee una copia del archivo; el original no se toca.

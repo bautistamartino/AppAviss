@@ -8,7 +8,7 @@ Los genera `tests/Aviss.Excel.Tests/GeneradorMuestras.cs`. Un test (`MuestrasTes
 
 | Archivo | Qué es | Qué debe pasar al importarlo |
 |---|---|---|
-| `dairy-comp-226-vacas.xls` | 226 vacas, columnas de Dairy Comp (`ID, CVET, FPART, LACT, DEL, FCELO, VINS, UTORO, COM, RPRO, FAPAR`), fechas como texto con espacios, fila final `Total:226` | Se lee: 226 filas de datos |
+| `dairy-comp-226-vacas.xls` | 226 vacas, columnas de Dairy Comp (`ID, CVET, FPART, LACT, DEL, FCELO, VINS, UTORO, COM, RPRO, FAPAR`), fechas como texto con espacios, fila final `Total:226` | Se lee: 226 filas de datos (`VINS` es un número de 0 a 6; las fechas, texto con espacios) |
 | `filas-con-problemas.xls` | `ID` vacío, repetido, `ñ1`/`Ñ1`, de 21 caracteres, con espacio en el medio, decimal, estado desconocido y `Total:12` | Filas excluidas con su motivo; el resto entra |
 | `vacio.xls` | 0 bytes | Rechazo: archivo vacío |
 | `corrupto.xls` | Cabecera de Excel viejo seguida de basura | Rechazo: archivo dañado |
