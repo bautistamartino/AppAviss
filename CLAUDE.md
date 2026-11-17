@@ -20,6 +20,7 @@ Probados el 2026-11-16. Las rutas del JDK 21 y del SDK de Android las pone `Dire
 
 - `dotnet build`: compila la solución (`Aviss.slnx`), incluida la app Android.
 - `dotnet test`: tests de todos los proyectos de `tests/`.
+- Regenerar las muestras anonimizadas de `tests/muestras/`: con `AVISS_GENERAR_MUESTRAS=1` correr `dotnet test tests/Aviss.Excel.Tests --filter "Categoria=Generador"` (ver `tests/muestras/README.md`).
 - `dotnet build src/Aviss.App -f net10.0-android -t:Run`: compila, instala y abre la app en el emulador (o dispositivo) conectado.
 - `dotnet tool restore` (una vez): instala `dotnet-ef` como herramienta local del repo.
 - `dotnet ef migrations add <Nombre> -p src/Aviss.Infrastructure -s src/Aviss.Infrastructure`: nueva migración (confirmado en la spec 001; funciona gracias a `AvissDbContextFactory`). Para ver si quedan cambios sin migrar: `dotnet ef migrations has-pending-model-changes` con los mismos `-p` y `-s`.

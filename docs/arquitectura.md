@@ -41,7 +41,7 @@ docs/
 Todas con `Guid Id`, `CreadoEnUtc`, `ActualizadoEnUtc`.
 
 - **Establecimiento** (tambo): `Nombre`, `Notas`. Cada tablet guarda varios.
-- **Rodeo** (una importación): `EstablecimientoId`, `Nombre`, `FechaImportacionUtc`, `CantidadAnimales`, `ArchivoOrigenNombre`, `ArchivoOrigenHash` (SHA-256), `ArchivoOrigenBlob`, `PerfilExcel`, `Estado` (Abierto / Exportado).
+- **Rodeo** (una importación): `EstablecimientoId`, `Nombre`, `FechaImportacionUtc`, `ArchivoOrigenNombre`, `ArchivoOrigenHash` (SHA-256), `ArchivoOrigenBlob`, `PerfilExcel`, `Estado` (Abierto / Exportado).
 - **Animal**: `RodeoId`, `NumeroCaravana` (= `ID` de Dairy Comp), `IdElectronico?`, `EstadoReproductivoId`, `FechaUltimoTacto?`, `Observaciones`, `Origen` (Importado / AltaEnCampo), `DatosOriginalesJson` (todas las columnas del Excel tal cual).
 - **EstadoReproductivo**: catálogo con `Codigo`, `Nombre`, `CodigoDairyComp`. Valores vistos en la muestra: PREÑADA, INSEMIN, SECA, VACIA, FRESCA, NOINSEM. No es un enum fijo porque puede variar entre tambos.
 - **Tacto**: `AnimalId`, `FechaHoraUtc`, `EstadoAnteriorId`, `EstadoNuevoId`, `DiasPrenez?`, `Observaciones`, `UsuarioId`, `DispositivoId`, `Anulado`, `TactoAnuladoId?`. Evento que solo se agrega: una corrección es un tacto nuevo.
@@ -52,7 +52,7 @@ Todas con `Guid Id`, `CreadoEnUtc`, `ActualizadoEnUtc`.
 
 ## 4. DTOs
 
-- Importación: `FilaAnimalImportada`, `ResultadoImportacion` (leídas, importadas, rechazadas, `ErrorFila[]`), `VistaPreviaImportacion`.
+- Importación: `FilaAnimalImportada`, `ResultadoImportacion` (leídas, importadas, excluidas, `ErrorFila[]`), `VistaPreviaImportacion`.
 - Campo: `FichaAnimalDto`, `RegistrarTactoCommand`, `ResultadoLecturaDto` (Encontrado / NoEncontrado / Duplicado).
 - Listados: `RodeoResumenDto`, `AvanceRodeoDto` (tactadas vs. pendientes).
 - Exportación: `ExportacionResultadoDto` (ruta y hash).

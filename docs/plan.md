@@ -11,10 +11,11 @@ Cada ítem es una spec o un paso chico. Se marca con `[x]` cuando está terminad
 - [x] 1.1 Entidades, catálogo de estados y SQLite con migraciones (spec 001): Establecimiento, Rodeo, Animal, Tacto, Historial, Usuario; triggers de inmutabilidad; backups.
 
 ## Etapa 2 — Importación
-- [ ] 2.1 Importar el `.xls` de Dairy Comp con vista previa y errores por fila, y guardar el original (spec 002).
+- [x] 2.1 Importar el `.xls` de Dairy Comp con vista previa y errores por fila, y guardar el original (spec 002).
 
 ## Etapa 3 — Trabajo de campo
 - [ ] 3.1 Flujo de tacto con `FakeRfidReader`: lectura → ficha → estado → guardado → siguiente; búsqueda manual, alta en campo, deshacer, avance del rodeo (spec 003).
+  - Requisito del usuario: poder agregar estados nuevos al catálogo (por ejemplo "aborto" en una vaca preñada) y registrar observaciones o tratamientos (por ejemplo sincronización de celos) durante el tacto.
 
 ## Etapa 4 — Exportación
 - [ ] 4.1 Exportar el Excel sobre la copia del original, con validación (spec 004). Depende de 0.2.
