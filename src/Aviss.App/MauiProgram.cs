@@ -26,6 +26,10 @@ public static class MauiProgram
 		builder.Logging.AddDebug();
 #endif
 
+		// El espacio libre se mide con StatFs en Android (DriveInfo mide "/" y no el almacenamiento de la app). Se registra
+		// ANTES de AddAvissInfrastructure, que usa TryAdd y por eso no lo pisa.
+		builder.Services.AddSingleton<Aviss.Infrastructure.Sistema.IEspacioLibreProvider, EspacioLibreAndroid>();
+
 		// Todo lo de datos vive en el almacenamiento privado de la app (en Android, /data/data/com.aviss.app/files).
 		// Infrastructure no conoce MAUI: acá se le pasa la carpeta.
 		builder.Services.AddAvissInfrastructure(new RutasAviss(FileSystem.AppDataDirectory));

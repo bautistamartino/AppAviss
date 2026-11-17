@@ -8,6 +8,7 @@ using Aviss.Infrastructure.Servicios;
 using Aviss.Infrastructure.Sistema;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Aviss.Infrastructure;
 
@@ -45,7 +46,8 @@ public static class DependencyInjection
         servicios.AddSingleton<IImportacionService, ImportacionService>();
 
         // Arranque y copias de seguridad: no usan el DbContext del contenedor (trabajan sobre rutas de archivo), así que son singleton.
-        servicios.AddSingleton<IEspacioLibreProvider, EspacioLibreProvider>();
+        // TryAdd: si la plataforma (Android, con StatFs) ya registró su propio proveedor antes, ese gana; este es el de respaldo.
+        servicios.TryAddSingleton<IEspacioLibreProvider, EspacioLibreProvider>();
         servicios.AddSingleton<IMigrador, MigradorEf>();
         servicios.AddSingleton<SembradorInicial>();
         servicios.AddSingleton<IBackupService, BackupService>();

@@ -37,7 +37,7 @@ Estado actual y decisiones importantes. La actualiza el implementador al termina
   - El identificador electrónico es único por rodeo (entre animales no anulados), no global.
   - "Último tacto" es el de esta tablet: cada tablet es independiente y sin sincronización, así que la validación de orden temporal (RF-8b) solo ve lo que hay en su propia base.
   - Tamaño de las copias de seguridad: crecerá con los `.xls` originales guardados en la base (spec 002); se mantienen 10 copias más la previa a actualización, y el espacio libre se chequea antes de copiar. Revisar cuando se sepa cuánto pesan.
-- **Espacio libre en Android:** `DriveInfo` puede comportarse distinto en el emulador/tablet; está detrás de `IEspacioLibreProvider`. Se confirma en la verificación manual.
+- **Espacio libre en Android:** resuelto con `StatFs`. `DriveInfo` medía la raíz `/` (partición del sistema, casi llena) y rechazaba la copia con `SinEspacioParaCopia` aunque `/data` tuviera GB libres. Ahora `src/Aviss.App/Platforms/Android/EspacioLibreAndroid.cs` mide con `StatFs` el directorio de backups y se registra en `MauiProgram` antes de `AddAvissInfrastructure` (que usa `TryAdd`). Pendiente confirmar en el emulador.
 - **SQLite nativo en Android:** que la app abra la base con el paquete nativo se confirma en el emulador (verificación manual de la spec 001).
 - **Flujo de actualización con EF real:** verificado en T3 de la spec 002 con el `MigradorEf` real (crea la base con `Inicial`, la reabre sin pendientes y permite importar). La spec 002 no agregó migración, así que la actualización entre dos migraciones distintas se reverifica cuando llegue la segunda.
 - **Riesgos de la spec 002 (importación):**
