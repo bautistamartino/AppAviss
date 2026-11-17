@@ -36,7 +36,7 @@ Tests primero en cada tarea de lógica. Ninguna tarea se da por terminada con `d
     - Pasan los tests `Categoria=Rendimiento` de `RendimientoCampoTests` (20.000 vacas y 100.000 registros; búsqueda con ficha < 300 ms, marca o tacto < 300 ms, avance y contador < 200 ms); `MensajesCampoTests` (todos los códigos con mensaje en español sin datos).
     - `Application` sigue referenciando solo a `Domain`; `dotnet build` y `dotnet test` en verde.
 
-- [ ] **T3** — Lector, preferencias y ViewModels (sin pantallas todavía).
+- [x] **T3** — Lector, preferencias y ViewModels (sin pantallas todavía).
   - Qué se hace:
     - `FakeRfidReader` y `LectorNoDisponible` en `Aviss.Rfid`.
     - `SesionTrabajo`, `EleccionTrabajoViewModel`, `TrabajoViewModel` (con `ColaDeLecturas` y `EstadosTrabajo`), `MovimientosViewModel` y el botón "Trabajar" en `InicioViewModel`; `INavegacion` y `NavegacionShell` con las rutas nuevas (constantes en `AppShell`, sin registrar páginas todavía).
