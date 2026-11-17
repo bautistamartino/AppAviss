@@ -8,6 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
     <PackageReference Include="coverlet.collector" Version="6.0.4" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
     <PackageReference Include="xunit" Version="2.9.3" />
@@ -21,6 +22,11 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Aviss.Application\Aviss.Application.csproj" />
     <ProjectReference Include="..\..\src\Aviss.Domain\Aviss.Domain.csproj" />
+  </ItemGroup>
+
+  <!-- Los ViewModels viven en Aviss.App (solo Android) y no usan tipos de MAUI: se compilan acá, enlazados, para probarlos con xUnit. -->
+  <ItemGroup>
+    <Compile Include="..\..\src\Aviss.App\ViewModels\*.cs" Link="ViewModels\Enlazados\%(Filename)%(Extension)" />
   </ItemGroup>
 
 </Project>

@@ -1,5 +1,6 @@
 using Aviss.Application.Comandos;
 using Aviss.Application.Comun;
+using Aviss.Application.Importacion;
 using Aviss.Domain.Entidades;
 
 namespace Aviss.Application.Servicios;
@@ -42,6 +43,26 @@ public interface IAnimalService
     Task<Resultado<Guid>> AltaEnCampoAsync(AltaEnCampoCommand comando, CancellationToken ct = default);
     Task<Resultado> EditarAsync(EditarAnimalCommand comando, CancellationToken ct = default);
     Task<Resultado> AnularAltaAsync(AnularAltaCommand comando, CancellationToken ct = default);
+}
+
+/// <summary>
+/// Importación de un .xls (spec 002). Dos tiempos: <see cref="PrepararAsync"/> lee, valida y arma una vista previa en memoria
+/// (sin guardar nada); <see cref="ConfirmarAsync"/> la guarda en una sola transacción. Se confirma una sola vez.
+/// </summary>
+public interface IImportacionService
+{
+    /// <summary>
+    /// Lee el flujo UNA vez (tope 25 MB), calcula la huella SHA-256 (minúscula) y valida en el orden de RF-2.
+    /// Si rechaza el archivo devuelve error con código <see cref="CodigoError.ArchivoRechazado"/> y el mensaje del motivo.
+    /// </summary>
+    Task<Resultado<VistaPreviaImportacion>> PrepararAsync(string nombreArchivo, Stream contenido, CancellationToken ct = default);
+
+    Task<IReadOnlyList<EstablecimientoResumen>> ListarEstablecimientosActivosAsync(CancellationToken ct = default);
+
+    Task<Resultado<ResultadoImportacion>> ConfirmarAsync(ConfirmarImportacionCommand comando, CancellationToken ct = default);
+
+    /// <summary>Descarta la vista previa sin guardar nada (RF-22).</summary>
+    void Descartar(Guid vistaPreviaId);
 }
 
 public interface ITrabajoCampoService

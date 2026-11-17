@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:Aviss.App.ViewModels"
+             x:Class="Aviss.App.Paginas.InicioPage"
+             x:DataType="vm:InicioViewModel"
+             Title="Aviss">
+
+    <ScrollView>
+        <VerticalStackLayout Padding="32" Spacing="32" MaximumWidthRequest="720" VerticalOptions="Center">
+            <Label Text="Aviss"
+                   FontSize="40" FontAttributes="Bold"
+                   SemanticProperties.HeadingLevel="Level1" />
+            <Label Text="Tacto reproductivo en el tambo"
+                   FontSize="22" />
+
+            <!-- Botón grande, de campo (constitución 9): alto 72, texto 24. -->
+            <Button Text="Importar rodeo"
+                    FontSize="24" FontAttributes="Bold"
+                    HeightRequest="72"
+                    Command="{Binding ImportarRodeoCommand}"
+                    SemanticProperties.Hint="Elegir el Excel de Dairy Comp para cargar un rodeo" />
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

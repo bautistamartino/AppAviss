@@ -40,7 +40,15 @@ public enum CodigoError
 
     // Copias de seguridad (RF-21)
     SinEspacioParaCopia,
-    CopiaFallida
+    CopiaFallida,
+
+    // Importación de Dairy Comp (spec 002); los mensajes fijos están en MensajesImportacion
+    ArchivoRechazado,
+    VistaPreviaNoDisponible,
+    ImportacionEnCurso,
+    ImportacionYaConfirmada,
+    ArchivoRepetidoSinConfirmar,
+    SinFilasValidas
 }
 
 /// <summary>Resultado de una operación sin valor de retorno. El mensaje está en español y nunca lleva datos de animales ni de tambos.</summary>
