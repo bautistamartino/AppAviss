@@ -7,14 +7,19 @@
              Title="Aviss">
 
     <ScrollView>
-        <VerticalStackLayout Padding="32" Spacing="32" MaximumWidthRequest="720" VerticalOptions="Center">
+        <VerticalStackLayout x:Name="Contenido" Padding="32" Spacing="32" MaximumWidthRequest="720" VerticalOptions="Center">
             <Label Text="Aviss"
                    FontSize="40" FontAttributes="Bold"
                    SemanticProperties.HeadingLevel="Level1" />
             <Label Text="Tacto reproductivo en el tambo"
                    FontSize="22" />
 
-            <!-- Botón grande, de campo (constitución 9): alto 72, texto 24. -->
+            <!-- Botones grandes, de campo (constitución 9): alto 72, texto 24. -->
+            <Button Text="Trabajar"
+                    FontSize="24" FontAttributes="Bold"
+                    HeightRequest="72"
+                    Command="{Binding TrabajarCommand}"
+                    SemanticProperties.Hint="Elegir veterinario y rodeo y empezar el tacto" />
             <Button Text="Importar rodeo"
                     FontSize="24" FontAttributes="Bold"
                     HeightRequest="72"

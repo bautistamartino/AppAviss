@@ -91,6 +91,70 @@ namespace Aviss.Infrastructure.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Aviss.Domain.Entidades.CierreManga", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ActualizadoEnUtc")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("Anulado")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("CantidadAviss")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("CantidadConfirmada")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("CreadoEnUtc")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("Diferencia")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<Guid>("DispositivoId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("FechaHoraUtc")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("MangaId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Tipo")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("UsuarioId")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MangaId")
+                        .IsUnique()
+                        .HasFilter("Anulado = 0");
+
+                    b.HasIndex("UsuarioId");
+
+                    b.ToTable("CierreManga", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_CierreManga_Anulado", "Anulado IN (0,1)");
+
+                            t.HasCheckConstraint("CK_CierreManga_CantidadAviss", "CantidadAviss >= 0");
+
+                            t.HasCheckConstraint("CK_CierreManga_CantidadConfirmada", "CantidadConfirmada IS NULL OR CantidadConfirmada >= 0");
+
+                            t.HasCheckConstraint("CK_CierreManga_Diferencia", "(CantidadConfirmada IS NULL AND Diferencia IS NULL) OR (CantidadConfirmada IS NOT NULL AND Diferencia = CantidadConfirmada - CantidadAviss)");
+
+                            t.HasCheckConstraint("CK_CierreManga_Tipo", "Tipo IN ('Manual','TerminoElTacto','Automatico')");
+                        });
+                });
+
             modelBuilder.Entity("Aviss.Domain.Entidades.Establecimiento", b =>
                 {
                     b.Property<Guid>("Id")
@@ -219,7 +283,97 @@ namespace Aviss.Infrastructure.Migrations
 
                     b.ToTable("Historial", null, t =>
                         {
-                            t.HasCheckConstraint("CK_Historial_Accion", "Accion IN ('Alta','Edicion','Tacto','AnulacionTacto','AnulacionAlta')");
+                            t.HasCheckConstraint("CK_Historial_Accion", "Accion IN ('Alta','Edicion','Tacto','AnulacionTacto','AnulacionAlta','MarcaPasada','AnulacionMarca','MangaAbierta','MangaCerrada','AnulacionCierre')");
+                        });
+                });
+
+            modelBuilder.Entity("Aviss.Domain.Entidades.Manga", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("AbiertaPorUsuarioId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("CreadoEnUtc")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("DispositivoId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Numero")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<Guid>("RodeoId")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AbiertaPorUsuarioId");
+
+                    b.HasIndex("RodeoId", "Numero")
+                        .IsUnique();
+
+                    b.ToTable("Manga", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Manga_Numero", "Numero >= 1");
+                        });
+                });
+
+            modelBuilder.Entity("Aviss.Domain.Entidades.MarcaPasada", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ActualizadoEnUtc")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("AnimalId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("Anulado")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("CreadoEnUtc")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("DispositivoId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("FechaHoraUtc")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("MangaId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<long>("OrdenInsercion")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<Guid>("UsuarioId")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FechaHoraUtc");
+
+                    b.HasIndex("OrdenInsercion")
+                        .IsUnique();
+
+                    b.HasIndex("UsuarioId");
+
+                    b.HasIndex("MangaId", "AnimalId")
+                        .IsUnique()
+                        .HasFilter("Anulado = 0");
+
+                    b.HasIndex("AnimalId", "FechaHoraUtc", "OrdenInsercion");
+
+                    b.ToTable("MarcaPasada", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_MarcaPasada_Anulado", "Anulado IN (0,1)");
                         });
                 });
 
@@ -341,6 +495,8 @@ namespace Aviss.Infrastructure.Migrations
 
                     b.HasIndex("EstadoNuevoId");
 
+                    b.HasIndex("FechaHoraUtc");
+
                     b.HasIndex("OrdenInsercion")
                         .IsUnique();
 
@@ -415,8 +571,59 @@ namespace Aviss.Infrastructure.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Aviss.Domain.Entidades.CierreManga", b =>
+                {
+                    b.HasOne("Aviss.Domain.Entidades.Manga", null)
+                        .WithMany()
+                        .HasForeignKey("MangaId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Aviss.Domain.Entidades.Usuario", null)
+                        .WithMany()
+                        .HasForeignKey("UsuarioId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Aviss.Domain.Entidades.Historial", b =>
                 {
+                    b.HasOne("Aviss.Domain.Entidades.Usuario", null)
+                        .WithMany()
+                        .HasForeignKey("UsuarioId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Aviss.Domain.Entidades.Manga", b =>
+                {
+                    b.HasOne("Aviss.Domain.Entidades.Usuario", null)
+                        .WithMany()
+                        .HasForeignKey("AbiertaPorUsuarioId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Aviss.Domain.Entidades.Rodeo", null)
+                        .WithMany()
+                        .HasForeignKey("RodeoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Aviss.Domain.Entidades.MarcaPasada", b =>
+                {
+                    b.HasOne("Aviss.Domain.Entidades.Animal", null)
+                        .WithMany()
+                        .HasForeignKey("AnimalId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Aviss.Domain.Entidades.Manga", null)
+                        .WithMany()
+                        .HasForeignKey("MangaId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.HasOne("Aviss.Domain.Entidades.Usuario", null)
                         .WithMany()
                         .HasForeignKey("UsuarioId")

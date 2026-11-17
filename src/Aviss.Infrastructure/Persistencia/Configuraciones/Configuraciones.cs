@@ -146,6 +146,9 @@ internal sealed class TactoConfig : IEntityTypeConfiguration<Tacto>
         b.HasIndex(e => e.OrdenInsercion).IsUnique();
         // Para encontrar rápido el "último tacto vigente" de un animal.
         b.HasIndex(e => new { e.AnimalId, e.FechaHoraUtc, e.OrdenInsercion });
+        // Para el avance del día y los últimos movimientos (tactos dentro de un rango de fechas, spec 003): sin este índice
+        // SQLite recorre todos los tactos y con 100.000 registros el avance pasaba de los 200 ms de RF-37.
+        b.HasIndex(e => e.FechaHoraUtc);
         // Un tacto se anula una sola vez.
         b.HasIndex(e => e.TactoAnuladoId).IsUnique().HasFilter("TactoAnuladoId IS NOT NULL");
         b.HasIndex(e => e.EstadoAnteriorId);
@@ -173,6 +176,76 @@ internal sealed class HistorialConfig : IEntityTypeConfiguration<Historial>
         // EntidadId NO tiene FK: apunta a tablas distintas según Entidad.
         b.HasIndex(e => new { e.Entidad, e.EntidadId });
 
-        b.HasCheckConstraint("CK_Historial_Accion", "Accion IN ('Alta','Edicion','Tacto','AnulacionTacto','AnulacionAlta')");
+        b.HasCheckConstraint("CK_Historial_Accion", "Accion IN ('Alta','Edicion','Tacto','AnulacionTacto','AnulacionAlta','MarcaPasada','AnulacionMarca','MangaAbierta','MangaCerrada','AnulacionCierre')");
+    }
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// Spec 003: mangas y marcas de pasada. Los triggers, el índice único por expresión de Usuario.Nombre y el CHECK del
+// historial reescrito van a mano en la migración "Mangas".
+// ---------------------------------------------------------------------------------------------------------------
+
+internal sealed class MangaConfig : IEntityTypeConfiguration<Manga>
+{
+    public void Configure(EntityTypeBuilder<Manga> b)
+    {
+        Comun.ConfigurarId(b, "Manga");
+
+        b.HasOne<Rodeo>().WithMany().HasForeignKey(e => e.RodeoId).OnDelete(DeleteBehavior.Restrict);
+        b.HasOne<Usuario>().WithMany().HasForeignKey(e => e.AbiertaPorUsuarioId).OnDelete(DeleteBehavior.Restrict);
+
+        // El número de manga es único por rodeo: dos tablets no pueden crear la "Manga 3" del mismo rodeo.
+        b.HasIndex(e => new { e.RodeoId, e.Numero }).IsUnique();
+        b.HasIndex(e => e.AbiertaPorUsuarioId);
+
+        b.HasCheckConstraint("CK_Manga_Numero", "Numero >= 1");
+    }
+}
+
+internal sealed class CierreMangaConfig : IEntityTypeConfiguration<CierreManga>
+{
+    public void Configure(EntityTypeBuilder<CierreManga> b)
+    {
+        Comun.ConfigurarId(b, "CierreManga");
+        b.Property(e => e.Tipo).HasConversion<string>().IsRequired();
+
+        b.HasOne<Manga>().WithMany().HasForeignKey(e => e.MangaId).OnDelete(DeleteBehavior.Restrict);
+        b.HasOne<Usuario>().WithMany().HasForeignKey(e => e.UsuarioId).OnDelete(DeleteBehavior.Restrict);
+
+        // Una manga no puede tener dos cierres vigentes a la vez (uno anulado y otro nuevo, sí).
+        b.HasIndex(e => e.MangaId).IsUnique().HasFilter("Anulado = 0");
+        b.HasIndex(e => e.UsuarioId);
+
+        b.HasCheckConstraint("CK_CierreManga_Tipo", "Tipo IN ('Manual','TerminoElTacto','Automatico')");
+        b.HasCheckConstraint("CK_CierreManga_CantidadAviss", "CantidadAviss >= 0");
+        b.HasCheckConstraint("CK_CierreManga_CantidadConfirmada", "CantidadConfirmada IS NULL OR CantidadConfirmada >= 0");
+        // La diferencia siempre es confirmada - Aviss; sin cantidad confirmada no hay diferencia.
+        b.HasCheckConstraint("CK_CierreManga_Diferencia",
+            "(CantidadConfirmada IS NULL AND Diferencia IS NULL) OR (CantidadConfirmada IS NOT NULL AND Diferencia = CantidadConfirmada - CantidadAviss)");
+        b.HasCheckConstraint("CK_CierreManga_Anulado", "Anulado IN (0,1)");
+    }
+}
+
+internal sealed class MarcaPasadaConfig : IEntityTypeConfiguration<MarcaPasada>
+{
+    public void Configure(EntityTypeBuilder<MarcaPasada> b)
+    {
+        Comun.ConfigurarId(b, "MarcaPasada");
+
+        b.HasOne<Animal>().WithMany().HasForeignKey(e => e.AnimalId).OnDelete(DeleteBehavior.Restrict);
+        b.HasOne<Manga>().WithMany().HasForeignKey(e => e.MangaId).OnDelete(DeleteBehavior.Restrict);
+        b.HasOne<Usuario>().WithMany().HasForeignKey(e => e.UsuarioId).OnDelete(DeleteBehavior.Restrict);
+
+        // El orden de guardado es único también acá (entre tablas lo garantiza el cálculo dentro de la transacción).
+        b.HasIndex(e => e.OrdenInsercion).IsUnique();
+        // Una vaca tiene una sola marca vigente por manga: la base garantiza que el contador cuente vacas distintas (RF-5).
+        b.HasIndex(e => new { e.MangaId, e.AnimalId }).IsUnique().HasFilter("Anulado = 0");
+        // Para encontrar rápido el último registro vigente de una vaca.
+        b.HasIndex(e => new { e.AnimalId, e.FechaHoraUtc, e.OrdenInsercion });
+        // Para el avance del día (marcas dentro de un rango de fechas).
+        b.HasIndex(e => e.FechaHoraUtc);
+        b.HasIndex(e => e.UsuarioId);
+
+        b.HasCheckConstraint("CK_MarcaPasada_Anulado", "Anulado IN (0,1)");
     }
 }

@@ -39,12 +39,37 @@ public static class MauiProgram
 		builder.Services.AddSingleton<ISelectorArchivo, SelectorArchivoMaui>();
 		builder.Services.AddSingleton<INavegacion, NavegacionShell>();
 
+		// Flujo de campo (spec 003): lo propio de la tablet detrás de los puertos de Application.
+		builder.Services.AddSingleton<IPreferenciasDispositivo, PreferenciasMaui>();
+		builder.Services.AddSingleton<IPantalla, PantallaMaui>();
+		builder.Services.AddSingleton<ITemporizador, TemporizadorReal>();
+		builder.Services.AddSingleton<IAvisosCampo, AvisosAndroid>();
+
+#if DEBUG
+		// Solo en la compilación de desarrollo: lector simulado y simulador de lecturas (RF-31). Es UNA instancia que
+		// cumple las dos interfaces, para que lo que emite el panel lo reciba el flujo. Nada de esto existe en Release.
+		builder.Services.AddSingleton<Aviss.Rfid.FakeRfidReader>();
+		builder.Services.AddSingleton<IRfidReader>(sp => sp.GetRequiredService<Aviss.Rfid.FakeRfidReader>());
+		builder.Services.AddSingleton<ISimuladorLecturas>(sp => sp.GetRequiredService<Aviss.Rfid.FakeRfidReader>());
+#else
+		// En la versión que se distribuye no hay simulador: el lector no entrega nada hasta la spec del bastón real.
+		builder.Services.AddSingleton<IRfidReader, Aviss.Rfid.LectorNoDisponible>();
+#endif
+
 		// ViewModels y páginas transitorios: cada vez que se abre la pantalla arranca limpia en el paso 1.
 		// (La vista previa sobrevive a rotar y a pasar a segundo plano porque la pantalla sigue abierta.)
 		builder.Services.AddTransient<InicioViewModel>();
 		builder.Services.AddTransient<ImportarViewModel>();
+		// La sesión (veterinario y rodeo elegidos) es única y vive mientras la app esté viva (RF-36).
+		builder.Services.AddSingleton<SesionTrabajo>();
+		builder.Services.AddTransient<EleccionTrabajoViewModel>();
+		builder.Services.AddTransient<TrabajoViewModel>();
+		builder.Services.AddTransient<MovimientosViewModel>();
 		builder.Services.AddTransient<InicioPage>();
 		builder.Services.AddTransient<ImportarPage>();
+		builder.Services.AddTransient<TrabajoPage>();
+		builder.Services.AddTransient<EleccionTrabajoPage>();
+		builder.Services.AddTransient<MovimientosPage>();
 
 		var app = builder.Build();
 

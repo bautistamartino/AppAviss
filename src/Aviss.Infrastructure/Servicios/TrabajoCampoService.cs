@@ -1,3 +1,4 @@
+using Aviss.Application.Campo;
 using Aviss.Application.Comandos;
 using Aviss.Application.Comun;
 using Aviss.Application.Puertos;
@@ -22,16 +23,17 @@ internal sealed class TrabajoCampoService : ITrabajoCampoService
     private readonly IUsuarioRepository _usuarios;
     private readonly IEstadoReproductivoRepository _estados;
     private readonly ITactoRepository _tactos;
+    private readonly IRegistroCampoRepository _registros;
     private readonly IHistorialRepository _historial;
     private readonly IRelojService _reloj;
     private readonly IDispositivoService _dispositivo;
 
     public TrabajoCampoService(IUnitOfWork uow, IAnimalRepository animales, IRodeoRepository rodeos,
         IEstablecimientoRepository establecimientos, IUsuarioRepository usuarios, IEstadoReproductivoRepository estados,
-        ITactoRepository tactos, IHistorialRepository historial, IRelojService reloj, IDispositivoService dispositivo)
+        ITactoRepository tactos, IRegistroCampoRepository registros, IHistorialRepository historial, IRelojService reloj, IDispositivoService dispositivo)
     {
         _uow = uow; _animales = animales; _rodeos = rodeos; _establecimientos = establecimientos; _usuarios = usuarios;
-        _estados = estados; _tactos = tactos; _historial = historial; _reloj = reloj; _dispositivo = dispositivo;
+        _estados = estados; _tactos = tactos; _registros = registros; _historial = historial; _reloj = reloj; _dispositivo = dispositivo;
     }
 
     public Task<Resultado<Guid>> RegistrarTactoAsync(RegistrarTactoCommand c, CancellationToken ct = default)
@@ -49,7 +51,8 @@ internal sealed class TrabajoCampoService : ITrabajoCampoService
 
             // Un único "ahora": es la hora del tacto y la que se usa para validarlo (RF-8b).
             var ahora = _reloj.UtcAhora;
-            var ultimo = await _tactos.ObtenerUltimoVigenteAsync(animal.Id, ct);
+            // Desde la spec 003 el "último" es el último registro vigente de CUALQUIER tipo (tacto o marca de pasada), RF-21.
+            var ultimo = await _registros.ObtenerUltimoVigenteAsync(animal.Id, ct);
 
             var motivo = ReglasTacto.Validar(new DatosValidacionTacto(
                 AnimalAnulado: animal.Anulado,
@@ -71,7 +74,7 @@ internal sealed class TrabajoCampoService : ITrabajoCampoService
             try
             {
                 var estadoAnterior = animal.EstadoReproductivoId; // se toma antes de cambiarlo
-                var orden = await _tactos.SiguienteOrdenInsercionAsync(ct);
+                var orden = await _registros.SiguienteOrdenAsync(ct); // orden compartido con las marcas de pasada
                 var tacto = Tacto.Registrar(animal.Id, ahora, orden, estadoAnterior, c.EstadoNuevoId, c.DiasPrenez,
                     c.Observaciones, c.UsuarioId, _dispositivo.ObtenerId(), ahora);
                 animal.AplicarTacto(c.EstadoNuevoId, ahora, ahora);
@@ -100,10 +103,11 @@ internal sealed class TrabajoCampoService : ITrabajoCampoService
             if (animal.Anulado)
                 return Resultado.Error<Guid>(CodigoError.AnimalAnulado, "El animal está anulado: no se pueden anular sus tactos.");
 
-            // Solo se anula el último tacto vigente (RF-14).
-            var ultimo = await _tactos.ObtenerUltimoVigenteAsync(animal.Id, ct);
-            if (ultimo is null || ultimo.Id != tacto.Id)
-                return Resultado.Error<Guid>(CodigoError.TactoNoEsElUltimo, "Solo se puede anular el último tacto vigente del animal.");
+            // Solo se anula el último registro vigente del animal, de cualquier tipo (RF-14, spec 003 RF-26): si después
+            // del tacto se guardó una marca de pasada, primero hay que desmarcar.
+            var ultimo = await _registros.ObtenerUltimoVigenteAsync(animal.Id, ct);
+            if (ultimo is null || ultimo.Tipo != TipoRegistroCampo.Tacto || ultimo.Id != tacto.Id)
+                return Resultado.Error<Guid>(CodigoError.TactoNoEsElUltimo, "Solo se puede anular el último registro vigente del animal.");
 
             var errorUsuario = await Ayudas.ValidarUsuarioAsync(_usuarios, c.UsuarioId, ct);
             if (errorUsuario is not null) return Resultado.Error<Guid>(errorUsuario.Codigo!.Value, errorUsuario.Mensaje!);
@@ -113,7 +117,7 @@ internal sealed class TrabajoCampoService : ITrabajoCampoService
                 var ahora = _reloj.UtcAhora;
                 var anterior = await _tactos.ObtenerVigenteAnteriorAsync(animal.Id, tacto.Id, ct);
                 var estadoActual = animal.EstadoReproductivoId;
-                var orden = await _tactos.SiguienteOrdenInsercionAsync(ct);
+                var orden = await _registros.SiguienteOrdenAsync(ct);
 
                 var anulacion = Tacto.CrearAnulacion(tacto, estadoActual, ahora, orden, c.UsuarioId, _dispositivo.ObtenerId(), ahora);
                 // El animal vuelve al estado anterior del tacto anulado y a la fecha del último vigente anterior (o vacía).

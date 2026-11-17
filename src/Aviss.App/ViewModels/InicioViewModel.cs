@@ -3,7 +3,7 @@ using CommunityToolkit.Mvvm.Input;
 
 namespace Aviss.App.ViewModels;
 
-/// <summary>Pantalla de entrada. Por ahora un solo botón; las próximas specs agregan los suyos.</summary>
+/// <summary>Pantalla de entrada: importar un rodeo o ponerse a trabajar (spec 003).</summary>
 public sealed partial class InicioViewModel : ObservableObject
 {
     private readonly INavegacion _navegacion;
@@ -12,4 +12,8 @@ public sealed partial class InicioViewModel : ObservableObject
 
     [RelayCommand]
     private Task ImportarRodeoAsync() => _navegacion.IrAImportarAsync();
+
+    /// <summary>"Trabajar": va a elegir veterinario, establecimiento y rodeo (RF-1, RF-2).</summary>
+    [RelayCommand]
+    private Task TrabajarAsync() => _navegacion.IrAEleccionTrabajoAsync();
 }

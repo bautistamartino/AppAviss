@@ -12,6 +12,7 @@ namespace Aviss.Infrastructure.Tests;
 /// no en la tablet). Usa el perfil real y un .xls armado en el momento. Se excluye con <c>--filter "Categoria!=Rendimiento"</c>.
 /// </summary>
 [Trait("Categoria", "Rendimiento")]
+[Collection("Rendimiento")] // las pruebas de volumen corren de a una: en paralelo se pisan el CPU y el disco y los tiempos se falsean
 public sealed class ImportacionRendimientoTests : IDisposable
 {
     private readonly EscenarioImportacion _e = new(new PerfilDairyComp());

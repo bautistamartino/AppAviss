@@ -7,9 +7,17 @@ public partial class AppShell : Shell
 	public const string RutaInicio = "Inicio";
 	public const string RutaImportar = "Importar";
 
+	// Flujo de campo (spec 003). Nombres de las rutas (se registran abajo).
+	public const string RutaEleccionTrabajo = "EleccionTrabajo";
+	public const string RutaTrabajo = "Trabajo";
+	public const string RutaMovimientos = "Movimientos";
+
 	public AppShell()
 	{
 		InitializeComponent();
 		Routing.RegisterRoute(RutaImportar, typeof(ImportarPage));
+		Routing.RegisterRoute(RutaEleccionTrabajo, typeof(EleccionTrabajoPage));
+		Routing.RegisterRoute(RutaTrabajo, typeof(TrabajoPage));
+		Routing.RegisterRoute(RutaMovimientos, typeof(MovimientosPage));
 	}
 }

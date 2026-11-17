@@ -18,6 +18,15 @@
     <Color x:Key="MidnightBlue">#190649</Color>
     <Color x:Key="OffBlack">#1f1f1f</Color>
 
+    <!-- Pantalla de campo (spec 003): colores de alto contraste, pensados para leerse al sol. -->
+    <Color x:Key="CampoPanel">#263238</Color>
+    <Color x:Key="CampoSecundario">#455A64</Color>
+    <Color x:Key="CampoAlerta">#FFC107</Color>
+    <Color x:Key="CampoPeligro">#B00020</Color>
+    <Color x:Key="CampoExito">#1B5E20</Color>
+    <Color x:Key="CampoClaro">#ECEFF1</Color>
+    <Color x:Key="CampoVelo">#CC000000</Color>
+
     <Color x:Key="Gray100">#E1E1E1</Color>
     <Color x:Key="Gray200">#C8C8C8</Color>
     <Color x:Key="Gray300">#ACACAC</Color>

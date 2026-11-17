@@ -14,6 +14,7 @@ namespace Aviss.Infrastructure.Tests;
 /// <c>--filter "Categoria!=Rendimiento"</c>.
 /// </summary>
 [Trait("Categoria", "Rendimiento")]
+[Collection("Rendimiento")] // las pruebas de volumen corren de a una: en paralelo se pisan el CPU y el disco y los tiempos se falsean
 public sealed class RendimientoTests : IDisposable
 {
     private const int Animales = 20_000;

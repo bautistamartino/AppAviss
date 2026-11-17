@@ -33,7 +33,7 @@ Archivo de muestra: una hoja, una fila por vaca, más una fila final `Total:N`. 
 | `FPART` | Fecha del último parto (texto, con espacios) |
 | `LACT`, `DEL` | Lactancia y días en leche |
 | `FCELO` | Fecha de celo |
-| `VINS` | Número de inseminaciones |
+| `VINS` | **Cantidad** de inseminaciones (un número, no una fecha) |
 | `UTORO` | Último toro |
 | `COM` | Comentarios (`46DIAS`, `F007T001`, `2.8`, `3`) |
 | `RPRO` | Estado reproductivo: PREÑADA, INSEMIN, SECA, VACIA, FRESCA, NOINSEM |
@@ -46,6 +46,8 @@ Dairy Comp **usa el `ID`** para cruzar con la vaca y **crea eventos con historia
 - **Importación**: leer el Excel, validar estructura y datos, mostrar vista previa con errores por fila y confirmar. Ignorar la fila `Total`. Guardar el original.
 - **Rodeos y tambos**: varios tambos por tablet; cada importación es un rodeo con nombre, fecha, cantidad de animales y archivo de origen.
 - **Trabajo de campo**: leer la caravana con el bastón, buscar la vaca automáticamente, mostrar la ficha, elegir el nuevo estado con un toque y guardar al instante. Búsqueda manual como respaldo. Alta en campo de un animal no encontrado.
+  - **Mangas** (spec 003): el trabajo se organiza en mangas numeradas por rodeo; cada vaca leída queda **marcada automáticamente** en la manga actual (contador de vacas distintas), con aviso si ya pasó ese día. Se cierran con "Finalizar manga" (verificando el contador contra la cantidad real) o "Terminar el tacto" (doble confirmación); un cierre se puede deshacer reabriendo la manga mientras sea el último del día.
+  - **Registros y catálogos de campo** (spec 004, borrador): tratamientos, nota y días de preñez del tacto, rechazo y estados nuevos creados en el campo.
 - **Historial**: registrar fecha, animal, estado anterior y nuevo, veterinario y hora de cada cambio. Nunca borrar ni sobrescribir. Deshacer mediante anulación.
 - **Veterinarios**: elegir quién trabaja al abrir la app.
 - **Exportación**: generar un Excel compatible con Dairy Comp a partir del original, con los cambios; validarlo antes de entregarlo.
