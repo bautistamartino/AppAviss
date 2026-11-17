@@ -69,6 +69,20 @@ internal sealed class UsuarioRepository : IUsuarioRepository
     public Task<int> ContarActivosExceptoAsync(Guid usuarioId, CancellationToken ct = default)
         => _db.Usuarios.CountAsync(u => u.Activo && u.Id != usuarioId, ct);
 
+    // SQL fijo armado una sola vez (no lleva datos del usuario); el nombre viaja siempre como parámetro {0}.
+    private static readonly string SqlPorClaveDeNombre =
+        "SELECT * FROM Usuario WHERE " + Persistencia.Configuraciones.Comun.ClaveSql("trim(Nombre)") + " = {0}";
+
+    public Task<bool> ExisteNombreAsync(string nombre, CancellationToken ct = default)
+    {
+        // Misma regla que el índice único IX_Usuario_NombreClave de la migración "Mangas": mayúsculas (con ñ y tildes)
+        // sobre el nombre sin espacios de los extremos. El SQL es constante; el nombre viaja como parámetro.
+        var clave = Caravana.CalcularClave((nombre ?? "").Trim());
+        return _db.Usuarios
+            .FromSqlRaw(SqlPorClaveDeNombre, clave)
+            .AnyAsync(ct);
+    }
+
     public void Agregar(Usuario usuario) => _db.Usuarios.Add(usuario);
 }
 

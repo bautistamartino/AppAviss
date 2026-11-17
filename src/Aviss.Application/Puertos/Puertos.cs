@@ -57,6 +57,11 @@ public interface IUsuarioRepository
     Task<IReadOnlyList<Usuario>> ListarAsync(CancellationToken ct = default);
     /// <summary>Cuántos usuarios activos hay, sin contar el indicado (para proteger a "Sin asignar").</summary>
     Task<int> ContarActivosExceptoAsync(Guid usuarioId, CancellationToken ct = default);
+    /// <summary>
+    /// True si ya hay un usuario (activo o de baja, incluido "Sin asignar") con ese nombre, sin distinguir mayúsculas
+    /// ni espacios de los extremos (RF-1). Usa la misma clave que el índice único de la base.
+    /// </summary>
+    Task<bool> ExisteNombreAsync(string nombre, CancellationToken ct = default);
     void Agregar(Usuario usuario);
 }
 

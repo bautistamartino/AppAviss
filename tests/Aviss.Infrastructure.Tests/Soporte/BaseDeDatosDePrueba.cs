@@ -139,6 +139,48 @@ public sealed class BaseDeDatosDePrueba : IDisposable
         return id;
     }
 
+    // ---- Mangas, cierres y marcas por SQL crudo (spec 003) ----
+
+    public Guid Manga(Guid rodeoId, int numero, Guid usuarioId, DateTime? creadaEn = null)
+    {
+        var id = Guid.NewGuid();
+        Ejecutar(@"INSERT INTO Manga (Id, RodeoId, Numero, AbiertaPorUsuarioId, DispositivoId, CreadoEnUtc)
+                   VALUES ($id, $r, $n, $u, $d, $f)",
+            ("$id", id), ("$r", rodeoId), ("$n", numero), ("$u", usuarioId), ("$d", Guid.NewGuid()),
+            ("$f", Fecha(creadaEn ?? Reloj.UtcAhora)));
+        return id;
+    }
+
+    /// <summary>Un cierre de manga. Si se pasa <c>confirmada</c>, la diferencia se calcula (confirmada - aviss).</summary>
+    public Guid CierreManga(Guid mangaId, Guid usuarioId, string tipo = "Manual", int aviss = 0, int? confirmada = null,
+        bool anulado = false, DateTime? fechaHora = null)
+    {
+        var id = Guid.NewGuid();
+        Ejecutar(@"INSERT INTO CierreManga (Id, MangaId, Tipo, FechaHoraUtc, CantidadAviss, CantidadConfirmada, Diferencia,
+                       UsuarioId, DispositivoId, Anulado, CreadoEnUtc, ActualizadoEnUtc)
+                   VALUES ($id, $m, $t, $fh, $a, $c, $df, $u, $d, $an, $f, $f)",
+            ("$id", id), ("$m", mangaId), ("$t", tipo), ("$fh", Fecha(fechaHora ?? Reloj.UtcAhora)), ("$a", aviss),
+            ("$c", confirmada), ("$df", confirmada is int c ? c - aviss : null), ("$u", usuarioId), ("$d", Guid.NewGuid()),
+            ("$an", anulado ? 1 : 0), ("$f", Fecha(Reloj.UtcAhora)));
+        return id;
+    }
+
+    public Guid MarcaPasada(Guid animalId, Guid mangaId, Guid usuarioId, DateTime? fechaHora = null, long? orden = null,
+        bool anulada = false)
+    {
+        var id = Guid.NewGuid();
+        Ejecutar(@"INSERT INTO MarcaPasada (Id, AnimalId, MangaId, FechaHoraUtc, OrdenInsercion, UsuarioId, DispositivoId,
+                       Anulado, CreadoEnUtc, ActualizadoEnUtc)
+                   VALUES ($id, $a, $m, $fh, $o, $u, $d, $an, $f, $f)",
+            ("$id", id), ("$a", animalId), ("$m", mangaId), ("$fh", Fecha(fechaHora ?? Reloj.UtcAhora)),
+            ("$o", orden ?? ++_orden), ("$u", usuarioId), ("$d", Guid.NewGuid()), ("$an", anulada ? 1 : 0),
+            ("$f", Fecha(Reloj.UtcAhora)));
+        return id;
+    }
+
+    public bool ExisteTrigger(string nombre)
+        => Contar("SELECT COUNT(*) FROM sqlite_master WHERE type = 'trigger' AND name = $n", ("$n", nombre)) == 1;
+
     public Guid Historial(Guid usuarioId, string accion = "Alta")
     {
         var id = Guid.NewGuid();

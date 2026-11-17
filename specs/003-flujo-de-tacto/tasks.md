@@ -2,7 +2,7 @@
 
 Tests primero en cada tarea de lógica. Ninguna tarea se da por terminada con `dotnet build` o `dotnet test` en rojo (cada una deja la solución en verde por sí sola). Una rama: `spec/003-flujo-de-tacto` (ya creada). Detalle de diseño en [plan.md](plan.md). La spec 004 (borrador, depende de esta) **no** se toca. La pantalla la verifica el usuario en el emulador `Tablet_Aviss`.
 
-- [ ] **T1** — Dominio y base: entidades, reglas puras y migración `Mangas`.
+- [x] **T1** — Dominio y base: entidades, reglas puras y migración `Mangas`.
   - Qué se hace:
     - `Manga`, `CierreManga` y `MarcaPasada` (solo agregar; anulado de "no" a "sí" donde corresponde), `TipoCierreManga` y las cinco acciones nuevas de `AccionHistorial`.
     - Reglas puras: `ReglasMarcaPasada`, `ReglasManga`, `DiaLocal`, `ReglasAltaCampo` y `FechaExcel`.

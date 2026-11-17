@@ -98,15 +98,20 @@ internal sealed class UsuarioService : IUsuarioService
         => (_uow, _repo, _reloj) = (uow, repo, reloj);
 
     public Task<Resultado<Guid>> CrearAsync(string nombre, string? matricula, CancellationToken ct = default)
-        => _uow.EjecutarAsync(() =>
+        => _uow.EjecutarAsync(async () =>
         {
             try
             {
                 var u = Usuario.Crear(nombre, matricula, _reloj.UtcAhora);
+                // El nombre no se repite con ningún otro usuario (activo o de baja, "Sin asignar" incluido), sin
+                // distinguir mayúsculas ni espacios de los extremos (spec 003, RF-1). La base lo garantiza también
+                // con un índice único; este chequeo da el mensaje claro antes de llegar a ese error.
+                if (await _repo.ExisteNombreAsync(u.Nombre, ct))
+                    return Resultado.Error<Guid>(CodigoError.Duplicado, "Ya hay un veterinario con ese nombre.");
                 _repo.Agregar(u);
-                return Task.FromResult(Resultado.Ok(u.Id));
+                return Resultado.Ok(u.Id);
             }
-            catch (DominioException ex) { return Task.FromResult(Ayudas.DatosInvalidos<Guid>(ex)); }
+            catch (DominioException ex) { return Ayudas.DatosInvalidos<Guid>(ex); }
         }, ct);
 
     public Task<Resultado> DarDeBajaAsync(Guid id, CancellationToken ct = default)
