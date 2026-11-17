@@ -16,5 +16,6 @@ public partial class AppShell : Shell
 	{
 		InitializeComponent();
 		Routing.RegisterRoute(RutaImportar, typeof(ImportarPage));
+		Routing.RegisterRoute(RutaTrabajo, typeof(TrabajoPage));   // T4; las de elección y movimientos se suman en T5
 	}
 }

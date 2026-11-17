@@ -1,0 +1,407 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:Aviss.App.ViewModels"
+             xmlns:conv="clr-namespace:Aviss.App.Convertidores"
+             xmlns:dto="clr-namespace:Aviss.Application.Campo;assembly=Aviss.Application"
+             x:Class="Aviss.App.Paginas.TrabajoPage"
+             x:DataType="vm:TrabajoViewModel"
+             BackgroundColor="White"
+             Title="Trabajo">
+
+    <ContentPage.Resources>
+        <conv:InvertirBooleanoConverter x:Key="Invertir" />
+        <conv:EventoFichaFechaConverter x:Key="FechaEvento" />
+        <conv:FechaUtcALocalConverter x:Key="FechaLocal" />
+        <conv:EstadoActualConverter x:Key="EstadoActual" />
+    </ContentPage.Resources>
+
+    <!--
+        Pantalla de trabajo (spec 003, T4). Toda la lógica está en TrabajoViewModel: acá solo se muestra y se enlazan
+        los botones. Los avisos y cuadros son CAPAS dentro de esta misma página (no DisplayAlert), así el ViewModel
+        decide qué hacer con las lecturas que llegan mientras hay una capa abierta (RF-19).
+        Las capas llevan un TapGestureRecognizer vacío: en Android hace que "se coman" los toques y no lleguen a lo que
+        está debajo.
+    -->
+    <Grid>
+
+        <!-- *** PANTALLA PRINCIPAL *** -->
+        <Grid RowDefinitions="Auto,Auto,*,Auto,Auto">
+
+            <!-- Encabezado: rodeo, veterinario, manga y contador, avance del día, cierre de manga (RF-3) -->
+            <Border Grid.Row="0" BackgroundColor="{StaticResource CampoPanel}" StrokeThickness="0" Padding="20,12">
+                <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="24">
+                    <VerticalStackLayout Grid.Column="0" Spacing="6" VerticalOptions="Center">
+                        <Label Text="{Binding NombreRodeo}" Style="{StaticResource TextoCampoClaro}" FontSize="30" FontAttributes="Bold"
+                               LineBreakMode="TailTruncation" />
+                        <Label Text="{Binding NombreEstablecimiento}" Style="{StaticResource TextoCampoClaro}" FontSize="18"
+                               TextColor="{StaticResource Gray200}" LineBreakMode="TailTruncation" />
+                        <!-- Tocar el veterinario abre la lista para cambiarlo sin salir de la manga (RF-1). -->
+                        <Button Text="{Binding NombreVeterinario, StringFormat='Veterinario: {0} (cambiar)'}"
+                                Style="{StaticResource BotonCampoSecundario}"
+                                FontSize="20" HeightRequest="56" HorizontalOptions="Start"
+                                Clicked="OnCambiarVeterinarioClicked"
+                                SemanticProperties.Hint="Cambiar el veterinario que firma los registros" />
+                    </VerticalStackLayout>
+
+                    <VerticalStackLayout Grid.Column="1" Spacing="2" VerticalOptions="Center" HorizontalOptions="Center">
+                        <Label Text="{Binding TextoManga}" Style="{StaticResource ContadorManga}" HorizontalTextAlignment="Center" />
+                        <Label Text="{Binding TextoAvance}" Style="{StaticResource TextoCampoClaro}" FontSize="20"
+                               HorizontalTextAlignment="Center" />
+                    </VerticalStackLayout>
+
+                    <VerticalStackLayout Grid.Column="2" Spacing="8" VerticalOptions="Center">
+                        <Button Text="Finalizar manga" Style="{StaticResource BotonCampo}" HeightRequest="64"
+                                Command="{Binding FinalizarMangaCommand}" />
+                        <Button Text="Terminar el tacto" Style="{StaticResource BotonCampoPeligro}" HeightRequest="64"
+                                Command="{Binding TerminarElTactoCommand}" />
+                    </VerticalStackLayout>
+                </Grid>
+            </Border>
+
+            <!-- Mensajes (error en rojo, información en ámbar) -->
+            <VerticalStackLayout Grid.Row="1" Spacing="0">
+                <Border IsVisible="{Binding HayMensajeError}" BackgroundColor="{StaticResource CampoPeligro}" StrokeThickness="0" Padding="20,12">
+                    <Label Text="{Binding MensajeError}" TextColor="White" FontSize="24" FontAttributes="Bold"
+                           SemanticProperties.Description="Mensaje de error" />
+                </Border>
+                <Border IsVisible="{Binding HayMensajeInfo}" BackgroundColor="{StaticResource CampoAlerta}" StrokeThickness="0" Padding="20,12">
+                    <Label Text="{Binding MensajeInfo}" TextColor="Black" FontSize="22" FontAttributes="Bold" />
+                </Border>
+            </VerticalStackLayout>
+
+            <!-- Centro -->
+            <Grid Grid.Row="2" ColumnDefinitions="*,380">
+
+                <!-- Esperando la próxima lectura: lo último que se guardó. -->
+                <VerticalStackLayout Grid.Column="0" Grid.ColumnSpan="2" IsVisible="{Binding EstaEsperando}"
+                                     VerticalOptions="Center" HorizontalOptions="Center" Spacing="24" Padding="32">
+                    <Label Text="Esperando la próxima caravana" Style="{StaticResource TituloCuadro}" FontSize="44"
+                           HorizontalTextAlignment="Center" />
+                    <Label Text="Leé una caravana con el bastón o buscala a mano abajo." Style="{StaticResource TextoCampo}" FontSize="26"
+                           TextColor="{StaticResource Gray600}" HorizontalTextAlignment="Center" />
+                    <Border IsVisible="{Binding HayUltimoGuardado}" BackgroundColor="{StaticResource CampoClaro}" StrokeThickness="0" Padding="24,16">
+                        <Label Text="{Binding UltimoGuardado, StringFormat='Último: {0}'}" Style="{StaticResource TextoCampo}" FontSize="28"
+                               FontAttributes="Bold" HorizontalTextAlignment="Center" />
+                    </Border>
+                </VerticalStackLayout>
+
+                <!-- Ficha de la vaca (RF-13). Arriba lo informativo (con scroll); abajo, fijos, los botones de estado. -->
+                <Grid Grid.Column="0" RowDefinitions="*,Auto" IsVisible="{Binding HayFicha}">
+                    <ScrollView Grid.Row="0">
+                        <VerticalStackLayout Padding="24,12" Spacing="10">
+                            <Label Text="{Binding Ficha.Caravana}" Style="{StaticResource CaravanaGrande}"
+                                   SemanticProperties.Description="Caravana de la vaca" />
+
+                            <HorizontalStackLayout Spacing="12">
+                                <Button Text="Cerrar ficha" Style="{StaticResource BotonCampoSecundario}" HeightRequest="56" FontSize="20"
+                                        Command="{Binding CerrarFichaCommand}" />
+                                <Button Text="Anular alta" Style="{StaticResource BotonCampoPeligro}" HeightRequest="56" FontSize="20"
+                                        IsVisible="{Binding PuedeAnularAlta}"
+                                        Command="{Binding AnularAltaCommand}" />
+                            </HorizontalStackLayout>
+
+                            <Label Text="{Binding Ficha.EstadoNombre, TargetNullValue='Sin estado', FallbackValue='Sin estado', StringFormat='Estado: {0}'}"
+                                   Style="{StaticResource TextoCampo}" FontSize="32" FontAttributes="Bold" />
+                            <Label Text="{Binding Ficha.FechaUltimoTactoUtc, Converter={StaticResource FechaLocal}, StringFormat='Último tacto: {0}'}"
+                                   Style="{StaticResource TextoCampo}" FontSize="24" />
+                            <Label Text="{Binding Ficha.IdElectronico, StringFormat='Identificador electrónico: {0}'}"
+                                   Style="{StaticResource TextoCampo}" FontSize="20" TextColor="{StaticResource Gray600}" />
+
+                            <!-- Las columnas del Excel (LACT, DEL, FPART...), en un FlexLayout que salta de línea. -->
+                            <FlexLayout BindableLayout.ItemsSource="{Binding Ficha.Campos}" Wrap="Wrap" Direction="Row">
+                                <BindableLayout.ItemTemplate>
+                                    <DataTemplate x:DataType="dto:CampoFichaDto">
+                                        <VerticalStackLayout WidthRequest="170" Margin="0,6,12,6">
+                                            <Label Text="{Binding Nombre}" Style="{StaticResource TextoCampo}" FontSize="16"
+                                                   TextColor="{StaticResource Gray600}" />
+                                            <Label Text="{Binding Valor}" Style="{StaticResource TextoCampo}" FontSize="26" FontAttributes="Bold"
+                                                   LineBreakMode="TailTruncation" />
+                                        </VerticalStackLayout>
+                                    </DataTemplate>
+                                </BindableLayout.ItemTemplate>
+                            </FlexLayout>
+
+                            <!-- VINS (cantidad de inseminaciones) y UTORO (último toro): aparte y sin fecha. -->
+                            <HorizontalStackLayout Spacing="32">
+                                <Label Text="{Binding Ficha.Inseminaciones, StringFormat='Inseminaciones (VINS): {0}'}"
+                                       Style="{StaticResource TextoCampo}" FontSize="22" />
+                                <Label Text="{Binding Ficha.UltimoToro, StringFormat='Último toro: {0}'}"
+                                       Style="{StaticResource TextoCampo}" FontSize="22" />
+                            </HorizontalStackLayout>
+                        </VerticalStackLayout>
+                    </ScrollView>
+
+                    <!-- Botones de estado: un toque guarda el tacto (RF-15). FlexLayout con salto de línea. -->
+                    <Border Grid.Row="1" BackgroundColor="{StaticResource CampoClaro}" StrokeThickness="0" Padding="12,8">
+                        <VerticalStackLayout Spacing="4">
+                            <Label Style="{StaticResource TextoCampo}" FontSize="20" FontAttributes="Bold"
+                                   IsVisible="{Binding HayEstadosActivos, Converter={StaticResource Invertir}}"
+                                   Text="No hay estados activos: se puede leer y marcar, pero no tactar." />
+                            <FlexLayout BindableLayout.ItemsSource="{Binding Estados}" Wrap="Wrap" Direction="Row"
+                                        IsVisible="{Binding HayEstadosActivos}">
+                                <BindableLayout.ItemTemplate>
+                                    <DataTemplate x:DataType="dto:EstadoActivoDto">
+                                        <Button Text="{Binding Nombre}" Style="{StaticResource BotonEstado}"
+                                                Command="{Binding Source={RelativeSource AncestorType={x:Type vm:TrabajoViewModel}}, Path=SeleccionarEstadoCommand, x:DataType=vm:TrabajoViewModel}"
+                                                CommandParameter="{Binding .}">
+                                            <Button.BackgroundColor>
+                                                <MultiBinding Converter="{StaticResource EstadoActual}" ConverterParameter="fondo">
+                                                    <Binding Path="Id" />
+                                                    <Binding Source="{RelativeSource AncestorType={x:Type vm:TrabajoViewModel}}" Path="Ficha.EstadoId" x:DataType="vm:TrabajoViewModel" />
+                                                </MultiBinding>
+                                            </Button.BackgroundColor>
+                                            <Button.TextColor>
+                                                <MultiBinding Converter="{StaticResource EstadoActual}" ConverterParameter="texto">
+                                                    <Binding Path="Id" />
+                                                    <Binding Source="{RelativeSource AncestorType={x:Type vm:TrabajoViewModel}}" Path="Ficha.EstadoId" x:DataType="vm:TrabajoViewModel" />
+                                                </MultiBinding>
+                                            </Button.TextColor>
+                                        </Button>
+                                    </DataTemplate>
+                                </BindableLayout.ItemTemplate>
+                            </FlexLayout>
+                        </VerticalStackLayout>
+                    </Border>
+                </Grid>
+
+                <!-- Historial cronológico, a un costado: no tapa los botones de estado (RF-14). -->
+                <Border Grid.Column="1" IsVisible="{Binding HayFicha}" BackgroundColor="{StaticResource CampoClaro}"
+                        StrokeThickness="0" Padding="16,12">
+                    <Grid RowDefinitions="Auto,*" RowSpacing="8">
+                        <Label Text="Historial" Style="{StaticResource TituloCuadro}" FontSize="26" />
+                        <ScrollView Grid.Row="1">
+                            <VerticalStackLayout BindableLayout.ItemsSource="{Binding Ficha.Historial}" Spacing="12">
+                                <BindableLayout.ItemTemplate>
+                                    <DataTemplate x:DataType="dto:EventoFichaDto">
+                                        <VerticalStackLayout Spacing="2">
+                                            <Label Text="{Binding Titulo}" Style="{StaticResource TextoCampo}" FontSize="20" FontAttributes="Bold">
+                                                <Label.Triggers>
+                                                    <DataTrigger TargetType="Label" Binding="{Binding Anulado}" Value="True">
+                                                        <Setter Property="TextDecorations" Value="Strikethrough" />
+                                                    </DataTrigger>
+                                                </Label.Triggers>
+                                            </Label>
+                                            <Label Text="{Binding ., Converter={StaticResource FechaEvento}}" Style="{StaticResource TextoCampo}"
+                                                   FontSize="17" TextColor="{StaticResource Gray600}" />
+                                        </VerticalStackLayout>
+                                    </DataTemplate>
+                                </BindableLayout.ItemTemplate>
+                            </VerticalStackLayout>
+                        </ScrollView>
+                    </Grid>
+                </Border>
+            </Grid>
+
+            <!-- Abajo: búsqueda manual (teclado numérico) y "Últimos movimientos" (RF-23). El aviso de 5 segundos con
+                 "Deshacer" se pone SOBRE esta barra: así no tapa los botones de estado ni mueve nada de lugar (RF-27). -->
+            <Grid Grid.Row="3" BackgroundColor="{StaticResource CampoClaro}">
+                <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="12" Padding="20,10">
+                    <Entry Grid.Column="0" Style="{StaticResource EntradaCampo}" Keyboard="Numeric"
+                           Placeholder="Buscar caravana a mano" ReturnType="Search"
+                           Text="{Binding TextoBusqueda}" ReturnCommand="{Binding BuscarCommand}"
+                           SemanticProperties.Description="Número de caravana para buscar a mano" />
+                    <Button Grid.Column="1" Text="Buscar" Style="{StaticResource BotonCampo}"
+                            Command="{Binding BuscarCommand}" />
+                    <Button Grid.Column="2" Text="Últimos movimientos" Style="{StaticResource BotonCampoSecundario}"
+                            Command="{Binding MostrarMovimientosCommand}" />
+                </Grid>
+
+                <Border IsVisible="{Binding HayAvisoDeshacer}" BackgroundColor="#212121" StrokeThickness="0" Padding="20,10">
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
+                        <Label Text="{Binding AvisoDeshacer.Texto}" TextColor="White" FontSize="26" FontAttributes="Bold"
+                               VerticalOptions="Center" LineBreakMode="TailTruncation" />
+                        <Button Grid.Column="1" Text="Deshacer" Style="{StaticResource BotonCampoAlerta}"
+                                Command="{Binding DeshacerAvisoCommand}" />
+                    </Grid>
+                </Border>
+            </Grid>
+
+            <!-- Panel del simulador: SOLO en la compilación de desarrollo. Lo arma el código de la página dentro de
+                 #if DEBUG; en Release este contenedor queda vacío y oculto (RF-31). -->
+            <HorizontalStackLayout Grid.Row="4" x:Name="PanelSimulador" IsVisible="False" Spacing="12" Padding="20,6"
+                                   BackgroundColor="{StaticResource Gray200}" />
+        </Grid>
+
+        <!-- *** CAPAS (de abajo hacia arriba) *** -->
+
+        <!-- "Animal repetido" / "Ya pasó" (RF-22) -->
+        <Grid IsVisible="{Binding HayAviso}" BackgroundColor="{StaticResource CampoVelo}" Padding="48">
+            <Grid.GestureRecognizers><TapGestureRecognizer /></Grid.GestureRecognizers>
+            <Border BackgroundColor="White" StrokeThickness="6" Stroke="{StaticResource CampoAlerta}" Padding="40,28"
+                    HorizontalOptions="Center" VerticalOptions="Center" MinimumWidthRequest="760">
+                <VerticalStackLayout Spacing="14">
+                    <Label Text="{Binding AvisoTitulo}" Style="{StaticResource TituloCuadro}" FontSize="40"
+                           HorizontalTextAlignment="Center" />
+                    <Label Text="{Binding AvisoCaravana}" Style="{StaticResource CaravanaGrande}" FontSize="110"
+                           HorizontalTextAlignment="Center" />
+                    <Label Text="{Binding AvisoDetalle}" Style="{StaticResource TextoCampo}" FontSize="26"
+                           HorizontalTextAlignment="Center" />
+                    <Grid ColumnDefinitions="*,*,*" ColumnSpacing="12" Margin="0,12,0,0">
+                        <Button Grid.Column="0" Text="Ver ficha" Style="{StaticResource BotonCampo}" Command="{Binding VerFichaCommand}" />
+                        <Button Grid.Column="1" Text="Seguir" Style="{StaticResource BotonCampoSecundario}" Command="{Binding SeguirCommand}" />
+                        <Button Grid.Column="2" Text="Corregir" Style="{StaticResource BotonCampoPeligro}"
+                                IsVisible="{Binding PuedeCorregir}" Command="{Binding CorregirCommand}" />
+                    </Grid>
+                </VerticalStackLayout>
+            </Border>
+        </Grid>
+
+        <!-- "¿Deshacer lo último de esta vaca?" (confirmación de Corregir) -->
+        <Grid IsVisible="{Binding HayConfirmarCorregir}" BackgroundColor="{StaticResource CampoVelo}" Padding="48">
+            <Grid.GestureRecognizers><TapGestureRecognizer /></Grid.GestureRecognizers>
+            <Border BackgroundColor="White" StrokeThickness="0" Padding="40,28" HorizontalOptions="Center" VerticalOptions="Center"
+                    MinimumWidthRequest="700">
+                <VerticalStackLayout Spacing="20">
+                    <Label Text="{Binding TextoCorregir}" Style="{StaticResource TituloCuadro}" FontSize="32" />
+                    <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
+                        <Button Grid.Column="0" Text="Sí, deshacer" Style="{StaticResource BotonCampoPeligro}" Command="{Binding ConfirmarCorregirCommand}" />
+                        <Button Grid.Column="1" Text="No" Style="{StaticResource BotonCampoSecundario}" Command="{Binding CancelarCorregirCommand}" />
+                    </Grid>
+                </VerticalStackLayout>
+            </Border>
+        </Grid>
+
+        <!-- "Caravana no encontrada" (RF-24): no se guardó nada -->
+        <Grid IsVisible="{Binding HayNoEncontrada}" BackgroundColor="{StaticResource CampoVelo}" Padding="48">
+            <Grid.GestureRecognizers><TapGestureRecognizer /></Grid.GestureRecognizers>
+            <Border BackgroundColor="White" StrokeThickness="0" Padding="40,28" HorizontalOptions="Center" VerticalOptions="Center"
+                    MinimumWidthRequest="760">
+                <VerticalStackLayout Spacing="16">
+                    <Label Text="Caravana no encontrada" Style="{StaticResource TituloCuadro}" FontSize="40" HorizontalTextAlignment="Center" />
+                    <Label Text="{Binding CodigoNoEncontrado}" Style="{StaticResource CaravanaGrande}" FontSize="64"
+                           HorizontalTextAlignment="Center" LineBreakMode="TailTruncation" />
+                    <Label Text="No se guardó nada. ¿La das de alta o buscás otra a mano?" Style="{StaticResource TextoCampo}" FontSize="24"
+                           HorizontalTextAlignment="Center" />
+                    <Grid ColumnDefinitions="*,*,*" ColumnSpacing="12" Margin="0,8,0,0">
+                        <Button Grid.Column="0" Text="Dar de alta" Style="{StaticResource BotonCampo}" Command="{Binding DarDeAltaCommand}" />
+                        <Button Grid.Column="1" Text="Buscar a mano" Style="{StaticResource BotonCampoSecundario}" Command="{Binding BuscarAManoCommand}" />
+                        <Button Grid.Column="2" Text="Cerrar" Style="{StaticResource BotonCampoSecundario}" Command="{Binding CerrarNoEncontradaCommand}" />
+                    </Grid>
+                </VerticalStackLayout>
+            </Border>
+        </Grid>
+
+        <!-- Alta en campo (RF-25): la caravana viene precargada y se puede corregir -->
+        <Grid IsVisible="{Binding HayAlta}" BackgroundColor="{StaticResource CampoVelo}" Padding="48">
+            <Grid.GestureRecognizers><TapGestureRecognizer /></Grid.GestureRecognizers>
+            <Border BackgroundColor="White" StrokeThickness="0" Padding="40,28" HorizontalOptions="Center" VerticalOptions="Center"
+                    MinimumWidthRequest="760">
+                <VerticalStackLayout Spacing="16">
+                    <Label Text="Dar de alta en campo" Style="{StaticResource TituloCuadro}" />
+                    <Label Text="Caravana" Style="{StaticResource TextoCampo}" FontAttributes="Bold" />
+                    <Entry Style="{StaticResource EntradaCampo}" Text="{Binding AltaCaravana}" MaxLength="30"
+                           Placeholder="Número de caravana" />
+                    <Border IsVisible="{Binding HayMensajeCuadro}" BackgroundColor="{StaticResource CampoPeligro}" StrokeThickness="0" Padding="16,10">
+                        <Label Text="{Binding MensajeCuadro}" TextColor="White" FontSize="22" FontAttributes="Bold" />
+                    </Border>
+                    <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
+                        <Button Grid.Column="0" Text="Guardar alta" Style="{StaticResource BotonCampo}" Command="{Binding ConfirmarAltaCommand}" />
+                        <Button Grid.Column="1" Text="Cancelar" Style="{StaticResource BotonCampoSecundario}" Command="{Binding CancelarAltaCommand}" />
+                    </Grid>
+                </VerticalStackLayout>
+            </Border>
+        </Grid>
+
+        <!-- Verificación de "Finalizar manga" / "Terminar el tacto" (RF-6): contador y caravanas -->
+        <Grid IsVisible="{Binding HayVerificacion}" BackgroundColor="{StaticResource CampoVelo}" Padding="48">
+            <Grid.GestureRecognizers><TapGestureRecognizer /></Grid.GestureRecognizers>
+            <Border BackgroundColor="White" StrokeThickness="0" Padding="40,28" HorizontalOptions="Center" VerticalOptions="Center"
+                    MinimumWidthRequest="860">
+                <VerticalStackLayout Spacing="14">
+                    <Label Text="{Binding ResumenManga.NumeroManga, StringFormat='Verificar la manga {0}'}" Style="{StaticResource TituloCuadro}" />
+                    <Label Text="{Binding ResumenManga.Contador, StringFormat='Aviss contó {0} vacas. ¿Coincide con las que pasaron?'}"
+                           Style="{StaticResource TextoCampo}" FontSize="28" FontAttributes="Bold" />
+                    <ScrollView HeightRequest="240" BackgroundColor="{StaticResource CampoClaro}">
+                        <FlexLayout BindableLayout.ItemsSource="{Binding ResumenManga.Caravanas}" Wrap="Wrap" Direction="Row" Padding="8">
+                            <BindableLayout.ItemTemplate>
+                                <DataTemplate x:DataType="x:String">
+                                    <Label Text="{Binding .}" Style="{StaticResource TextoCampo}" FontSize="22" Margin="8,4" />
+                                </DataTemplate>
+                            </BindableLayout.ItemTemplate>
+                        </FlexLayout>
+                    </ScrollView>
+                    <Border IsVisible="{Binding HayMensajeCuadro}" BackgroundColor="{StaticResource CampoPeligro}" StrokeThickness="0" Padding="16,10">
+                        <Label Text="{Binding MensajeCuadro}" TextColor="White" FontSize="22" FontAttributes="Bold" />
+                    </Border>
+                    <Grid ColumnDefinitions="*,*,*" ColumnSpacing="12">
+                        <Button Grid.Column="0" Text="Coincide" Style="{StaticResource BotonCampo}" BackgroundColor="{StaticResource CampoExito}"
+                                Command="{Binding CoincideCommand}" />
+                        <Button Grid.Column="1" Text="No coincide" Style="{StaticResource BotonCampoPeligro}" Command="{Binding NoCoincideCommand}" />
+                        <Button Grid.Column="2" Text="Volver a corregir" Style="{StaticResource BotonCampoSecundario}" Command="{Binding VolverACorregirCommand}" />
+                    </Grid>
+                </VerticalStackLayout>
+            </Border>
+        </Grid>
+
+        <!-- Cantidad real (RF-6): teclado numérico -->
+        <Grid IsVisible="{Binding HayCantidadReal}" BackgroundColor="{StaticResource CampoVelo}" Padding="48">
+            <Grid.GestureRecognizers><TapGestureRecognizer /></Grid.GestureRecognizers>
+            <Border BackgroundColor="White" StrokeThickness="0" Padding="40,28" HorizontalOptions="Center" VerticalOptions="Center"
+                    MinimumWidthRequest="760">
+                <VerticalStackLayout Spacing="16">
+                    <Label Text="¿Cuántas vacas pasaron realmente?" Style="{StaticResource TituloCuadro}" FontSize="32" />
+                    <Entry Style="{StaticResource EntradaCampo}" Keyboard="Numeric" MaxLength="5"
+                           Text="{Binding CantidadRealTexto}" Placeholder="Cantidad real" />
+                    <Border IsVisible="{Binding HayMensajeCuadro}" BackgroundColor="{StaticResource CampoPeligro}" StrokeThickness="0" Padding="16,10">
+                        <Label Text="{Binding MensajeCuadro}" TextColor="White" FontSize="22" FontAttributes="Bold" />
+                    </Border>
+                    <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
+                        <Button Grid.Column="0" Text="Confirmar cantidad" Style="{StaticResource BotonCampo}" Command="{Binding ConfirmarCantidadRealCommand}" />
+                        <Button Grid.Column="1" Text="Volver a corregir" Style="{StaticResource BotonCampoSecundario}" Command="{Binding VolverACorregirCommand}" />
+                    </Grid>
+                </VerticalStackLayout>
+            </Border>
+        </Grid>
+
+        <!-- Segunda confirmación de "Terminar el tacto" (RF-7) -->
+        <Grid IsVisible="{Binding HaySegundaConfirmacion}" BackgroundColor="{StaticResource CampoVelo}" Padding="48">
+            <Grid.GestureRecognizers><TapGestureRecognizer /></Grid.GestureRecognizers>
+            <Border BackgroundColor="White" StrokeThickness="0" Padding="40,28" HorizontalOptions="Center" VerticalOptions="Center"
+                    MinimumWidthRequest="760">
+                <VerticalStackLayout Spacing="20">
+                    <Label Text="{Binding TextoSegundaConfirmacion}" Style="{StaticResource TituloCuadro}" FontSize="32" />
+                    <Border IsVisible="{Binding HayMensajeCuadro}" BackgroundColor="{StaticResource CampoPeligro}" StrokeThickness="0" Padding="16,10">
+                        <Label Text="{Binding MensajeCuadro}" TextColor="White" FontSize="22" FontAttributes="Bold" />
+                    </Border>
+                    <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
+                        <Button Grid.Column="0" Text="Sí, terminar" Style="{StaticResource BotonCampoPeligro}" Command="{Binding ConfirmarTerminarCommand}" />
+                        <Button Grid.Column="1" Text="No, seguir trabajando" Style="{StaticResource BotonCampoSecundario}" Command="{Binding NoTerminarCommand}" />
+                    </Grid>
+                </VerticalStackLayout>
+            </Border>
+        </Grid>
+
+        <!-- Resumen de "Terminar el tacto" con "Deshacer" (RF-7): pantalla completa -->
+        <Grid IsVisible="{Binding HayResumenTerminado}" BackgroundColor="White" Padding="48">
+            <Grid.GestureRecognizers><TapGestureRecognizer /></Grid.GestureRecognizers>
+            <VerticalStackLayout VerticalOptions="Center" HorizontalOptions="Center" Spacing="24" MaximumWidthRequest="900">
+                <Label Text="Tacto terminado" Style="{StaticResource TituloCuadro}" FontSize="48" HorizontalTextAlignment="Center" />
+                <Label Text="{Binding TextoResumenTerminado}" Style="{StaticResource TextoCampo}" FontSize="28" HorizontalTextAlignment="Center" />
+                <Border IsVisible="{Binding HayMensajeError}" BackgroundColor="{StaticResource CampoPeligro}" StrokeThickness="0" Padding="16,10">
+                    <Label Text="{Binding MensajeError}" TextColor="White" FontSize="22" FontAttributes="Bold" />
+                </Border>
+                <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
+                    <Button Grid.Column="0" Text="Deshacer" Style="{StaticResource BotonCampoAlerta}"
+                            IsVisible="{Binding PuedeDeshacerTerminado}" Command="{Binding DeshacerTerminadoCommand}" />
+                    <Button Grid.Column="1" Text="Salir" Style="{StaticResource BotonCampo}" Command="{Binding SalirCommand}" />
+                </Grid>
+            </VerticalStackLayout>
+        </Grid>
+
+        <!-- Cambiar de veterinario: lo arma el código de la página (llama a ListarVeterinariosAsync y CambiarVeterinarioCommand). -->
+        <Grid x:Name="CapaVeterinarios" IsVisible="False" BackgroundColor="{StaticResource CampoVelo}" Padding="48">
+            <Grid.GestureRecognizers><TapGestureRecognizer /></Grid.GestureRecognizers>
+            <Border BackgroundColor="White" StrokeThickness="0" Padding="40,28" HorizontalOptions="Center" VerticalOptions="Center"
+                    MinimumWidthRequest="620">
+                <VerticalStackLayout Spacing="16">
+                    <Label Text="¿Quién tacta ahora?" Style="{StaticResource TituloCuadro}" FontSize="32" />
+                    <ScrollView MaximumHeightRequest="420">
+                        <VerticalStackLayout x:Name="ListaVeterinarios" Spacing="10" />
+                    </ScrollView>
+                    <Button Text="Cancelar" Style="{StaticResource BotonCampoSecundario}" Clicked="OnCerrarVeterinariosClicked" />
+                </VerticalStackLayout>
+            </Border>
+        </Grid>
+    </Grid>
+</ContentPage>

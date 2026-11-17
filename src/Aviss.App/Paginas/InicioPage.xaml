@@ -7,7 +7,7 @@
              Title="Aviss">
 
     <ScrollView>
-        <VerticalStackLayout Padding="32" Spacing="32" MaximumWidthRequest="720" VerticalOptions="Center">
+        <VerticalStackLayout x:Name="Contenido" Padding="32" Spacing="32" MaximumWidthRequest="720" VerticalOptions="Center">
             <Label Text="Aviss"
                    FontSize="40" FontAttributes="Bold"
                    SemanticProperties.HeadingLevel="Level1" />
