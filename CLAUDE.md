@@ -4,6 +4,8 @@ App Android (tablet) para veterinarios que hacen **tacto reproductivo** en tambo
 
 Requisitos: [docs/requerimientos.md](docs/requerimientos.md) · Arquitectura: [docs/arquitectura.md](docs/arquitectura.md) · Plan por etapas: [docs/plan.md](docs/plan.md) · Principios obligatorios: [docs/constitution.md](docs/constitution.md) · Estado y decisiones: [MEMORY.md](MEMORY.md)
 
+Preparar otra PC y retomar: [docs/puesta-en-marcha.md](docs/puesta-en-marcha.md)
+
 ## Sistema de agentes (SDD)
 
 - `/sdd <petición>`: funcionalidades nuevas o cambios de requisitos. El agente principal actúa como **coordinador** (no edita código) y delega en los subagentes de `.claude/agents/`:
