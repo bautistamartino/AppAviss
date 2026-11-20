@@ -10,7 +10,7 @@ Es el corazón de Aviss: el veterinario está de pie en la manga, con una mano o
 
 No hay bastón ni tablet real: el lector se simula con un `FakeRfidReader` detrás de la interfaz del lector. El lector real (Bluetooth del XRS2) es una spec posterior. Lo usan los veterinarios en la tablet, en cualquiera de los tambos importados.
 
-**Esta spec es una de varias partes.** El pedido completo se partió. Esta spec es el **núcleo** (tacto con un toque). Los tratamientos, las notas, el rechazo y crear o desactivar estados y tratamientos están en la spec hermana `specs/004-registros-y-catalogos/spec.md`, que **depende de esta**. Las alertas habladas y el historial completo de inseminaciones son ideas para specs posteriores.
+**Esta spec es una de varias partes.** El pedido completo se partió. Esta spec es el **núcleo** (tacto con un toque). Los tratamientos, las notas, el rechazo y crear o desactivar estados y tratamientos están en la spec hermana `specs/004-en-espera-y-rechazo/spec.md`, que **depende de esta**. Las alertas habladas y el historial completo de inseminaciones son ideas para specs posteriores.
 
 **Numeración (pendiente):** `docs/plan.md` reserva hoy 004 para la exportación y 005 para el bastón. Al aprobarse la spec hermana como 004, la exportación pasaría a **005** y el bastón a **006**. Queda **pendiente editar `docs/plan.md`** (y las referencias de esta spec a "spec 004" de exportación, que pasarían a 005, y a "spec 005" del bastón, que pasarían a 006) cuando el responsable lo apruebe.
 
@@ -27,7 +27,7 @@ No hay bastón ni tablet real: el lector se simula con un `FakeRfidReader` detr�
   - Avance del rodeo (procesadas y pendientes del día).
   - Un `FakeRfidReader` y una forma de simular lecturas en el emulador.
 - No incluye:
-  - **Spec hermana `004-registros-y-catalogos`** (depende de esta): catálogo de tratamientos (Prostal, DIB), panel de detalle con nota y días de preñez, "solo tratamiento", rechazo, crear estados y tratamientos en campo, desactivarlos y anular uno recién creado. En esta spec el tacto es solo elegir el estado, y el catálogo de estados se maneja como en la spec 001 (sin pantalla).
+  - **Spec hermana `004-en-espera-y-rechazo`** (depende de esta): catálogo de tratamientos (Prostal, DIB), panel de detalle con nota y días de preñez, "solo tratamiento", rechazo, crear estados y tratamientos en campo, desactivarlos y anular uno recién creado. En esta spec el tacto es solo elegir el estado, y el catálogo de estados se maneja como en la spec 001 (sin pantalla).
   - El lector real del XRS2, la conexión Bluetooth, la reconexión y el filtro de lecturas repetidas por tiempo (spec del bastón).
   - **Ideas para specs posteriores (sin numerar):**
     - **"Alertas habladas y reglas de alerta"**: decir por el altavoz la situación del animal al leerlo ("Días en leche sin celo", "Aborto?", "Fresca", varias a la vez), la chicharra de "no requiere tacto", la voz sin conexión, el botón de silenciar y las reglas del negocio que deciden cuándo suena cada una. Esta spec no tiene voz, reglas de alerta ni chicharra de "no requiere tacto".
