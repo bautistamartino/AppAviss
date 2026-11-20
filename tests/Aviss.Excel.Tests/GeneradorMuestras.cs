@@ -236,7 +236,43 @@ public static class GeneradorMuestras
     {
         using var ms = new MemoryStream();
         libro.Write(ms, true);
-        return ms.ToArray();
+        var bytes = ms.ToArray();
+        PonerEnCeroLasFechasDelContenedor(bytes);
+        return bytes;
+    }
+
+    /// <summary>
+    /// El contenedor OLE2 de un .xls guarda en cada entrada de su directorio la fecha de creación y de modificación (bytes 100 a
+    /// 115 de cada entrada de 128). NPOI pone la hora actual en la raíz, y eso hacía que cada generación saliera distinta y que la
+    /// muestra guardada nunca coincidiera. Se ponen en cero: Excel y NPOI los ignoran al leer.
+    /// </summary>
+    private static void PonerEnCeroLasFechasDelContenedor(byte[] bytes)
+    {
+        var tamanoSector = 1 << BitConverter.ToUInt16(bytes, 30);
+        var tablaFat = LeerTablaFat(bytes, tamanoSector);
+
+        var sector = BitConverter.ToInt32(bytes, 48);   // primer sector del directorio
+        while (sector >= 0 && sector < tablaFat.Length)
+        {
+            var inicio = (sector + 1) * tamanoSector;
+            for (var entrada = inicio; entrada + 128 <= inicio + tamanoSector && entrada + 128 <= bytes.Length; entrada += 128)
+                Array.Clear(bytes, entrada + 100, 16);
+            sector = tablaFat[sector];
+        }
+    }
+
+    private static int[] LeerTablaFat(byte[] bytes, int tamanoSector)
+    {
+        var porSector = tamanoSector / 4;
+        var cantidad = BitConverter.ToInt32(bytes, 44);   // sectores de la FAT
+        var fat = new List<int>();
+        for (var i = 0; i < cantidad && i < 109; i++)      // las muestras son chicas: alcanza con la DIFAT de la cabecera
+        {
+            var sectorFat = BitConverter.ToInt32(bytes, 76 + i * 4);
+            var inicio = (sectorFat + 1) * tamanoSector;
+            for (var j = 0; j < porSector; j++) fat.Add(BitConverter.ToInt32(bytes, inicio + j * 4));
+        }
+        return [.. fat];
     }
 
     // ---- Datos inventados ----

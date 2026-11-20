@@ -24,10 +24,11 @@ public class MainActivity : MauiAppCompatActivity
 
     private sealed class AjustarAMargenesDelSistema : Java.Lang.Object, IOnApplyWindowInsetsListener
     {
-        public WindowInsetsCompat OnApplyWindowInsets(Android.Views.View view, WindowInsetsCompat insets)
+        public WindowInsetsCompat? OnApplyWindowInsets(Android.Views.View? view, WindowInsetsCompat? insets)
         {
+            if (view is null || insets is null) return insets;
             var margenes = insets.GetInsets(WindowInsetsCompat.Type.SystemBars() | WindowInsetsCompat.Type.Ime());
-            view.SetPadding(margenes.Left, margenes.Top, margenes.Right, margenes.Bottom);
+            if (margenes is not null) view.SetPadding(margenes.Left, margenes.Top, margenes.Right, margenes.Bottom);
             return WindowInsetsCompat.Consumed;
         }
     }
