@@ -14,10 +14,10 @@ Cada ítem es una spec o un paso chico. Se marca con `[x]` cuando está terminad
 - [x] 2.1 Importar el `.xls` de Dairy Comp con vista previa y errores por fila, y guardar el original (spec 002).
 
 ## Etapa 3 — Trabajo de campo
-- [x] 3.1 **003 (núcleo) hecho:** flujo de tacto con `FakeRfidReader`: lectura → marca automática → ficha → estado → guardado → siguiente; mangas con cierre y reapertura, búsqueda manual, alta en campo, deshacer, últimos movimientos y avance del rodeo (spec 003). Falta que el usuario lo verifique en el emulador (ver `MEMORY.md`).
-- [ ] 3.2 Registros y catálogos de campo (spec 004, **borrador sin aprobar**, depende de la 003): catálogo de tratamientos (Prostal, DIB), detalle del tacto (tratamientos, nota, días de preñez), "solo tratamiento", rechazo con observación y estados nuevos creados en el campo (por ejemplo "aborto" en una vaca preñada).
+- [x] 3.1 **003 (núcleo) hecho, probado en una tablet real y ajustado** (spec 003, rama `spec/003-flujo-de-tacto`): lectura → marca automática → ficha estilo Daily (evento + observación, "Entrar") → siguiente; CVET (0 = no entra en tacto), mangas opcionales con cantidad y cierre automático, cabecera contraíble con horarios, movimientos con "Editar", búsqueda manual, deshacer y avance del rodeo. Se retiró el alta en campo. Falta pasar el revisor y mergear a `main` (ver `MEMORY.md`).
+- [ ] 3.2 Registros y catálogos de campo (spec 004, **borrador sin aprobar**, depende de la 003): tres renglones de evento + observación por vaca (tratamientos como Prostal y DIB, "solo tratamiento"), rechazo con observación, desactivar estados, y **"En Espera"** (dejar una vaca en una lista mientras se la tacta y se sigue escaneando). Se adelantó de la 004: crear un evento nuevo desde la lista de la ficha.
   - Requisito del usuario que cubre la 004: agregar estados nuevos al catálogo y registrar observaciones o tratamientos (por ejemplo sincronización de celos) durante el tacto.
-- Ideas sin spec (anotadas para más adelante): **alertas habladas y reglas de alerta** (aviso por voz y reglas configurables); **historial completo de inseminaciones** (hoy `VINS` solo trae la cantidad).
+- Ideas sin spec (anotadas para más adelante): **alertas habladas y reglas de alerta** (aviso por voz y reglas configurables); **historial completo de inseminaciones** (hoy `VINS` solo trae la cantidad; la fecha de la última inseminación habría que exportarla de Dairy Comp); **dos veterinarios por tacto** y **dos mangas ordeñando a la vez**, a confirmar con el usuario; **varios lotes en un Excel** (¿hay columna de lote?).
 
 ## Etapa 4 — Exportación
 - [ ] 4.1 Exportar el Excel sobre la copia del original, con validación (spec **005**). Depende de 0.2.

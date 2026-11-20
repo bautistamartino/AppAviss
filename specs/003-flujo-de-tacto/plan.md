@@ -1,5 +1,7 @@
 # Plan — 003 Flujo de tacto (núcleo del trabajo de campo)
 
+> **Nota (2026-11-21):** este documento es el diseño y el plan **originales** (2026-11-16/17). Después de probar en una tablet real la spec cambió (se retiró el alta en campo; la ficha pasó a "elegir evento y Entrar"; CVET; mangas opcionales; movimientos con Editar; interfaz en vertical). **Lo vigente está en `spec.md`, sección "Ajustes tras las pruebas en la tablet" (RF-39 a RF-52).** Si algo de acá contradice esa sección, manda la spec.
+
 Spec: [spec.md](spec.md) (aprobada). La spec hermana `specs/004-registros-y-catalogos` (borrador, depende de esta) **no se planifica acá**: solo se deja el diseño listo para que la sume (orden de guardado compartido, "último registro vigente" por consulta única, historial extensible).
 
 ## Resumen

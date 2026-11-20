@@ -18,15 +18,16 @@ Preparar otra PC y retomar: [docs/puesta-en-marcha.md](docs/puesta-en-marcha.md)
 
 ## Comandos
 
-Probados el 2026-11-16. Las rutas del JDK 21 y del SDK de Android las pone `Directory.Build.props`.
+Probados el 2026-11-21. Las rutas del JDK 21 y del SDK de Android las pone `Directory.Build.props`.
 
 - `dotnet build`: compila la solución (`Aviss.slnx`), incluida la app Android.
-- `dotnet test`: tests de todos los proyectos de `tests/`.
+- `dotnet test`: tests de todos los proyectos de `tests/`. Los de rendimiento dependen de la PC: `dotnet test --filter "Categoria!=Rendimiento"` los saltea.
 - Regenerar las muestras anonimizadas de `tests/muestras/`: con `AVISS_GENERAR_MUESTRAS=1` correr `dotnet test tests/Aviss.Excel.Tests --filter "Categoria=Generador"` (ver `tests/muestras/README.md`).
 - `dotnet build src/Aviss.App -f net10.0-android -t:Run`: compila, instala y abre la app en el emulador (o dispositivo) conectado.
 - `dotnet tool restore` (una vez): instala `dotnet-ef` como herramienta local del repo.
 - `dotnet ef migrations add <Nombre> -p src/Aviss.Infrastructure -s src/Aviss.Infrastructure`: nueva migración (confirmado en la spec 001; funciona gracias a `AvissDbContextFactory`). Para ver si quedan cambios sin migrar: `dotnet ef migrations has-pending-model-changes` con los mismos `-p` y `-s`.
 - Emulador de tablet: `& "$env:LOCALAPPDATA\Android\Sdk\emulator\emulator.exe" -avd Tablet_Aviss`. `adb` está en `%LOCALAPPDATA%\Android\Sdk\platform-tools`.
+- Tablet real por USB (depuración activada): `adb devices -l` y el mismo `-t:Run`. Para mirar la pantalla: `adb exec-out screencap -p > captura.png` y tocar con `adb shell input tap X Y` (ver [docs/puesta-en-marcha.md](docs/puesta-en-marcha.md), sección 7). La tablet de prueba se usa **en vertical** (800x1340).
 
 ## Stack
 
@@ -42,6 +43,7 @@ Probados el 2026-11-16. Las rutas del JDK 21 y del SDK de Android las pone `Dire
 - Los tactos y el historial **solo se agregan**: corregir es anular con otro registro, nunca borrar ni sobrescribir.
 - Cada tacto se guarda al instante, en una transacción (animal + tacto + historial).
 - Dairy Comp crea eventos al importar: el Excel de vuelta debe expresar el tacto como Dairy Comp lo espera (reglas exactas por validar, ver `MEMORY.md`).
+- **CVET** (columna de Dairy Comp): 0 = la vaca no entra en tacto; otro valor = motivo del tacto (`ReglasCvet`). Un CVET ausente no bloquea.
 - Los estados reproductivos son un catálogo con su código de Dairy Comp (PREÑADA, INSEMIN, SECA, VACIA, FRESCA, NOINSEM, …), no un enum fijo.
 
 ## Seguridad y privacidad
@@ -68,4 +70,4 @@ El usuario es estudiante de tecnicatura, sabe C# y este es un proyecto comercial
 - **Máximo 5 tareas por spec**, agrupando lo que va junto. Cada tarea es un subagente que relee el proyecto.
 - **Una sesión por spec o tarea grande.** Al terminar: todo commiteado y `MEMORY.md` al día; después se abre una sesión nueva o `/clear`. El contexto vive en `CLAUDE.md`, `MEMORY.md`, `docs/` y `specs/`.
 - Los subagentes usan Sonnet. No relanzar revisores en paralelo salvo que el usuario lo pida.
-- **La interfaz de la app no se puede verificar en el navegador:** los agentes prueban la lógica y los ViewModels con tests, y la pantalla la prueba el usuario en el emulador o la tablet. Cada tarea visual termina con "qué mirar en el emulador".
+- **La interfaz no se verifica en el navegador:** los agentes prueban la lógica y los ViewModels con tests; la pantalla se mira en el emulador o en la tablet (con `adb` y capturas se puede ver sin tocarla a mano). Cada tarea visual termina con "qué mirar en el emulador".
