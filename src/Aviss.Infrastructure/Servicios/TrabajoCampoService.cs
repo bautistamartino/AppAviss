@@ -37,98 +37,124 @@ internal sealed class TrabajoCampoService : ITrabajoCampoService
     }
 
     public Task<Resultado<Guid>> RegistrarTactoAsync(RegistrarTactoCommand c, CancellationToken ct = default)
-        => _uow.EjecutarAsync(async () =>
-        {
-            var animal = await _animales.ObtenerAsync(c.AnimalId, ct);
-            if (animal is null) return Resultado.Error<Guid>(CodigoError.NoEncontrado, "El animal no existe.");
-            var rodeo = await _rodeos.ObtenerAsync(animal.RodeoId, ct);
-            var establecimiento = rodeo is null ? null : await _establecimientos.ObtenerAsync(rodeo.EstablecimientoId, ct);
-            if (rodeo is null || establecimiento is null) return Resultado.Error<Guid>(CodigoError.NoEncontrado, "El rodeo del animal no existe.");
-            var estadoNuevo = await _estados.ObtenerAsync(c.EstadoNuevoId, ct);
-            if (estadoNuevo is null) return Resultado.Error<Guid>(CodigoError.NoEncontrado, "El estado elegido no existe.");
-            var errorUsuario = await Ayudas.ValidarUsuarioAsync(_usuarios, c.UsuarioId, ct);
-            if (errorUsuario is not null) return Resultado.Error<Guid>(errorUsuario.Codigo!.Value, errorUsuario.Mensaje!);
-
-            // Un único "ahora": es la hora del tacto y la que se usa para validarlo (RF-8b).
-            var ahora = _reloj.UtcAhora;
-            // Desde la spec 003 el "último" es el último registro vigente de CUALQUIER tipo (tacto o marca de pasada), RF-21.
-            var ultimo = await _registros.ObtenerUltimoVigenteAsync(animal.Id, ct);
-
-            var motivo = ReglasTacto.Validar(new DatosValidacionTacto(
-                AnimalAnulado: animal.Anulado,
-                RodeoActivo: rodeo.Activo,
-                EstablecimientoActivo: establecimiento.Activo,
-                EstadoNuevoActivo: estadoNuevo.Activo,
-                EstadoActualDelAnimal: animal.EstadoReproductivoId,
-                EstadoAnteriorInformado: c.EstadoAnteriorEsperado,
-                FechaHoraUtc: ahora,
-                AhoraUtc: ahora,
-                FechaUltimoVigenteUtc: ultimo?.FechaHoraUtc,
-                DiasPrenez: c.DiasPrenez));
-            if (motivo is MotivoRechazoTacto m)
-            {
-                var (codigo, mensaje) = Ayudas.DeMotivo(m);
-                return Resultado.Error<Guid>(codigo, mensaje);
-            }
-
-            try
-            {
-                var estadoAnterior = animal.EstadoReproductivoId; // se toma antes de cambiarlo
-                var orden = await _registros.SiguienteOrdenAsync(ct); // orden compartido con las marcas de pasada
-                var tacto = Tacto.Registrar(animal.Id, ahora, orden, estadoAnterior, c.EstadoNuevoId, c.DiasPrenez,
-                    c.Observaciones, c.UsuarioId, _dispositivo.ObtenerId(), ahora);
-                animal.AplicarTacto(c.EstadoNuevoId, ahora, ahora);
-
-                _tactos.Agregar(tacto);
-                // Exactamente un registro de historial por tacto; los estados van por id, no por nombre.
-                _historial.Agregar(Historial.Crear("Tacto", tacto.Id, "Estado", Ayudas.IdATextoONulo(estadoAnterior),
-                    Ayudas.IdATexto(c.EstadoNuevoId), ahora, c.UsuarioId, AccionHistorial.Tacto));
-                return Resultado.Ok(tacto.Id);
-            }
-            catch (DominioException ex) { return Ayudas.DatosInvalidos<Guid>(ex); }
-        }, ct);
+        => _uow.EjecutarAsync(() => RegistrarNucleoAsync(c, null, ct), ct);
 
     public Task<Resultado<Guid>> AnularTactoAsync(AnularTactoCommand c, CancellationToken ct = default)
+        => _uow.EjecutarAsync(() => AnularNucleoAsync(c, null, ct), ct);
+
+    /// <summary>
+    /// Corregir un tacto = anularlo y registrar uno nuevo, dentro de UNA transacción: si el nuevo se rechaza (estado dado de baja,
+    /// por ejemplo), la anulación también se revierte y el tacto original sigue vigente. Los dos registros necesitan órdenes
+    /// distintos y consecutivos, porque el segundo todavía no ve al primero en la base.
+    /// </summary>
+    public Task<Resultado<Guid>> CorregirTactoAsync(CorregirTactoCommand c, CancellationToken ct = default)
         => _uow.EjecutarAsync(async () =>
         {
-            var tacto = await _tactos.ObtenerAsync(c.TactoId, ct);
-            if (tacto is null) return Resultado.Error<Guid>(CodigoError.NoEncontrado, "El tacto no existe.");
-            if (tacto.Tipo == TipoTacto.Anulacion)
-                return Resultado.Error<Guid>(CodigoError.TactoDeAnulacion, "Un tacto de anulación no puede anularse: registrá un tacto nuevo.");
-            if (tacto.Anulado)
-                return Resultado.Error<Guid>(CodigoError.TactoYaAnulado, "El tacto ya está anulado.");
+            var original = await _tactos.ObtenerAsync(c.TactoId, ct);
+            if (original is null) return Resultado.Error<Guid>(CodigoError.NoEncontrado, "El tacto no existe.");
 
-            var animal = await _animales.ObtenerAsync(tacto.AnimalId, ct);
-            if (animal is null) return Resultado.Error<Guid>(CodigoError.NoEncontrado, "El animal del tacto no existe.");
-            if (animal.Anulado)
-                return Resultado.Error<Guid>(CodigoError.AnimalAnulado, "El animal está anulado: no se pueden anular sus tactos.");
+            var ordenAnulacion = await _registros.SiguienteOrdenAsync(ct);
+            var anulacion = await AnularNucleoAsync(new AnularTactoCommand(c.TactoId, c.UsuarioId), ordenAnulacion, ct);
+            if (!anulacion.EsCorrecto) return anulacion;
 
-            // Solo se anula el último registro vigente del animal, de cualquier tipo (RF-14, spec 003 RF-26): si después
-            // del tacto se guardó una marca de pasada, primero hay que desmarcar.
-            var ultimo = await _registros.ObtenerUltimoVigenteAsync(animal.Id, ct);
-            if (ultimo is null || ultimo.Tipo != TipoRegistroCampo.Tacto || ultimo.Id != tacto.Id)
-                return Resultado.Error<Guid>(CodigoError.TactoNoEsElUltimo, "Solo se puede anular el último registro vigente del animal.");
-
-            var errorUsuario = await Ayudas.ValidarUsuarioAsync(_usuarios, c.UsuarioId, ct);
-            if (errorUsuario is not null) return Resultado.Error<Guid>(errorUsuario.Codigo!.Value, errorUsuario.Mensaje!);
-
-            try
-            {
-                var ahora = _reloj.UtcAhora;
-                var anterior = await _tactos.ObtenerVigenteAnteriorAsync(animal.Id, tacto.Id, ct);
-                var estadoActual = animal.EstadoReproductivoId;
-                var orden = await _registros.SiguienteOrdenAsync(ct);
-
-                var anulacion = Tacto.CrearAnulacion(tacto, estadoActual, ahora, orden, c.UsuarioId, _dispositivo.ObtenerId(), ahora);
-                // El animal vuelve al estado anterior del tacto anulado y a la fecha del último vigente anterior (o vacía).
-                animal.RevertirTacto(tacto.EstadoAnteriorId, anterior?.FechaHoraUtc, ahora);
-                tacto.MarcarAnulado(ahora); // el único cambio que la base permite sobre un tacto guardado
-
-                _tactos.Agregar(anulacion);
-                _historial.Agregar(Historial.Crear("Tacto", anulacion.Id, "Estado", Ayudas.IdATextoONulo(estadoActual),
-                    Ayudas.IdATextoONulo(anulacion.EstadoNuevoId), ahora, c.UsuarioId, AccionHistorial.AnulacionTacto));
-                return Resultado.Ok(anulacion.Id);
-            }
-            catch (DominioException ex) { return Ayudas.DatosInvalidos<Guid>(ex); }
+            return await RegistrarNucleoAsync(
+                new RegistrarTactoCommand(original.AnimalId, c.EstadoNuevoId, null, c.Observaciones, c.UsuarioId), ordenAnulacion + 1, ct);
         }, ct);
+
+    // Núcleo de "registrar un tacto": valida y deja las entidades listas, sin abrir su propia transacción (la abre quien lo llama).
+    // Con "orden" nulo toma el siguiente de la base; al corregir, el que le toca después de la anulación.
+    private async Task<Resultado<Guid>> RegistrarNucleoAsync(RegistrarTactoCommand c, long? orden, CancellationToken ct)
+    {
+        var animal = await _animales.ObtenerAsync(c.AnimalId, ct);
+        if (animal is null) return Resultado.Error<Guid>(CodigoError.NoEncontrado, "El animal no existe.");
+        var rodeo = await _rodeos.ObtenerAsync(animal.RodeoId, ct);
+        var establecimiento = rodeo is null ? null : await _establecimientos.ObtenerAsync(rodeo.EstablecimientoId, ct);
+        if (rodeo is null || establecimiento is null) return Resultado.Error<Guid>(CodigoError.NoEncontrado, "El rodeo del animal no existe.");
+        var estadoNuevo = await _estados.ObtenerAsync(c.EstadoNuevoId, ct);
+        if (estadoNuevo is null) return Resultado.Error<Guid>(CodigoError.NoEncontrado, "El estado elegido no existe.");
+        var errorUsuario = await Ayudas.ValidarUsuarioAsync(_usuarios, c.UsuarioId, ct);
+        if (errorUsuario is not null) return Resultado.Error<Guid>(errorUsuario.Codigo!.Value, errorUsuario.Mensaje!);
+
+        // Un único "ahora": es la hora del tacto y la que se usa para validarlo (RF-8b).
+        var ahora = _reloj.UtcAhora;
+        // Desde la spec 003 el "último" es el último registro vigente de CUALQUIER tipo (tacto o marca de pasada), RF-21.
+        var ultimo = await _registros.ObtenerUltimoVigenteAsync(animal.Id, ct);
+
+        var motivo = ReglasTacto.Validar(new DatosValidacionTacto(
+            AnimalAnulado: animal.Anulado,
+            RodeoActivo: rodeo.Activo,
+            EstablecimientoActivo: establecimiento.Activo,
+            EstadoNuevoActivo: estadoNuevo.Activo,
+            EstadoActualDelAnimal: animal.EstadoReproductivoId,
+            EstadoAnteriorInformado: c.EstadoAnteriorEsperado,
+            FechaHoraUtc: ahora,
+            AhoraUtc: ahora,
+            FechaUltimoVigenteUtc: ultimo?.FechaHoraUtc,
+            DiasPrenez: c.DiasPrenez));
+        if (motivo is MotivoRechazoTacto m)
+        {
+            var (codigo, mensaje) = Ayudas.DeMotivo(m);
+            return Resultado.Error<Guid>(codigo, mensaje);
+        }
+
+        try
+        {
+            var estadoAnterior = animal.EstadoReproductivoId; // se toma antes de cambiarlo
+            var ordenTacto = orden ?? await _registros.SiguienteOrdenAsync(ct); // orden compartido con las marcas de pasada
+            var tacto = Tacto.Registrar(animal.Id, ahora, ordenTacto, estadoAnterior, c.EstadoNuevoId, c.DiasPrenez,
+                c.Observaciones, c.UsuarioId, _dispositivo.ObtenerId(), ahora);
+            animal.AplicarTacto(c.EstadoNuevoId, ahora, ahora);
+
+            _tactos.Agregar(tacto);
+            // Exactamente un registro de historial por tacto; los estados van por id, no por nombre.
+            _historial.Agregar(Historial.Crear("Tacto", tacto.Id, "Estado", Ayudas.IdATextoONulo(estadoAnterior),
+                Ayudas.IdATexto(c.EstadoNuevoId), ahora, c.UsuarioId, AccionHistorial.Tacto));
+            return Resultado.Ok(tacto.Id);
+        }
+        catch (DominioException ex) { return Ayudas.DatosInvalidos<Guid>(ex); }
+    }
+
+    // Núcleo de "anular un tacto": igual que el de registrar, sin transacción propia.
+    private async Task<Resultado<Guid>> AnularNucleoAsync(AnularTactoCommand c, long? orden, CancellationToken ct)
+    {
+        var tacto = await _tactos.ObtenerAsync(c.TactoId, ct);
+        if (tacto is null) return Resultado.Error<Guid>(CodigoError.NoEncontrado, "El tacto no existe.");
+        if (tacto.Tipo == TipoTacto.Anulacion)
+            return Resultado.Error<Guid>(CodigoError.TactoDeAnulacion, "Un tacto de anulación no puede anularse: registrá un tacto nuevo.");
+        if (tacto.Anulado)
+            return Resultado.Error<Guid>(CodigoError.TactoYaAnulado, "El tacto ya está anulado.");
+
+        var animal = await _animales.ObtenerAsync(tacto.AnimalId, ct);
+        if (animal is null) return Resultado.Error<Guid>(CodigoError.NoEncontrado, "El animal del tacto no existe.");
+        if (animal.Anulado)
+            return Resultado.Error<Guid>(CodigoError.AnimalAnulado, "El animal está anulado: no se pueden anular sus tactos.");
+
+        // Solo se anula el último registro vigente del animal, de cualquier tipo (RF-14, spec 003 RF-26): si después
+        // del tacto se guardó una marca de pasada, primero hay que desmarcar.
+        var ultimo = await _registros.ObtenerUltimoVigenteAsync(animal.Id, ct);
+        if (ultimo is null || ultimo.Tipo != TipoRegistroCampo.Tacto || ultimo.Id != tacto.Id)
+            return Resultado.Error<Guid>(CodigoError.TactoNoEsElUltimo, "Solo se puede anular el último registro vigente del animal.");
+
+        var errorUsuario = await Ayudas.ValidarUsuarioAsync(_usuarios, c.UsuarioId, ct);
+        if (errorUsuario is not null) return Resultado.Error<Guid>(errorUsuario.Codigo!.Value, errorUsuario.Mensaje!);
+
+        try
+        {
+            var ahora = _reloj.UtcAhora;
+            var anterior = await _tactos.ObtenerVigenteAnteriorAsync(animal.Id, tacto.Id, ct);
+            var estadoActual = animal.EstadoReproductivoId;
+            var ordenAnulacion = orden ?? await _registros.SiguienteOrdenAsync(ct);
+
+            var anulacion = Tacto.CrearAnulacion(tacto, estadoActual, ahora, ordenAnulacion, c.UsuarioId, _dispositivo.ObtenerId(), ahora);
+            // El animal vuelve al estado anterior del tacto anulado y a la fecha del último vigente anterior (o vacía).
+            animal.RevertirTacto(tacto.EstadoAnteriorId, anterior?.FechaHoraUtc, ahora);
+            tacto.MarcarAnulado(ahora); // el único cambio que la base permite sobre un tacto guardado
+
+            _tactos.Agregar(anulacion);
+            _historial.Agregar(Historial.Crear("Tacto", anulacion.Id, "Estado", Ayudas.IdATextoONulo(estadoActual),
+                Ayudas.IdATextoONulo(anulacion.EstadoNuevoId), ahora, c.UsuarioId, AccionHistorial.AnulacionTacto));
+            return Resultado.Ok(anulacion.Id);
+        }
+        catch (DominioException ex) { return Ayudas.DatosInvalidos<Guid>(ex); }
+    }
 }

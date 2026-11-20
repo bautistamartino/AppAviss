@@ -124,6 +124,8 @@ public sealed record ResultadoDeshacerDto(
 /// <param name="RegistroId">Id del tacto, de la marca o del cierre: es lo que se manda a deshacer.</param>
 /// <param name="Detalle">Estado del tacto (nombre) o tipo de cierre.</param>
 /// <param name="CantidadAviss">Solo en cierres: lo que contaba Aviss al cerrar, lo confirmado y el contador de hoy (RF-8).</param>
+/// <param name="Cvet">El CVET de la vaca (por qué estaba en la lista de tacto); vacío en los cierres o si el Excel no lo traía.</param>
+/// <param name="Observaciones">La observación del tacto, si la tenía.</param>
 public sealed record MovimientoDto(
     TipoMovimiento Tipo,
     Guid RegistroId,
@@ -137,7 +139,9 @@ public sealed record MovimientoDto(
     bool PuedeDeshacer,
     int? CantidadAviss,
     int? CantidadConfirmada,
-    int? ContadorActual);
+    int? ContadorActual,
+    string? Cvet = null,
+    string? Observaciones = null);
 
 public sealed record RodeoParaTrabajarDto(
     Guid EstablecimientoId,

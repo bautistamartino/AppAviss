@@ -89,7 +89,15 @@ internal sealed class CampoService : ICampoService
     public Task<Resultado<Guid>> RegistrarTactoAsync(RegistrarTactoCommand comando, CancellationToken ct = default)
         => EscribirAsync(p => p.GetRequiredService<ITrabajoCampoService>().RegistrarTactoAsync(comando, ct), ct);
 
-    // ---- Deshacer y movimientos ----
+    // ---- Resetear un rodeo (para pruebas) ----
+
+    public Task<Resultado<Guid>> ResetearRodeoAsync(Guid rodeoId, CancellationToken ct = default)
+        => LeerAsync(p => p.GetRequiredService<IImportacionService>().ResetearRodeoAsync(rodeoId, ct));
+
+    // ---- Deshacer, corregir y movimientos ----
+
+    public Task<Resultado<Guid>> CorregirTactoAsync(CorregirTactoCommand comando, CancellationToken ct = default)
+        => EscribirAsync(p => p.GetRequiredService<ITrabajoCampoService>().CorregirTactoAsync(comando, ct), ct);
 
     public Task<Resultado<ResultadoDeshacerDto>> DeshacerAsync(DeshacerCommand comando, CancellationToken ct = default)
         => EscribirAsync(p => DeshacerEnScopeAsync(p, comando, ct), ct);

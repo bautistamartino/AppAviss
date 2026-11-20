@@ -97,25 +97,27 @@ internal sealed class ConsultaCampoService
                             join a in _db.Animales on t.AnimalId equals a.Id
                             where a.RodeoId == rodeoId && t.Tipo == TipoTacto.Normal
                             orderby t.FechaHoraUtc descending, t.OrdenInsercion descending
-                            select new { t.Id, t.AnimalId, a.NumeroCaravana, t.FechaHoraUtc, t.OrdenInsercion, t.UsuarioId, t.EstadoNuevoId, t.Anulado })
+                            select new { t.Id, t.AnimalId, a.NumeroCaravana, a.DatosOriginalesJson, t.Observaciones, t.FechaHoraUtc, t.OrdenInsercion, t.UsuarioId, t.EstadoNuevoId, t.Anulado })
             .Take(MaximoMovimientos).ToListAsync(ct);
         foreach (var t in tactos)
         {
             var estado = t.EstadoNuevoId is Guid e && estados.TryGetValue(e, out var nombre) ? nombre : null;
             candidatos.Add((new MovimientoDto(TipoMovimiento.Tacto, t.Id, t.AnimalId, t.NumeroCaravana, null, estado,
-                t.FechaHoraUtc, Veterinario(t.UsuarioId), t.Anulado, false, null, null, null), t.OrdenInsercion + 1));
+                t.FechaHoraUtc, Veterinario(t.UsuarioId), t.Anulado, false, null, null, null,
+                ConstructorFicha.LeerCvet(t.DatosOriginalesJson), t.Observaciones), t.OrdenInsercion + 1));
         }
 
         var marcas = await (from m in _db.MarcasPasada.AsNoTracking()
                             join a in _db.Animales on m.AnimalId equals a.Id
                             where a.RodeoId == rodeoId
                             orderby m.FechaHoraUtc descending, m.OrdenInsercion descending
-                            select new { m.Id, m.AnimalId, a.NumeroCaravana, m.MangaId, m.FechaHoraUtc, m.OrdenInsercion, m.UsuarioId, m.Anulado })
+                            select new { m.Id, m.AnimalId, a.NumeroCaravana, a.DatosOriginalesJson, m.MangaId, m.FechaHoraUtc, m.OrdenInsercion, m.UsuarioId, m.Anulado })
             .Take(MaximoMovimientos).ToListAsync(ct);
         foreach (var m in marcas)
         {
             candidatos.Add((new MovimientoDto(TipoMovimiento.Marca, m.Id, m.AnimalId, m.NumeroCaravana,
-                numerosManga.GetValueOrDefault(m.MangaId), null, m.FechaHoraUtc, Veterinario(m.UsuarioId), m.Anulado, false, null, null, null),
+                numerosManga.GetValueOrDefault(m.MangaId), null, m.FechaHoraUtc, Veterinario(m.UsuarioId), m.Anulado, false, null, null, null,
+                ConstructorFicha.LeerCvet(m.DatosOriginalesJson)),
                 m.OrdenInsercion + 1));
         }
 

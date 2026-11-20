@@ -54,6 +54,9 @@ public class ImportarViewModelTests
         }
 
         public void Descartar(Guid vistaPreviaId) => Descartados.Add(vistaPreviaId);
+
+        public Task<Resultado<Guid>> ResetearRodeoAsync(Guid rodeoId, CancellationToken ct = default)
+            => throw new NotSupportedException("No se usa en estas pruebas.");
     }
 
     private sealed class NavegacionFalsa : INavegacion

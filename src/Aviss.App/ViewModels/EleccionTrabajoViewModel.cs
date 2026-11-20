@@ -216,6 +216,90 @@ public sealed partial class EleccionTrabajoViewModel : ObservableObject
         HayVeterinarios = Veterinarios.Count > 0;
     }
 
+    // ------------------------------------------------------------------ resetear un rodeo (para pruebas), con doble verificación
+
+    /// <summary>El rodeo que se está por resetear (vale mientras se muestran las dos preguntas).</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HayReseteo), nameof(EsPrimerPasoReseteo), nameof(EsSegundoPasoReseteo), nameof(NombreRodeoAResetear))]
+    private RodeoParaTrabajarDto? _rodeoAResetear;
+
+    /// <summary>0 = nada; 1 = primera pregunta; 2 = segunda pregunta (la que ejecuta).</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(EsPrimerPasoReseteo), nameof(EsSegundoPasoReseteo))]
+    private int _pasoReseteo;
+
+    [ObservableProperty]
+    private bool _estaReseteando;
+
+    /// <summary>Un aviso (por ejemplo, "Rodeo reseteado").</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HayMensajeInfo))]
+    private string? _mensajeInfo;
+
+    public bool HayMensajeInfo => !string.IsNullOrEmpty(MensajeInfo);
+    public bool HayReseteo => RodeoAResetear is not null;
+    public bool EsPrimerPasoReseteo => HayReseteo && PasoReseteo == 1;
+    public bool EsSegundoPasoReseteo => HayReseteo && PasoReseteo == 2;
+    public string NombreRodeoAResetear => RodeoAResetear?.RodeoNombre ?? "";
+
+    /// <summary>El botón chico de un rodeo: abre la primera pregunta.</summary>
+    [RelayCommand]
+    private void PedirReseteo(RodeoParaTrabajarDto? rodeo)
+    {
+        if (rodeo is null || EstaReseteando) return;
+        MensajeError = null;
+        MensajeInfo = null;
+        RodeoAResetear = rodeo;
+        PasoReseteo = 1;
+    }
+
+    /// <summary>"Sí" a la primera pregunta: pasa a la segunda. Todavía no se cambia nada.</summary>
+    [RelayCommand]
+    private void ConfirmarPrimerPasoReseteo()
+    {
+        if (!EsPrimerPasoReseteo) return;
+        PasoReseteo = 2;
+    }
+
+    [RelayCommand]
+    private void CancelarReseteo()
+    {
+        RodeoAResetear = null;
+        PasoReseteo = 0;
+    }
+
+    /// <summary>"Sí" a la segunda pregunta: resetea el rodeo (se vuelve a importar de su Excel original y el viejo se da de baja).</summary>
+    [RelayCommand]
+    private async Task ConfirmarReseteoAsync()
+    {
+        if (!EsSegundoPasoReseteo || RodeoAResetear is not { } rodeo || EstaReseteando) return;
+
+        EstaReseteando = true;
+        try
+        {
+            var nombre = rodeo.RodeoNombre;
+            var resultado = await _campo.ResetearRodeoAsync(rodeo.RodeoId);
+            CancelarReseteo();
+            if (!resultado.EsCorrecto)
+            {
+                MensajeError = resultado.Mensaje;
+                return;
+            }
+
+            await CargarAsync();   // vuelve a leer los rodeos: el nuevo aparece en 0
+            MensajeInfo = $"Rodeo reseteado: {nombre} volvió a como se subió el Excel.";
+        }
+        catch (Exception)
+        {
+            CancelarReseteo();
+            MensajeError = MensajeFalla;
+        }
+        finally
+        {
+            EstaReseteando = false;
+        }
+    }
+
     // ------------------------------------------------------------------ empezar
 
     [RelayCommand(CanExecute = nameof(PuedeEmpezar))]

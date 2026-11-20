@@ -339,6 +339,28 @@ public sealed class ConsultasCampoTests : IDisposable
     }
 
     [Fact]
+    public async Task Los_movimientos_traen_el_cvet_de_la_vaca_y_la_observacion_del_tacto()
+    {
+        var animal = _e.AnimalImportado("100", _e.EstadoSeca, json: """{"ID":"100","CVET":"PRE"}""");
+        await _e.LeerAsync("100");
+        _e.Reloj.Avanzar(TimeSpan.FromSeconds(1));
+        var r = await _e.Campo.RegistrarTactoAsync(new Aviss.Application.Comandos.RegistrarTactoCommand(animal, _e.EstadoPrenada, null, "Cojera", _e.UsuarioId));
+        Assert.True(r.EsCorrecto, r.Mensaje);
+        var sinCvet = _e.AnimalImportado("200", _e.EstadoSeca);
+        await _e.LeerAsync("200");
+
+        var lista = await _e.Campo.ListarMovimientosAsync(_e.RodeoId);
+
+        var tacto = lista.Single(m => m.Tipo == TipoMovimiento.Tacto);
+        Assert.Equal("PRE", tacto.Cvet);
+        Assert.Equal("Cojera", tacto.Observaciones);
+        Assert.Equal("PREÑADA", tacto.Detalle);
+        Assert.Equal("PRE", lista.Single(m => m.Tipo == TipoMovimiento.Marca && m.Caravana == "100").Cvet);
+        Assert.Equal("", lista.Single(m => m.Tipo == TipoMovimiento.Marca && m.Caravana == "200").Cvet);
+        _ = sinCvet;
+    }
+
+    [Fact]
     public async Task Una_marca_desmarcada_sale_anulada_y_ya_no_se_puede_deshacer()
     {
         var (_, lectura) = await _e.VacaMarcadaAsync("100");

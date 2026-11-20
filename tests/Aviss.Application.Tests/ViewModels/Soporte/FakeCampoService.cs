@@ -124,6 +124,24 @@ public class FakeCampoService : ICampoService
             ?? Resultado.Ok(new ResultadoDeshacerDto(comando.Tipo, null, null, 1, 0)));
     }
 
+    public List<Aviss.Application.Comandos.CorregirTactoCommand> Correcciones { get; } = [];
+    public Func<Aviss.Application.Comandos.CorregirTactoCommand, Resultado<Guid>>? OnCorregir { get; set; }
+
+    public Task<Resultado<Guid>> CorregirTactoAsync(Aviss.Application.Comandos.CorregirTactoCommand comando, CancellationToken ct = default)
+    {
+        Correcciones.Add(comando);
+        return Task.FromResult(OnCorregir?.Invoke(comando) ?? Resultado.Ok(Guid.NewGuid()));
+    }
+
+    public List<Guid> Reseteados { get; } = [];
+    public Func<Guid, Resultado<Guid>>? OnResetear { get; set; }
+
+    public Task<Resultado<Guid>> ResetearRodeoAsync(Guid rodeoId, CancellationToken ct = default)
+    {
+        Reseteados.Add(rodeoId);
+        return Task.FromResult(OnResetear?.Invoke(rodeoId) ?? Resultado.Ok(Guid.NewGuid()));
+    }
+
     public virtual Task<IReadOnlyList<MovimientoDto>> ListarMovimientosAsync(Guid rodeoId, CancellationToken ct = default)
     {
         ConsultasDeMovimientos++;
@@ -179,8 +197,9 @@ public static class Datos
             aviss, confirmada ?? aviss, (confirmada ?? aviss) - aviss, aviss), Avance(procesadas: aviss));
 
     public static MovimientoDto Movimiento(TipoMovimiento tipo, bool puedeDeshacer = true, bool anulado = false,
-        int? cantidadAviss = null, int? cantidadConfirmada = null, int? contadorActual = null, string? caravana = "1001")
-        => new(tipo, Guid.NewGuid(), tipo == TipoMovimiento.Cierre ? null : Guid.NewGuid(), caravana, 1, null,
+        int? cantidadAviss = null, int? cantidadConfirmada = null, int? contadorActual = null, string? caravana = "1001",
+        string? detalle = null, string? cvet = null, string? observaciones = null)
+        => new(tipo, Guid.NewGuid(), tipo == TipoMovimiento.Cierre ? null : Guid.NewGuid(), caravana, 1, detalle,
             new DateTime(2026, 11, 17, 13, 0, 0, DateTimeKind.Utc), "Dra. Ana", anulado, puedeDeshacer,
-            cantidadAviss, cantidadConfirmada, contadorActual);
+            cantidadAviss, cantidadConfirmada, contadorActual, cvet, observaciones);
 }

@@ -2,65 +2,118 @@
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:vm="clr-namespace:Aviss.App.ViewModels"
+             xmlns:dto="clr-namespace:Aviss.Application.Campo;assembly=Aviss.Application"
              x:Class="Aviss.App.Paginas.MovimientosPage"
              x:DataType="vm:MovimientosViewModel"
              BackgroundColor="White"
              Title="Últimos movimientos">
 
-    <!-- Los 50 movimientos más recientes del rodeo, con "Deshacer" donde corresponda (spec 003, RF-28 y RF-29). -->
-    <Grid RowDefinitions="Auto,Auto,*" Padding="12,12" RowSpacing="10">
+    <!-- Los 50 movimientos más recientes del rodeo, con "Editar" y "Deshacer" donde corresponda (spec 003, RF-28 y RF-29). -->
+    <Grid>
+        <Grid RowDefinitions="Auto,Auto,*" Padding="12,12" RowSpacing="10">
 
-        <Grid Grid.Row="0" ColumnDefinitions="Auto,*" ColumnSpacing="12">
-            <Button Grid.Column="0" Text="Volver" Style="{StaticResource BotonCampoSecundario}" HeightRequest="56" FontSize="20" Clicked="OnVolverClicked" />
-            <Label Grid.Column="1" Text="Últimos movimientos" Style="{StaticResource TituloCuadro}" FontSize="26" VerticalOptions="Center"
-                   SemanticProperties.HeadingLevel="Level1" />
+            <Grid Grid.Row="0" ColumnDefinitions="Auto,*" ColumnSpacing="12">
+                <Button Grid.Column="0" Text="Volver" Style="{StaticResource BotonCampoSecundario}" HeightRequest="56" FontSize="20" Clicked="OnVolverClicked" />
+                <Label Grid.Column="1" Text="Últimos movimientos" Style="{StaticResource TituloCuadro}" FontSize="26" VerticalOptions="Center"
+                       SemanticProperties.HeadingLevel="Level1" />
+            </Grid>
+
+            <VerticalStackLayout Grid.Row="1" Spacing="8">
+                <Border IsVisible="{Binding HayMensajeError}" BackgroundColor="{StaticResource CampoPeligro}" StrokeThickness="0" Padding="16,10">
+                    <Label Text="{Binding MensajeError}" TextColor="White" FontSize="22" FontAttributes="Bold" />
+                </Border>
+                <Border IsVisible="{Binding HayMensajeInfo}" BackgroundColor="{StaticResource CampoAlerta}" StrokeThickness="0" Padding="16,10">
+                    <Label Text="{Binding MensajeInfo}" TextColor="Black" FontSize="22" FontAttributes="Bold" />
+                </Border>
+            </VerticalStackLayout>
+
+            <CollectionView Grid.Row="2" ItemsSource="{Binding Movimientos}" SelectionMode="None">
+                <CollectionView.EmptyView>
+                    <Label Text="Todavía no hay movimientos en este rodeo." Style="{StaticResource TextoCampo}" FontSize="26"
+                           HorizontalOptions="Center" VerticalOptions="Center" />
+                </CollectionView.EmptyView>
+                <CollectionView.ItemTemplate>
+                    <DataTemplate x:DataType="vm:MovimientoItem">
+                        <!-- Una fila compacta y alineada: la hora en una columna fija; en el medio la caravana con su CVET y debajo
+                             "Tacto · evento" (y la observación si hay); a la derecha los botones apilados, todos del mismo ancho.
+                             Sin manga ni veterinario. -->
+                        <Grid ColumnDefinitions="62,*,Auto" ColumnSpacing="8" Padding="10,6" Margin="0,0,0,6" BackgroundColor="{StaticResource CampoClaro}">
+                            <Label Grid.Column="0" Text="{Binding Hora}" Style="{StaticResource TextoCampo}" FontSize="20" FontAttributes="Bold"
+                                   VerticalOptions="Center" />
+
+                            <VerticalStackLayout Grid.Column="1" Spacing="0" VerticalOptions="Center">
+                                <HorizontalStackLayout Spacing="8">
+                                    <Label Text="{Binding Titulo}" Style="{StaticResource TextoCampo}" FontSize="22" FontAttributes="Bold" VerticalOptions="Center">
+                                        <Label.Triggers>
+                                            <DataTrigger TargetType="Label" Binding="{Binding Anulado}" Value="True">
+                                                <Setter Property="TextDecorations" Value="Strikethrough" />
+                                            </DataTrigger>
+                                        </Label.Triggers>
+                                    </Label>
+                                    <Border IsVisible="{Binding HayCvet}" BackgroundColor="{StaticResource CampoAlerta}" StrokeThickness="0" Padding="6,1"
+                                            VerticalOptions="Center">
+                                        <Label Text="{Binding TextoCvet}" TextColor="Black" FontSize="14" FontAttributes="Bold" />
+                                    </Border>
+                                </HorizontalStackLayout>
+                                <Label Text="{Binding TextoTipoDetalle}" Style="{StaticResource TextoCampo}" FontSize="18" LineBreakMode="TailTruncation" />
+                                <Label Text="{Binding Observacion, StringFormat='Obs.: {0}'}" IsVisible="{Binding HayObservacion}" Style="{StaticResource TextoCampo}"
+                                       FontSize="15" TextColor="{StaticResource Gray600}" LineBreakMode="TailTruncation" />
+                                <Label Text="{Binding TextoCierre}" IsVisible="{Binding HayTextoCierre}" Style="{StaticResource TextoCampo}"
+                                       FontSize="16" FontAttributes="Bold" />
+                            </VerticalStackLayout>
+
+                            <VerticalStackLayout Grid.Column="2" Spacing="6" VerticalOptions="Center">
+                                <Button Text="Editar" Style="{StaticResource BotonCampoSecundario}" HeightRequest="40" WidthRequest="96" FontSize="16"
+                                        MinimumWidthRequest="0" Padding="0"
+                                        IsVisible="{Binding PuedeEditar}"
+                                        Command="{Binding Source={RelativeSource AncestorType={x:Type vm:MovimientosViewModel}}, Path=EditarCommand, x:DataType=vm:MovimientosViewModel}"
+                                        CommandParameter="{Binding .}" />
+                                <Button Text="Deshacer" Style="{StaticResource BotonCampoAlerta}" HeightRequest="40" WidthRequest="96" FontSize="16"
+                                        MinimumWidthRequest="0" Padding="0"
+                                        IsVisible="{Binding PuedeDeshacer}"
+                                        Command="{Binding Source={RelativeSource AncestorType={x:Type vm:MovimientosViewModel}}, Path=DeshacerCommand, x:DataType=vm:MovimientosViewModel}"
+                                        CommandParameter="{Binding .}" />
+                            </VerticalStackLayout>
+                        </Grid>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
         </Grid>
 
-        <VerticalStackLayout Grid.Row="1" Spacing="8">
-            <Border IsVisible="{Binding HayMensajeError}" BackgroundColor="{StaticResource CampoPeligro}" StrokeThickness="0" Padding="16,10">
-                <Label Text="{Binding MensajeError}" TextColor="White" FontSize="22" FontAttributes="Bold" />
-            </Border>
-            <Border IsVisible="{Binding HayMensajeInfo}" BackgroundColor="{StaticResource CampoAlerta}" StrokeThickness="0" Padding="16,10">
-                <Label Text="{Binding MensajeInfo}" TextColor="Black" FontSize="22" FontAttributes="Bold" />
-            </Border>
-        </VerticalStackLayout>
+        <!-- Editar un tacto: elegir otro evento y/o cambiar la observación. Se anula el tacto y se registra uno nuevo (queda el historial). -->
+        <Grid IsVisible="{Binding HayEdicion}" BackgroundColor="{StaticResource CampoVelo}" Padding="14">
+            <Grid.GestureRecognizers><TapGestureRecognizer /></Grid.GestureRecognizers>
+            <Border BackgroundColor="White" StrokeThickness="0" Padding="18,16" HorizontalOptions="Fill" VerticalOptions="Center">
+                <VerticalStackLayout Spacing="12">
+                    <Label Text="{Binding TituloEdicion}" Style="{StaticResource TituloCuadro}" FontSize="24" />
+                    <Label Text="{Binding TextoEventoEditado, StringFormat='Evento: {0}'}" Style="{StaticResource TextoCampo}" FontSize="20" FontAttributes="Bold"
+                           TextColor="{StaticResource CampoExito}" />
 
-        <CollectionView Grid.Row="2" ItemsSource="{Binding Movimientos}" SelectionMode="None">
-            <CollectionView.EmptyView>
-                <Label Text="Todavía no hay movimientos en este rodeo." Style="{StaticResource TextoCampo}" FontSize="26"
-                       HorizontalOptions="Center" VerticalOptions="Center" />
-            </CollectionView.EmptyView>
-            <CollectionView.ItemTemplate>
-                <DataTemplate x:DataType="vm:MovimientoItem">
-                    <!-- En vertical cada movimiento ocupa dos renglones: hora + qué pasó (+ Deshacer a la derecha) y debajo el detalle. -->
-                    <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="12" RowSpacing="2" Padding="12,8" Margin="0,0,0,8"
-                          BackgroundColor="{StaticResource CampoClaro}">
-                        <Label Grid.Row="0" Grid.Column="0" Text="{Binding Hora}" Style="{StaticResource TextoCampo}" FontSize="22" FontAttributes="Bold"
-                               VerticalOptions="Center" />
-                        <VerticalStackLayout Grid.Row="0" Grid.Column="1" VerticalOptions="Center">
-                            <Label Text="{Binding Tipo}" Style="{StaticResource TextoCampo}" FontSize="15" TextColor="{StaticResource Gray600}" />
-                            <Label Text="{Binding Titulo}" Style="{StaticResource TextoCampo}" FontSize="22" FontAttributes="Bold">
-                                <Label.Triggers>
-                                    <DataTrigger TargetType="Label" Binding="{Binding Anulado}" Value="True">
-                                        <Setter Property="TextDecorations" Value="Strikethrough" />
-                                    </DataTrigger>
-                                </Label.Triggers>
-                            </Label>
+                    <ScrollView MaximumHeightRequest="260">
+                        <VerticalStackLayout BindableLayout.ItemsSource="{Binding EstadosParaEditar}" Spacing="8">
+                            <BindableLayout.ItemTemplate>
+                                <DataTemplate x:DataType="dto:EstadoActivoDto">
+                                    <Button Text="{Binding Nombre}" Style="{StaticResource BotonCampoSecundario}" HeightRequest="52" FontSize="20"
+                                            Command="{Binding Source={RelativeSource AncestorType={x:Type vm:MovimientosViewModel}}, Path=ElegirEventoEditadoCommand, x:DataType=vm:MovimientosViewModel}"
+                                            CommandParameter="{Binding .}" />
+                                </DataTemplate>
+                            </BindableLayout.ItemTemplate>
                         </VerticalStackLayout>
-                        <VerticalStackLayout Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="3">
-                            <Label Text="{Binding Detalle}" Style="{StaticResource TextoCampo}" FontSize="18" />
-                            <Label Text="{Binding TextoCierre}" IsVisible="{Binding HayTextoCierre}" Style="{StaticResource TextoCampo}"
-                                   FontSize="18" FontAttributes="Bold" />
-                            <Label Text="{Binding Veterinario}" Style="{StaticResource TextoCampo}" FontSize="15" TextColor="{StaticResource Gray600}" />
-                        </VerticalStackLayout>
-                        <Button Grid.Row="0" Grid.Column="2" Text="Deshacer" Style="{StaticResource BotonCampoAlerta}" HeightRequest="52" FontSize="17"
-                                MinimumWidthRequest="0" Padding="12,0"
-                                IsVisible="{Binding PuedeDeshacer}"
-                                Command="{Binding Source={RelativeSource AncestorType={x:Type vm:MovimientosViewModel}}, Path=DeshacerCommand, x:DataType=vm:MovimientosViewModel}"
-                                CommandParameter="{Binding .}" />
-                    </Grid>
-                </DataTemplate>
-            </CollectionView.ItemTemplate>
-        </CollectionView>
+                    </ScrollView>
+
+                    <Editor Text="{Binding ObservacionEditada}" Placeholder="Observación (opcional)" MaxLength="300" HeightRequest="90" FontSize="18"
+                            TextColor="Black" BackgroundColor="{StaticResource CampoClaro}" AutoSize="Disabled" />
+
+                    <Border IsVisible="{Binding HayMensajeEdicion}" BackgroundColor="{StaticResource CampoPeligro}" StrokeThickness="0" Padding="12,8">
+                        <Label Text="{Binding MensajeEdicion}" TextColor="White" FontSize="18" FontAttributes="Bold" />
+                    </Border>
+
+                    <Button Text="Guardar" Style="{StaticResource BotonCampo}" HeightRequest="56" FontSize="22" BackgroundColor="{StaticResource CampoExito}"
+                            Command="{Binding GuardarEdicionCommand}" />
+                    <Button Text="Cancelar" Style="{StaticResource BotonCampoSecundario}" HeightRequest="52" FontSize="20"
+                            Command="{Binding CancelarEdicionCommand}" />
+                </VerticalStackLayout>
+            </Border>
+        </Grid>
     </Grid>
 </ContentPage>
