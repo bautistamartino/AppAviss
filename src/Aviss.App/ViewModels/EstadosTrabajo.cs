@@ -25,10 +25,8 @@ public enum CuadroTrabajo
     Ninguno,
     /// <summary>"Animal repetido" o "Ya pasó" (RF-22).</summary>
     Aviso,
-    /// <summary>"Caravana no encontrada": dar de alta o buscar a mano (RF-24).</summary>
+    /// <summary>"Caravana no encontrada": buscar a mano o cerrar (RF-24).</summary>
     NoEncontrada,
-    /// <summary>Formulario de alta en campo (RF-25).</summary>
-    Alta,
     /// <summary>"¿Deshacer lo último de esta vaca?" (RF-22).</summary>
     ConfirmarCorregir,
     /// <summary>Contador y caravanas con "Coincide" / "No coincide" (RF-6, RF-7).</summary>

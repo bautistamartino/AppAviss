@@ -8,11 +8,11 @@
              Title="Últimos movimientos">
 
     <!-- Los 50 movimientos más recientes del rodeo, con "Deshacer" donde corresponda (spec 003, RF-28 y RF-29). -->
-    <Grid RowDefinitions="Auto,Auto,*" Padding="24,16" RowSpacing="12">
+    <Grid RowDefinitions="Auto,Auto,*" Padding="12,12" RowSpacing="10">
 
-        <Grid Grid.Row="0" ColumnDefinitions="Auto,*" ColumnSpacing="16">
-            <Button Grid.Column="0" Text="Volver" Style="{StaticResource BotonCampoSecundario}" Clicked="OnVolverClicked" />
-            <Label Grid.Column="1" Text="Últimos movimientos" Style="{StaticResource TituloCuadro}" FontSize="36" VerticalOptions="Center"
+        <Grid Grid.Row="0" ColumnDefinitions="Auto,*" ColumnSpacing="12">
+            <Button Grid.Column="0" Text="Volver" Style="{StaticResource BotonCampoSecundario}" HeightRequest="56" FontSize="20" Clicked="OnVolverClicked" />
+            <Label Grid.Column="1" Text="Últimos movimientos" Style="{StaticResource TituloCuadro}" FontSize="26" VerticalOptions="Center"
                    SemanticProperties.HeadingLevel="Level1" />
         </Grid>
 
@@ -32,13 +32,14 @@
             </CollectionView.EmptyView>
             <CollectionView.ItemTemplate>
                 <DataTemplate x:DataType="vm:MovimientoItem">
-                    <Grid ColumnDefinitions="110,220,*,Auto" ColumnSpacing="16" Padding="16,10" Margin="0,0,0,8"
-                          BackgroundColor="{StaticResource CampoClaro}" MinimumHeightRequest="72">
-                        <Label Grid.Column="0" Text="{Binding Hora}" Style="{StaticResource TextoCampo}" FontSize="26" FontAttributes="Bold"
+                    <!-- En vertical cada movimiento ocupa dos renglones: hora + qué pasó (+ Deshacer a la derecha) y debajo el detalle. -->
+                    <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="12" RowSpacing="2" Padding="12,8" Margin="0,0,0,8"
+                          BackgroundColor="{StaticResource CampoClaro}">
+                        <Label Grid.Row="0" Grid.Column="0" Text="{Binding Hora}" Style="{StaticResource TextoCampo}" FontSize="22" FontAttributes="Bold"
                                VerticalOptions="Center" />
-                        <VerticalStackLayout Grid.Column="1" VerticalOptions="Center">
-                            <Label Text="{Binding Tipo}" Style="{StaticResource TextoCampo}" FontSize="18" TextColor="{StaticResource Gray600}" />
-                            <Label Text="{Binding Titulo}" Style="{StaticResource TextoCampo}" FontSize="28" FontAttributes="Bold">
+                        <VerticalStackLayout Grid.Row="0" Grid.Column="1" VerticalOptions="Center">
+                            <Label Text="{Binding Tipo}" Style="{StaticResource TextoCampo}" FontSize="15" TextColor="{StaticResource Gray600}" />
+                            <Label Text="{Binding Titulo}" Style="{StaticResource TextoCampo}" FontSize="22" FontAttributes="Bold">
                                 <Label.Triggers>
                                     <DataTrigger TargetType="Label" Binding="{Binding Anulado}" Value="True">
                                         <Setter Property="TextDecorations" Value="Strikethrough" />
@@ -46,13 +47,14 @@
                                 </Label.Triggers>
                             </Label>
                         </VerticalStackLayout>
-                        <VerticalStackLayout Grid.Column="2" VerticalOptions="Center">
-                            <Label Text="{Binding Detalle}" Style="{StaticResource TextoCampo}" FontSize="22" />
+                        <VerticalStackLayout Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="3">
+                            <Label Text="{Binding Detalle}" Style="{StaticResource TextoCampo}" FontSize="18" />
                             <Label Text="{Binding TextoCierre}" IsVisible="{Binding HayTextoCierre}" Style="{StaticResource TextoCampo}"
-                                   FontSize="22" FontAttributes="Bold" />
-                            <Label Text="{Binding Veterinario}" Style="{StaticResource TextoCampo}" FontSize="18" TextColor="{StaticResource Gray600}" />
+                                   FontSize="18" FontAttributes="Bold" />
+                            <Label Text="{Binding Veterinario}" Style="{StaticResource TextoCampo}" FontSize="15" TextColor="{StaticResource Gray600}" />
                         </VerticalStackLayout>
-                        <Button Grid.Column="3" Text="Deshacer" Style="{StaticResource BotonCampoAlerta}" HeightRequest="64"
+                        <Button Grid.Row="0" Grid.Column="2" Text="Deshacer" Style="{StaticResource BotonCampoAlerta}" HeightRequest="52" FontSize="17"
+                                MinimumWidthRequest="0" Padding="12,0"
                                 IsVisible="{Binding PuedeDeshacer}"
                                 Command="{Binding Source={RelativeSource AncestorType={x:Type vm:MovimientosViewModel}}, Path=DeshacerCommand, x:DataType=vm:MovimientosViewModel}"
                                 CommandParameter="{Binding .}" />

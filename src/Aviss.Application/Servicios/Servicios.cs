@@ -99,13 +99,12 @@ public interface ICampoService
     Task<Resultado<ResultadoCierreDto>> FinalizarMangaAsync(FinalizarMangaCommand comando, CancellationToken ct = default);
     Task<Resultado<ResultadoCierreDto>> TerminarElTactoAsync(TerminarElTactoCommand comando, CancellationToken ct = default);
 
-    // ---- Lectura, ficha y tacto (RF-11 a RF-19, RF-22 a RF-25) ----
+    // ---- Lectura, ficha y tacto (RF-11 a RF-19, RF-22 a RF-24) ----
     Task<Resultado<ResultadoLecturaDto>> ProcesarLecturaAsync(ProcesarLecturaCommand comando, CancellationToken ct = default);
     Task<Resultado<FichaAnimalDto>> ObtenerFichaAsync(Guid animalId, CancellationToken ct = default);
     Task<Resultado<Guid>> RegistrarTactoAsync(RegistrarTactoCommand comando, CancellationToken ct = default);
-    Task<Resultado<ResultadoAltaDto>> AltaEnCampoConMarcaAsync(AltaConMarcaCommand comando, CancellationToken ct = default);
 
-    // ---- Deshacer y movimientos (RF-26 a RF-29) ----
+    // ---- Deshacer y movimientos (RF-26 a RF-28) ----
     Task<Resultado<ResultadoDeshacerDto>> DeshacerAsync(DeshacerCommand comando, CancellationToken ct = default);
     Task<IReadOnlyList<MovimientoDto>> ListarMovimientosAsync(Guid rodeoId, CancellationToken ct = default);
 

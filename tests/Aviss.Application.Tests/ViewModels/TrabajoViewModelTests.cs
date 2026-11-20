@@ -401,10 +401,10 @@ public class TrabajoViewModelTests
         Assert.Equal(CuadroTrabajo.Aviso, b.Vm.Cuadro);   // no pasó a la confirmación
     }
 
-    // ------------------------------------------------------------------ caravana no encontrada, alta y búsqueda manual
+    // ------------------------------------------------------------------ caravana no encontrada y búsqueda manual
 
     [Fact]
-    public async Task Una_caravana_inexistente_ofrece_alta_o_busqueda_sin_guardar_nada()
+    public async Task Una_caravana_inexistente_ofrece_buscar_a_mano_sin_guardar_nada()
     {
         var b = new Banco();
 
@@ -412,75 +412,7 @@ public class TrabajoViewModelTests
 
         Assert.Equal(CuadroTrabajo.NoEncontrada, b.Vm.Cuadro);
         Assert.Equal("9999", b.Vm.CodigoNoEncontrado);
-        Assert.Empty(b.Campo.Altas);
         Assert.Empty(b.Campo.Tactos);
-    }
-
-    [Fact]
-    public async Task Dar_de_alta_precarga_el_codigo_leido_y_guarda_la_caravana_tipeada_con_el_codigo_leido()
-    {
-        var b = new Banco();
-        await b.LeerAsync("9999");
-
-        await b.Vm.DarDeAltaCommand.ExecuteAsync(null);
-        Assert.Equal(CuadroTrabajo.Alta, b.Vm.Cuadro);
-        Assert.Equal("9999", b.Vm.AltaCaravana);   // precarga editable
-
-        b.Vm.AltaCaravana = "1234";
-        await b.Vm.ConfirmarAltaCommand.ExecuteAsync(null);
-
-        var cmd = Assert.Single(b.Campo.Altas);
-        Assert.Equal("1234", cmd.NumeroCaravana);
-        Assert.Equal("9999", cmd.CodigoLeido);
-        Assert.Equal(Datos.Vet.Id, cmd.UsuarioId);
-        Assert.Equal("1234", b.Vm.Ficha!.Caravana);
-        Assert.Equal(CuadroTrabajo.Ninguno, b.Vm.Cuadro);
-        Assert.Equal(TipoDeshacer.Alta, b.Vm.AvisoDeshacer!.Tipo);
-        Assert.True(b.Vm.PuedeAnularAlta);
-    }
-
-    [Fact]
-    public async Task Un_alta_rechazada_muestra_el_motivo_y_se_puede_corregir_la_caravana()
-    {
-        var b = new Banco();
-        b.Campo.OnAlta = _ => Resultado.Error<ResultadoAltaDto>(CodigoError.CaravanaDuplicada, "Esa caravana ya existe en el rodeo.");
-        await b.LeerAsync("9999");
-        await b.Vm.DarDeAltaCommand.ExecuteAsync(null);
-
-        await b.Vm.ConfirmarAltaCommand.ExecuteAsync(null);
-
-        Assert.Equal(CuadroTrabajo.Alta, b.Vm.Cuadro);
-        Assert.Equal("Esa caravana ya existe en el rodeo.", b.Vm.MensajeCuadro);
-        Assert.Null(b.Vm.Ficha);
-        Assert.Null(b.Vm.AvisoDeshacer);
-    }
-
-    [Fact]
-    public async Task Un_alta_con_codigo_inutil_como_identificador_avisa_que_no_se_guardo()
-    {
-        var b = new Banco();
-        b.Campo.OnAlta = c => Resultado.Ok(Datos.ResultadoAlta(c.NumeroCaravana, idOmitido: true));
-        await b.LeerAsync("9999");
-        await b.Vm.DarDeAltaCommand.ExecuteAsync(null);
-        b.Vm.AltaCaravana = "1234";
-
-        await b.Vm.ConfirmarAltaCommand.ExecuteAsync(null);
-
-        Assert.Equal(TrabajoViewModel.MensajeIdOmitido, b.Vm.MensajeInfo);
-    }
-
-    [Fact]
-    public async Task El_alta_que_viene_de_buscar_a_mano_no_lleva_codigo_leido()
-    {
-        var b = new Banco();
-        await b.Vm.EncolarLecturaAsync("5555", esManual: true);
-        Assert.Equal(CuadroTrabajo.NoEncontrada, b.Vm.Cuadro);
-        await b.Vm.DarDeAltaCommand.ExecuteAsync(null);
-
-        await b.Vm.ConfirmarAltaCommand.ExecuteAsync(null);
-
-        Assert.Null(b.Campo.Altas.Single().CodigoLeido);
-        Assert.Equal("5555", b.Campo.Altas.Single().NumeroCaravana);
     }
 
     [Fact]
@@ -492,20 +424,6 @@ public class TrabajoViewModelTests
         await b.Vm.BuscarAManoCommand.ExecuteAsync(null);
 
         Assert.Equal(CuadroTrabajo.Ninguno, b.Vm.Cuadro);
-        Assert.Empty(b.Campo.Altas);
-    }
-
-    [Fact]
-    public async Task Cancelar_el_alta_vuelve_a_no_encontrada()
-    {
-        var b = new Banco();
-        await b.LeerAsync("9999");
-        await b.Vm.DarDeAltaCommand.ExecuteAsync(null);
-
-        await b.Vm.CancelarAltaCommand.ExecuteAsync(null);
-
-        Assert.Equal(CuadroTrabajo.NoEncontrada, b.Vm.Cuadro);
-        Assert.Empty(b.Campo.Altas);
     }
 
     [Fact]
@@ -531,24 +449,6 @@ public class TrabajoViewModelTests
         await b.Vm.BuscarCommand.ExecuteAsync(null);
 
         Assert.Empty(b.Campo.LecturasProcesadas);
-    }
-
-    [Fact]
-    public async Task Anular_el_alta_desde_la_ficha_cierra_la_ficha_y_avisa_que_la_caravana_quedo_libre()
-    {
-        var b = new Banco();
-        b.Campo.OnAlta = c => Resultado.Ok(Datos.ResultadoAlta(c.NumeroCaravana, animalId: Guid.Parse("44444444-0000-0000-0000-000000000001")));
-        await b.LeerAsync("9999");
-        await b.Vm.DarDeAltaCommand.ExecuteAsync(null);
-        await b.Vm.ConfirmarAltaCommand.ExecuteAsync(null);
-
-        await b.Vm.AnularAltaCommand.ExecuteAsync(null);
-
-        var cmd = Assert.Single(b.Campo.Deshaceres);
-        Assert.Equal(TipoDeshacer.Alta, cmd.Tipo);
-        Assert.Equal(Guid.Parse("44444444-0000-0000-0000-000000000001"), cmd.Id);   // en un alta, el id es el del animal
-        Assert.Null(b.Vm.Ficha);
-        Assert.Contains("quedó libre", b.Vm.MensajeInfo);
     }
 
     // ------------------------------------------------------------------ aviso de 5 segundos con "Deshacer"
@@ -876,22 +776,6 @@ public class TrabajoViewModelTests
 
         Assert.Equal(["1002"], b.Campo.LecturasProcesadas.Select(l => l.Codigo));
         Assert.Equal(ultima, b.Vm.Ficha!.AnimalId);
-    }
-
-    [Fact]
-    public async Task Una_lectura_con_el_formulario_de_alta_abierto_no_pierde_lo_que_se_estaba_cargando()
-    {
-        var b = new Banco();
-        b.Vaca("1001");
-        await b.LeerAsync("9999");
-        await b.Vm.DarDeAltaCommand.ExecuteAsync(null);
-        b.Vm.AltaCaravana = "1234";
-
-        await b.LeerAsync("1001");
-
-        Assert.Equal("1234", b.Vm.AltaCaravana);
-        Assert.Equal(CuadroTrabajo.Alta, b.Vm.Cuadro);
-        Assert.Single(b.Campo.LecturasProcesadas);   // solo la de "9999": la otra espera
     }
 
     // ------------------------------------------------------------------ refresco (RF-30)

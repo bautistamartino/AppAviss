@@ -18,17 +18,17 @@ public enum TipoResultadoLectura
     Repetido,
     /// <summary>La vaca ya estaba procesada hoy en otra manga, o con un tacto sin marca: "Ya pasó".</summary>
     YaPaso,
-    /// <summary>No existe en el rodeo: se ofrece alta o búsqueda manual; no se guardó nada.</summary>
+    /// <summary>No existe en el rodeo: se ofrece buscar a mano; no se guardó nada.</summary>
     NoEncontrada
 }
 
 /// <summary>Cómo se presenta el aviso de una vaca ya procesada (lo decide <see cref="ReglasAviso"/>).</summary>
 public enum TipoAviso { Repetido, YaPasoOtraManga, YaPasoSinManga }
 
-/// <summary>Qué se deshace (RF-26 a RF-29). El <c>Id</c> del comando es el del registro o, en un alta, el del animal.</summary>
-public enum TipoDeshacer { Tacto, Marca, Cierre, Alta }
+/// <summary>Qué se deshace (RF-26 a RF-28). El <c>Id</c> del comando es el del registro.</summary>
+public enum TipoDeshacer { Tacto, Marca, Cierre }
 
-public enum TipoMovimiento { Tacto, Marca, Alta, Cierre }
+public enum TipoMovimiento { Tacto, Marca, Cierre }
 
 /// <summary>Para el panel del simulador (solo desarrollo): qué caravana de muestra pedir.</summary>
 public enum MuestraCaravana { Existente, YaLeida }
@@ -46,7 +46,6 @@ public enum OrigenEvento { Excel, Aviss }
 public sealed record EventoFichaDto(
     OrigenEvento Origen, string Titulo, DateTime? FechaLocal, string? TextoFecha, int? DiasTranscurridos, bool Anulado);
 
-/// <param name="PuedeAnularAlta">Solo las altas en campo no anuladas muestran "Anular alta" (RF-29).</param>
 /// <param name="Inseminaciones"><c>VINS</c>: cantidad de inseminaciones (no es una fecha). Vacío si no hay dato.</param>
 /// <param name="UltimoToro"><c>UTORO</c>: el último toro, sin fecha. Vacío si no hay dato.</param>
 public sealed record FichaAnimalDto(
@@ -56,8 +55,6 @@ public sealed record FichaAnimalDto(
     Guid? EstadoId,
     string? EstadoNombre,
     DateTime? FechaUltimoTactoUtc,
-    bool EsAltaEnCampo,
-    bool PuedeAnularAlta,
     IReadOnlyList<CampoFichaDto> Campos,
     string Inseminaciones,
     string UltimoToro,
@@ -109,15 +106,12 @@ public sealed record CierreMangaDto(
 /// <summary>Resultado de "Finalizar manga" o "Terminar el tacto". <see cref="Cierre"/> es nulo si no había manga abierta (solo en Terminar).</summary>
 public sealed record ResultadoCierreDto(CierreMangaDto? Cierre, AvanceRodeoDto Avance);
 
-/// <param name="IdElectronicoOmitido">True si el código leído difería de la caravana pero no servía como identificador electrónico (RF-25): se avisa.</param>
-public sealed record ResultadoAltaDto(
-    Guid AnimalId, FichaAnimalDto Ficha, Guid MarcaId, int NumeroManga, int ContadorManga, bool IdElectronicoOmitido);
 
-/// <param name="ContadorManga">Contador de la manga después de deshacer una marca o un alta.</param>
+/// <param name="ContadorManga">Contador de la manga después de deshacer una marca.</param>
 public sealed record ResultadoDeshacerDto(
     TipoDeshacer Tipo, Guid? AnimalId, Guid? MangaId, int? NumeroManga, int? ContadorManga);
 
-/// <param name="RegistroId">Id del tacto, de la marca, del cierre o, en un alta, del animal: es lo que se manda a deshacer.</param>
+/// <param name="RegistroId">Id del tacto, de la marca o del cierre: es lo que se manda a deshacer.</param>
 /// <param name="Detalle">Estado del tacto (nombre) o tipo de cierre.</param>
 /// <param name="CantidadAviss">Solo en cierres: lo que contaba Aviss al cerrar, lo confirmado y el contador de hoy (RF-8).</param>
 public sealed record MovimientoDto(

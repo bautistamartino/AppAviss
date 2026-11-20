@@ -17,12 +17,11 @@ public sealed class MovimientoItem
     public bool Anulado => Dto.Anulado;
     public bool PuedeDeshacer => Dto.PuedeDeshacer;
 
-    /// <summary>Qué se hizo: "Marca", "Tacto", "Alta en campo" o "Cierre de manga".</summary>
+    /// <summary>Qué se hizo: "Marca", "Tacto" o "Cierre de manga".</summary>
     public string Tipo => Dto.Tipo switch
     {
         TipoMovimiento.Tacto => "Tacto",
         TipoMovimiento.Marca => "Marca",
-        TipoMovimiento.Alta => "Alta en campo",
         _ => "Cierre de manga"
     };
 
@@ -122,10 +121,8 @@ public sealed partial class MovimientosViewModel : ObservableObject
             {
                 TipoMovimiento.Tacto => TipoDeshacer.Tacto,
                 TipoMovimiento.Marca => TipoDeshacer.Marca,
-                TipoMovimiento.Alta => TipoDeshacer.Alta,
                 _ => TipoDeshacer.Cierre
             };
-            // En un alta, RegistroId ya es el id del animal (lo que pide DeshacerAsync).
             var resultado = await _campo.DeshacerAsync(new DeshacerCommand(tipo, item.Dto.RegistroId, vet.Id));
             if (!resultado.EsCorrecto)
             {
@@ -133,7 +130,7 @@ public sealed partial class MovimientosViewModel : ObservableObject
                 return;
             }
 
-            MensajeInfo = tipo == TipoDeshacer.Alta ? "Se anuló el alta: la caravana quedó libre." : "Se deshizo.";
+            MensajeInfo = "Se deshizo.";
             await CargarAsync();
         }
         catch (Exception)

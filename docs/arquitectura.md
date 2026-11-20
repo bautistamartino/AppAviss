@@ -127,7 +127,7 @@ Lectura → ficha → un toque en el estado → guardado automático → vuelve 
 - Botones grandes, alto contraste, legibles al sol, pensados para una mano.
 - Deshacer con snackbar de 5 s (genera un tacto de anulación).
 - Vibración y sonido al leer; pantalla siempre encendida durante el trabajo.
-- No encontrado: botón "Dar de alta en campo" con el ID cargado.
+- No encontrado: aviso con el ID cargado y botones "Buscar a mano" y "Cerrar" (no hay alta en campo desde el 2026-11-19: los números se corrigen en el bastón).
 
 ## 11. Multi-tablet y multi-veterinario
 

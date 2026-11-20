@@ -59,10 +59,9 @@ internal sealed class ArmadorFicha
             .Select(t => new TactoParaFicha(t.FechaHoraUtc, Nombre(t.EstadoNuevoId), t.Anulado));
         var armada = ConstructorFicha.Armar(animal.DatosOriginalesJson, tactos, _reloj.UtcAhora, _zona.Zona);
 
-        var esAlta = animal.Origen == OrigenAnimal.AltaEnCampo;
         return new FichaAnimalDto(
             animal.Id, animal.NumeroCaravana, animal.IdElectronico, animal.EstadoReproductivoId,
-            Nombre(animal.EstadoReproductivoId), animal.FechaUltimoTactoUtc, esAlta, esAlta && !animal.Anulado,
+            Nombre(animal.EstadoReproductivoId), animal.FechaUltimoTactoUtc,
             armada.Campos, armada.Inseminaciones, armada.UltimoToro, armada.Historial);
     }
 }
@@ -73,7 +72,7 @@ internal sealed record MarcaPreparada(MarcaPasada Marca, Manga Manga, int Contad
 /// <summary>
 /// El paso común de "marcar a una vaca en la manga actual" (RF-4, RF-12): obtiene la manga abierta o crea la siguiente
 /// (la manga se abre con su primera marca), toma el orden compartido y deja marca, manga e historial listos para que
-/// la transacción del que llama los guarde juntos. Lo usan la lectura y el alta en campo.
+/// la transacción del que llama los guarde juntos. Lo usa la lectura.
 /// </summary>
 internal sealed class Marcador
 {

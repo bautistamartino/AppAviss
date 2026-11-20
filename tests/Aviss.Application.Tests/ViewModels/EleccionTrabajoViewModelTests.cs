@@ -222,6 +222,73 @@ public class EleccionTrabajoViewModelTests
         Assert.Equal(EleccionTrabajoViewModel.MensajeFalla, vm.MensajeError);
     }
 
+    // ------------------------------------------------------------------ pantalla más clara (formulario y "qué falta")
+
+    [Fact]
+    public async Task Sin_veterinarios_el_formulario_de_alta_se_muestra_solo()
+    {
+        var b = new Banco();
+        b.Campo.Veterinarios = [];
+
+        await b.Vm.CargarAsync();
+
+        Assert.False(b.Vm.HayVeterinarios);
+        Assert.True(b.Vm.MostrarFormularioNuevo);
+    }
+
+    [Fact]
+    public async Task Con_veterinarios_el_formulario_queda_oculto_hasta_pedirlo()
+    {
+        var b = new Banco();
+        await b.Vm.CargarAsync();
+
+        Assert.True(b.Vm.HayVeterinarios);
+        Assert.False(b.Vm.MostrarFormularioNuevo);
+
+        b.Vm.MostrarCrearVeterinarioCommand.Execute(null);
+
+        Assert.True(b.Vm.MostrarFormularioNuevo);
+    }
+
+    [Fact]
+    public async Task Crear_un_veterinario_cierra_el_formulario()
+    {
+        var b = new Banco();
+        await b.Vm.CargarAsync();
+        b.Vm.MostrarCrearVeterinarioCommand.Execute(null);
+        b.Vm.NuevoNombre = "Dra. Marta";
+
+        await b.Vm.CrearVeterinarioCommand.ExecuteAsync(null);
+
+        Assert.False(b.Vm.MostrarFormularioNuevo);
+        Assert.True(b.Vm.HayVeterinarios);
+    }
+
+    [Fact]
+    public async Task Que_falta_dice_que_hay_que_elegir_veterinario_y_rodeo()
+    {
+        var b = new Banco();
+        b.Campo.Rodeos = [Datos.Rodeo(), Datos.Rodeo()];   // dos rodeos del mismo establecimiento: no se elige solo
+        await b.Vm.CargarAsync();
+
+        Assert.True(b.Vm.FaltaAlgo);
+        Assert.Contains("veterinario", b.Vm.QueFalta);
+        Assert.Contains("rodeo", b.Vm.QueFalta);
+    }
+
+    [Fact]
+    public async Task Que_falta_se_vacia_cuando_esta_todo_elegido()
+    {
+        var b = new Banco();
+        b.Campo.Rodeos = [Datos.Rodeo()];
+        b.Preferencias.Recordado = Ana.Id;
+
+        await b.Vm.CargarAsync();
+
+        Assert.False(b.Vm.FaltaAlgo);
+        Assert.Equal("", b.Vm.QueFalta);
+    }
+
     // La fachada que siempre falla (disco, base): el ViewModel no debe caerse.
     private sealed class FalloCampo : FakeCampoService
     {

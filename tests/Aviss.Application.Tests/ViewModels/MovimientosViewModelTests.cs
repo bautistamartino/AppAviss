@@ -24,13 +24,13 @@ public class MovimientosViewModelTests
     public async Task Carga_los_movimientos_del_rodeo_en_trabajo()
     {
         var b = new Banco();
-        b.Campo.Movimientos = [Datos.Movimiento(TipoMovimiento.Tacto), Datos.Movimiento(TipoMovimiento.Marca), Datos.Movimiento(TipoMovimiento.Alta)];
+        b.Campo.Movimientos = [Datos.Movimiento(TipoMovimiento.Tacto), Datos.Movimiento(TipoMovimiento.Marca), Datos.Movimiento(TipoMovimiento.Cierre)];
 
         await b.Vm.CargarAsync();
 
         Assert.Equal(3, b.Vm.Movimientos.Count);
         Assert.True(b.Vm.HayMovimientos);
-        Assert.Equal(["Tacto", "Marca", "Alta en campo"], b.Vm.Movimientos.Select(m => m.Tipo));
+        Assert.Equal(["Tacto", "Marca", "Cierre de manga"], b.Vm.Movimientos.Select(m => m.Tipo));
     }
 
     [Fact]
@@ -46,7 +46,6 @@ public class MovimientosViewModelTests
     [Theory]
     [InlineData(TipoMovimiento.Tacto, TipoDeshacer.Tacto)]
     [InlineData(TipoMovimiento.Marca, TipoDeshacer.Marca)]
-    [InlineData(TipoMovimiento.Alta, TipoDeshacer.Alta)]
     [InlineData(TipoMovimiento.Cierre, TipoDeshacer.Cierre)]
     public async Task Deshacer_manda_el_tipo_y_el_id_del_registro_y_vuelve_a_leer_la_lista(TipoMovimiento tipo, TipoDeshacer esperado)
     {

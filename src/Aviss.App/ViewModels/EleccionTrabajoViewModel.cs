@@ -40,14 +40,22 @@ public sealed partial class EleccionTrabajoViewModel : ObservableObject
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(EmpezarCommand))]
     [NotifyPropertyChangedFor(nameof(PuedeEmpezar))]
+    [NotifyPropertyChangedFor(nameof(FaltaAlgo))]
+    [NotifyPropertyChangedFor(nameof(QueFalta))]
+    [NotifyPropertyChangedFor(nameof(TextoVeterinarioElegido))]
     private VeterinarioDto? _veterinarioSeleccionado;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(TextoEstablecimientoElegido))]
+    [NotifyPropertyChangedFor(nameof(FaltaEstablecimiento))]
     private EstablecimientoParaTrabajar? _establecimientoSeleccionado;
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(EmpezarCommand))]
     [NotifyPropertyChangedFor(nameof(PuedeEmpezar))]
+    [NotifyPropertyChangedFor(nameof(FaltaAlgo))]
+    [NotifyPropertyChangedFor(nameof(QueFalta))]
+    [NotifyPropertyChangedFor(nameof(TextoRodeoElegido))]
     private RodeoParaTrabajarDto? _rodeoSeleccionado;
 
     /// <summary>El veterinario recordado ya no está activo: se le pide elegir otro (RF-1).</summary>
@@ -74,6 +82,42 @@ public sealed partial class EleccionTrabajoViewModel : ObservableObject
     /// <summary>Sin veterinario o sin rodeo no se empieza (RF-1).</summary>
     public bool PuedeEmpezar => VeterinarioSeleccionado is not null && RodeoSeleccionado is not null;
 
+    /// <summary>Falta elegir algo: se muestra la línea "qué falta" sobre el botón de empezar.</summary>
+    public bool FaltaAlgo => !PuedeEmpezar;
+
+    /// <summary>Qué falta para poder empezar, en una frase corta ("" si ya está todo).</summary>
+    public string QueFalta => (VeterinarioSeleccionado is null, RodeoSeleccionado is null) switch
+    {
+        (true, true) => "Falta elegir un veterinario y un rodeo",
+        (true, false) => "Falta elegir un veterinario",
+        (false, true) => "Falta elegir un rodeo",
+        _ => "",
+    };
+
+    /// <summary>"✓ Elegido: X" bajo el título de cada paso; vacío mientras no se eligió nada.</summary>
+    public string TextoVeterinarioElegido => VeterinarioSeleccionado is null ? "" : $"✓ Elegido: {VeterinarioSeleccionado.Nombre}";
+    public string TextoEstablecimientoElegido => EstablecimientoSeleccionado is null ? "" : $"✓ Elegido: {EstablecimientoSeleccionado.Nombre}";
+    public string TextoRodeoElegido => RodeoSeleccionado is null ? "" : $"✓ Elegido: {RodeoSeleccionado.RodeoNombre}";
+
+    /// <summary>El paso 3 depende del 2: mientras no haya establecimiento elegido se avisa.</summary>
+    public bool FaltaEstablecimiento => EstablecimientoSeleccionado is null;
+
+    /// <summary>Hay al menos un veterinario para elegir.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(PuedePedirFormulario))]
+    private bool _hayVeterinarios;
+
+    /// <summary>El formulario de alta se ve solo si no hay veterinarios o si se pidió con "+ Nuevo veterinario".</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(PuedePedirFormulario))]
+    private bool _mostrarFormularioNuevo;
+
+    /// <summary>Se ve el botón "+ Nuevo veterinario": hay lista y el formulario todavía está cerrado.</summary>
+    public bool PuedePedirFormulario => HayVeterinarios && !MostrarFormularioNuevo;
+
+    [RelayCommand]
+    private void MostrarCrearVeterinario() => MostrarFormularioNuevo = true;
+
     // ------------------------------------------------------------------ cargar
 
     /// <summary>Se llama cada vez que se muestra la pantalla: lee veterinarios y rodeos y preselecciona al recordado.</summary>
@@ -89,6 +133,8 @@ public sealed partial class EleccionTrabajoViewModel : ObservableObject
                 .ToList();
             Veterinarios.Clear();
             foreach (var v in veterinarios) Veterinarios.Add(v);
+            HayVeterinarios = Veterinarios.Count > 0;
+            MostrarFormularioNuevo = !HayVeterinarios;
 
             // Preselección: el último veterinario usado, si sigue activo. Si no, se pide elegir otro.
             var recordado = _preferencias.ObtenerVeterinarioRecordado();
@@ -149,6 +195,7 @@ public sealed partial class EleccionTrabajoViewModel : ObservableObject
 
             NuevoNombre = "";
             NuevaMatricula = "";
+            MostrarFormularioNuevo = false;
             var idNuevo = resultado.Valor;
             await CargarVeterinariosAsync();
             VeterinarioSeleccionado = Veterinarios.FirstOrDefault(v => v.Id == idNuevo);
@@ -166,6 +213,7 @@ public sealed partial class EleccionTrabajoViewModel : ObservableObject
         var lista = (await _campo.ListarVeterinariosActivosAsync()).Where(v => v.Id != Usuario.SinAsignarId).ToList();
         Veterinarios.Clear();
         foreach (var v in lista) Veterinarios.Add(v);
+        HayVeterinarios = Veterinarios.Count > 0;
     }
 
     // ------------------------------------------------------------------ empezar

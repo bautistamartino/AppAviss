@@ -90,7 +90,7 @@ internal sealed class ConsultaCampoService
         string Veterinario(Guid id) => usuarios.TryGetValue(id, out var n) ? n : "";
 
         // Cada tipo trae sus 50 más recientes; después se mezclan y se quedan los 50 más recientes en total.
-        // La clave de desempate pone el cierre y la marca antes de su alta cuando comparten el mismo instante.
+        // La clave de desempate ordena el cierre, el tacto y la marca cuando comparten el mismo instante.
         var candidatos = new List<(MovimientoDto Movimiento, long Desempate)>();
 
         var tactos = await (from t in _db.Tactos.AsNoTracking()
@@ -119,19 +119,6 @@ internal sealed class ConsultaCampoService
                 m.OrdenInsercion + 1));
         }
 
-        // Altas en campo: su fecha es la de creación y el veterinario sale del registro de historial del alta.
-        var altas = await _db.Animales.AsNoTracking()
-            .Where(a => a.RodeoId == rodeoId && a.Origen == OrigenAnimal.AltaEnCampo)
-            .OrderByDescending(a => a.CreadoEnUtc)
-            .Take(MaximoMovimientos).ToListAsync(ct);
-        foreach (var a in altas)
-        {
-            var usuarioAlta = await _db.Historiales.AsNoTracking()
-                .Where(h => h.Entidad == "Animal" && h.EntidadId == a.Id && h.Accion == AccionHistorial.Alta)
-                .Select(h => (Guid?)h.UsuarioId).FirstOrDefaultAsync(ct);
-            candidatos.Add((new MovimientoDto(TipoMovimiento.Alta, a.Id, a.Id, a.NumeroCaravana, null, null, a.CreadoEnUtc,
-                usuarioAlta is Guid u ? Veterinario(u) : "", a.Anulado, false, null, null, null), 0));
-        }
 
         var cierres = await (from c in _db.CierresManga.AsNoTracking()
                              join m in _db.Mangas on c.MangaId equals m.Id
@@ -184,12 +171,6 @@ internal sealed class ConsultaCampoService
                     puede = !m.Anulado && ultimo is not null && ultimo.Tipo == tipo && ultimo.Id == m.RegistroId;
                     break;
                 }
-                case TipoMovimiento.Alta:
-                    // Se anula si no tiene tactos vigentes y a lo sumo la marca del alta (RF-29).
-                    puede = !m.Anulado
-                        && !await _animales.TieneTactosVigentesAsync(m.RegistroId, ct)
-                        && (await _marcas.ListarVigentesDeAnimalAsync(m.RegistroId, ct)).Count <= 1;
-                    break;
                 case TipoMovimiento.Cierre:
                 {
                     var cierre = await _mangas.ObtenerCierreAsync(m.RegistroId, ct);

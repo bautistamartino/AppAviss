@@ -151,8 +151,6 @@ public sealed class ConsultasCampoTests : IDisposable
         Assert.Equal("100", f.Caravana);
         Assert.Equal("PREÑADA", f.EstadoNombre);
         Assert.NotNull(f.FechaUltimoTactoUtc);
-        Assert.False(f.EsAltaEnCampo);
-        Assert.False(f.PuedeAnularAlta);
         Assert.Equal("3", f.Campos.Single(c => c.Nombre == "LACT").Valor);
         Assert.Equal("2", f.Inseminaciones);
         Assert.Equal("TORO 9", f.UltimoToro);
@@ -197,20 +195,20 @@ public sealed class ConsultasCampoTests : IDisposable
     }
 
     [Fact]
-    public async Task Los_movimientos_mezclan_marcas_tactos_altas_y_cierres_y_marcan_lo_anulado()
+    public async Task Los_movimientos_mezclan_marcas_tactos_y_cierres_y_marcan_lo_anulado()
     {
         var (animal, lectura) = await _e.VacaMarcadaAsync("100", _e.EstadoSeca);
         _e.Reloj.Avanzar(TimeSpan.FromSeconds(1));
         var tacto = await _e.TactoAsync(animal, _e.EstadoPrenada);
         _e.Reloj.Avanzar(TimeSpan.FromSeconds(1));
-        var alta = (await _e.Campo.AltaEnCampoConMarcaAsync(new AltaConMarcaCommand(_e.RodeoId, "900", null, null, _e.UsuarioId))).Valor;
+        await _e.VacaMarcadaAsync("900");
         _e.Reloj.Avanzar(TimeSpan.FromSeconds(1));
         var cierre = (await _e.FinalizarAsync()).Cierre!;
 
         var lista = await _e.Campo.ListarMovimientosAsync(_e.RodeoId);
 
-        // Más reciente primero: cierre, marca del alta, alta, tacto, marca de la vaca 100 (la anulación del tacto no se lista).
-        Assert.Equal([TipoMovimiento.Cierre, TipoMovimiento.Marca, TipoMovimiento.Alta, TipoMovimiento.Tacto, TipoMovimiento.Marca],
+        // Más reciente primero: cierre, marca de la vaca 900, tacto, marca de la vaca 100 (la anulación del tacto no se lista).
+        Assert.Equal([TipoMovimiento.Cierre, TipoMovimiento.Marca, TipoMovimiento.Tacto, TipoMovimiento.Marca],
             lista.Select(m => m.Tipo));
         var mCierre = lista[0];
         Assert.Equal(cierre.CierreId, mCierre.RegistroId);
@@ -219,14 +217,12 @@ public sealed class ConsultasCampoTests : IDisposable
         Assert.Equal(2, mCierre.CantidadConfirmada);
         Assert.Equal("Manual", mCierre.Detalle);
         Assert.True(mCierre.PuedeDeshacer);
-        Assert.Equal(alta.AnimalId, lista[2].RegistroId); // el alta se deshace por el Id del animal
-        Assert.Equal("900", lista[2].Caravana);
-        Assert.Equal("PREÑADA", lista[3].Detalle);
-        // Lo único deshacible: el cierre (último del rodeo), el tacto (último de la vaca) y la marca/alta del alta (solo tiene la marca).
+        Assert.Equal("900", lista[1].Caravana);
+        Assert.Equal("PREÑADA", lista[2].Detalle);
+        // Deshacible: el cierre (último del rodeo), la marca de la 900 y el tacto (último de su vaca); la marca de la 100 no.
         Assert.True(lista[1].PuedeDeshacer);
         Assert.True(lista[2].PuedeDeshacer);
-        Assert.True(lista[3].PuedeDeshacer);
-        Assert.False(lista[4].PuedeDeshacer); // la marca de la vaca 100 quedó detrás del tacto
+        Assert.False(lista[3].PuedeDeshacer); // la marca de la vaca 100 quedó detrás del tacto
 
         // Deshacer el tacto lo deja marcado como anulado y ya no se puede volver a deshacer.
         await _e.DeshacerAsync(TipoDeshacer.Tacto, tacto);
@@ -239,17 +235,13 @@ public sealed class ConsultasCampoTests : IDisposable
     }
 
     [Fact]
-    public async Task Un_alta_con_un_tacto_no_se_puede_deshacer_desde_la_lista_y_una_marca_desmarcada_sale_anulada()
+    public async Task Una_marca_desmarcada_sale_anulada_y_ya_no_se_puede_deshacer()
     {
-        var alta = (await _e.Campo.AltaEnCampoConMarcaAsync(new AltaConMarcaCommand(_e.RodeoId, "900", null, null, _e.UsuarioId))).Valor;
-        _e.Reloj.Avanzar(TimeSpan.FromSeconds(1));
-        await _e.TactoAsync(alta.AnimalId, _e.EstadoSeca);
         var (_, lectura) = await _e.VacaMarcadaAsync("100");
         await _e.DeshacerAsync(TipoDeshacer.Marca, lectura.MarcaId!.Value);
 
         var lista = await _e.Campo.ListarMovimientosAsync(_e.RodeoId);
 
-        Assert.False(lista.Single(m => m.Tipo == TipoMovimiento.Alta).PuedeDeshacer);
         var marcaDesmarcada = lista.Single(m => m.RegistroId == lectura.MarcaId);
         Assert.True(marcaDesmarcada.Anulado);
         Assert.False(marcaDesmarcada.PuedeDeshacer);

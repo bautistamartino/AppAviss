@@ -107,7 +107,8 @@ public partial class TrabajoPage : ContentPage
 			Text = "Simulador (solo Debug):",
 			TextColor = Colors.Black,
 			FontAttributes = FontAttributes.Bold,
-			FontSize = 20,
+			FontSize = 16,
+			Margin = new Thickness(0, 0, 8, 0),
 			VerticalOptions = LayoutOptions.Center
 		});
 		PanelSimulador.Children.Add(BotonSimulador("Leer vaca existente", _vm.SimularExistenteCommand));
@@ -120,8 +121,10 @@ public partial class TrabajoPage : ContentPage
 	{
 		Text = texto,
 		Command = comando,
-		FontSize = 20,
-		HeightRequest = 56,
+		FontSize = 16,
+		HeightRequest = 44,
+		Padding = new Thickness(10, 0),
+		Margin = new Thickness(0, 2, 6, 2),
 		BackgroundColor = Color.FromArgb("#455A64"),
 		TextColor = Colors.White
 	};

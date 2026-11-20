@@ -91,19 +91,6 @@ public sealed class HistorialCampoTests : IDisposable
     }
 
     [Fact]
-    public async Task El_alta_con_marca_registra_alta_y_marca_con_el_mismo_veterinario()
-    {
-        var r = (await _e.Campo.AltaEnCampoConMarcaAsync(new AltaConMarcaCommand(_e.RodeoId, "900", null, null, _e.UsuarioId))).Valor;
-
-        var alta = Assert.Single(Filas("Alta"));
-        var marca = Assert.Single(Filas("MarcaPasada"));
-        ConVeterinarioYFecha(alta);
-        ConVeterinarioYFecha(marca);
-        Assert.Equal(("Animal", T(r.AnimalId)), (alta.Entidad, alta.EntidadId));
-        Assert.Equal(("MarcaPasada", T(r.MarcaId)), (marca.Entidad, marca.EntidadId));
-    }
-
-    [Fact]
     public async Task El_historial_nuevo_no_se_puede_modificar_ni_borrar_en_la_base()
     {
         await _e.VacaMarcadaAsync("100");

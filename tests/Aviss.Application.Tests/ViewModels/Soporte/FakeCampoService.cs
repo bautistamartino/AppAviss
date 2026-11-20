@@ -24,7 +24,6 @@ public class FakeCampoService : ICampoService
 
     public Func<ProcesarLecturaCommand, Resultado<ResultadoLecturaDto>>? OnProcesarLectura { get; set; }
     public Func<RegistrarTactoCommand, Resultado<Guid>> OnRegistrarTacto { get; set; } = _ => Resultado.Ok(Guid.NewGuid());
-    public Func<AltaConMarcaCommand, Resultado<ResultadoAltaDto>>? OnAlta { get; set; }
     public Func<DeshacerCommand, Resultado<ResultadoDeshacerDto>>? OnDeshacer { get; set; }
     public Func<Resultado<ResumenMangaDto>> OnResumen { get; set; } = () => Resultado.Ok(Datos.Resumen());
     public Func<FinalizarMangaCommand, Resultado<ResultadoCierreDto>>? OnFinalizar { get; set; }
@@ -36,7 +35,6 @@ public class FakeCampoService : ICampoService
     public List<(Guid RodeoId, Guid UsuarioId)> IniciosDeTrabajo { get; } = [];
     public List<ProcesarLecturaCommand> LecturasProcesadas { get; } = [];
     public List<RegistrarTactoCommand> Tactos { get; } = [];
-    public List<AltaConMarcaCommand> Altas { get; } = [];
     public List<DeshacerCommand> Deshaceres { get; } = [];
     public List<FinalizarMangaCommand> Finalizados { get; } = [];
     public List<TerminarElTactoCommand> Terminados { get; } = [];
@@ -107,17 +105,11 @@ public class FakeCampoService : ICampoService
         return Task.FromResult(OnRegistrarTacto(comando));
     }
 
-    public Task<Resultado<ResultadoAltaDto>> AltaEnCampoConMarcaAsync(AltaConMarcaCommand comando, CancellationToken ct = default)
-    {
-        Altas.Add(comando);
-        return Task.FromResult(OnAlta?.Invoke(comando) ?? Resultado.Ok(Datos.ResultadoAlta(comando.NumeroCaravana)));
-    }
-
     public Task<Resultado<ResultadoDeshacerDto>> DeshacerAsync(DeshacerCommand comando, CancellationToken ct = default)
     {
         Deshaceres.Add(comando);
         return Task.FromResult(OnDeshacer?.Invoke(comando)
-            ?? Resultado.Ok(new ResultadoDeshacerDto(comando.Tipo, comando.Tipo == TipoDeshacer.Alta ? comando.Id : null, null, 1, 0)));
+            ?? Resultado.Ok(new ResultadoDeshacerDto(comando.Tipo, null, null, 1, 0)));
     }
 
     public virtual Task<IReadOnlyList<MovimientoDto>> ListarMovimientosAsync(Guid rodeoId, CancellationToken ct = default)
@@ -144,8 +136,8 @@ public static class Datos
     public static RodeoParaTrabajarDto Rodeo(string establecimiento = "Tambo Norte", string rodeo = "Rodeo 1", Guid? establecimientoId = null, Guid? rodeoId = null)
         => new(establecimientoId ?? Guid.NewGuid(), establecimiento, rodeoId ?? RodeoId, rodeo, new DateTime(2026, 11, 1, 0, 0, 0, DateTimeKind.Utc), EstadoRodeo.Abierto, Avance());
 
-    public static FichaAnimalDto Ficha(Guid? animalId = null, string caravana = "1001", bool altaEnCampo = false, bool puedeAnularAlta = false, string? idElectronico = null)
-        => new(animalId ?? Guid.NewGuid(), caravana, idElectronico, null, null, null, altaEnCampo, puedeAnularAlta, [], "", "", []);
+    public static FichaAnimalDto Ficha(Guid? animalId = null, string caravana = "1001", string? idElectronico = null)
+        => new(animalId ?? Guid.NewGuid(), caravana, idElectronico, null, null, null, [], "", "", []);
 
     public static ResultadoLecturaDto Marcada(Guid animalId, string caravana, Guid? marcaId = null, int manga = 1, int contador = 1)
         => new(TipoResultadoLectura.Marcada, caravana, animalId, caravana, Ficha(animalId, caravana), marcaId ?? Guid.NewGuid(), manga, contador, null, null, false);
@@ -162,11 +154,6 @@ public static class Datos
     public static ResultadoLecturaDto NoEncontrada(string codigo)
         => new(TipoResultadoLectura.NoEncontrada, codigo, null, null, null, null, null, null, null, null, false);
 
-    public static ResultadoAltaDto ResultadoAlta(string caravana, bool idOmitido = false, Guid? animalId = null)
-    {
-        var id = animalId ?? Guid.NewGuid();
-        return new(id, Ficha(id, caravana, altaEnCampo: true, puedeAnularAlta: true), Guid.NewGuid(), 1, 1, idOmitido);
-    }
 
     public static ResumenMangaDto Resumen(int manga = 1, params string[] caravanas)
         => new(Guid.NewGuid(), manga, caravanas.Length == 0 ? 3 : caravanas.Length, caravanas.Length == 0 ? ["1", "2", "3"] : caravanas);

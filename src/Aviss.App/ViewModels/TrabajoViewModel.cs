@@ -13,7 +13,7 @@ namespace Aviss.App.ViewModels;
 /// <summary>
 /// El corazón de la pantalla de trabajo (spec 003). Decide qué hacer con cada lectura según lo que haya en pantalla
 /// (diagrama de estados del plan) y orquesta las acciones de campo: marca automática, tacto con un toque, aviso de
-/// repetido, alta, búsqueda manual, deshacer, "Finalizar manga" y "Terminar el tacto".
+/// repetido, búsqueda manual, deshacer, "Finalizar manga" y "Terminar el tacto".
 ///
 /// No usa tipos de MAUI: todo lo de la tablet (lector, vibración, pantalla encendida, tiempo, navegación, preferencias)
 /// entra por interfaces, así que se prueba con xUnit. La lógica de negocio vive en <see cref="ICampoService"/>; acá solo
@@ -25,7 +25,6 @@ public sealed partial class TrabajoViewModel : ObservableObject
     public const string MensajeFalla = "Algo falló y no se guardó nada. Probá de nuevo.";
     public const string MensajeLectorNoConecta = "No se pudo conectar el lector. Podés buscar la caravana a mano.";
     public const string MensajeSinMuestra = "No hay ninguna caravana de ese tipo para simular.";
-    public const string MensajeIdOmitido = "La vaca se dio de alta, pero el código leído no sirve como identificador electrónico y no se guardó.";
 
     /// <summary>Código que el simulador emite para "una caravana que no existe en el rodeo" (solo desarrollo).</summary>
     public const string CodigoSimuladoInexistente = "SIM-NO-EXISTE";
@@ -53,7 +52,6 @@ public sealed partial class TrabajoViewModel : ObservableObject
     private Guid? _rodeoIniciado;
 
     // Lo que se recuerda entre cuadros.
-    private bool _altaDesdeBusquedaManual;
     private PropositoCierre _proposito;
     private int? _cantidadRealConfirmada;
 
@@ -111,7 +109,7 @@ public sealed partial class TrabajoViewModel : ObservableObject
     private EtapaTrabajo _etapa = EtapaTrabajo.Esperando;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HayFicha), nameof(PuedeAnularAlta))]
+    [NotifyPropertyChangedFor(nameof(HayFicha))]
     private FichaAnimalDto? _ficha;
 
     /// <summary>Estados activos del catálogo: botones para el tacto de un toque (RF-15).</summary>
@@ -126,7 +124,6 @@ public sealed partial class TrabajoViewModel : ObservableObject
 
     public bool HayFicha => Ficha is not null && Etapa != EtapaTrabajo.Terminado;
     public bool EstaEsperando => Etapa == EtapaTrabajo.Esperando;
-    public bool PuedeAnularAlta => HayFicha && Ficha!.PuedeAnularAlta;
 
     /// <summary>Resumen de lo último guardado, hasta que llegue otra lectura (RF-17).</summary>
     [ObservableProperty]
@@ -160,7 +157,6 @@ public sealed partial class TrabajoViewModel : ObservableObject
 
     public bool HayAviso => Cuadro == CuadroTrabajo.Aviso;
     public bool HayNoEncontrada => Cuadro == CuadroTrabajo.NoEncontrada;
-    public bool HayAlta => Cuadro == CuadroTrabajo.Alta;
     public bool HayConfirmarCorregir => Cuadro == CuadroTrabajo.ConfirmarCorregir;
     public bool HayVerificacion => Cuadro == CuadroTrabajo.Verificacion;
     public bool HayCantidadReal => Cuadro == CuadroTrabajo.CantidadReal;
@@ -171,7 +167,6 @@ public sealed partial class TrabajoViewModel : ObservableObject
     {
         OnPropertyChanged(nameof(HayAviso));
         OnPropertyChanged(nameof(HayNoEncontrada));
-        OnPropertyChanged(nameof(HayAlta));
         OnPropertyChanged(nameof(HayConfirmarCorregir));
         OnPropertyChanged(nameof(HayVerificacion));
         OnPropertyChanged(nameof(HayCantidadReal));
@@ -182,7 +177,7 @@ public sealed partial class TrabajoViewModel : ObservableObject
 
     // Los cuadros que piden datos o confirmación frenan las lecturas; "Aviso" y "NoEncontrada" no (RF-19, RF-22b).
     private static bool Bloquea(CuadroTrabajo cuadro) => cuadro is
-        CuadroTrabajo.Alta or CuadroTrabajo.ConfirmarCorregir or CuadroTrabajo.Verificacion
+        CuadroTrabajo.ConfirmarCorregir or CuadroTrabajo.Verificacion
         or CuadroTrabajo.CantidadReal or CuadroTrabajo.SegundaConfirmacion;
 
     /// <summary>Abre o cierra un cuadro y avisa a la cola de lecturas: al cerrar uno que bloqueaba, se procesa la pendiente.</summary>
@@ -193,7 +188,7 @@ public sealed partial class TrabajoViewModel : ObservableObject
         else await _cola.DesbloquearAsync();
     }
 
-    /// <summary>Un mensaje dentro del cuadro abierto (por ejemplo, el rechazo del alta).</summary>
+    /// <summary>Un mensaje dentro del cuadro abierto (por ejemplo, un rechazo al confirmar).</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HayMensajeCuadro))]
     private string? _mensajeCuadro;
@@ -231,14 +226,11 @@ public sealed partial class TrabajoViewModel : ObservableObject
         ? (string.IsNullOrEmpty(u.EstadoNombre) ? "Tacto" : $"Tacto {u.EstadoNombre}")
         : "Marca de pasada";
 
-    // ---- Caravana no encontrada y alta (RF-24, RF-25)
+    // ---- Caravana no encontrada (RF-24)
 
     [ObservableProperty]
     private string _codigoNoEncontrado = "";
 
-    /// <summary>La caravana del alta; viene precargada con el código leído y se puede editar (RF-25).</summary>
-    [ObservableProperty]
-    private string _altaCaravana = "";
 
     // ---- Búsqueda manual (RF-23)
 
@@ -485,7 +477,6 @@ public sealed partial class TrabajoViewModel : ObservableObject
 
             default:   // NoEncontrada
                 CodigoNoEncontrado = r.CodigoLeido;
-                _altaDesdeBusquedaManual = lectura.EsManual;
                 MensajeCuadro = null;
                 await CambiarCuadroAsync(CuadroTrabajo.NoEncontrada);
                 break;
@@ -616,16 +607,7 @@ public sealed partial class TrabajoViewModel : ObservableObject
         ? CambiarCuadroAsync(CuadroTrabajo.Aviso)
         : Task.CompletedTask;
 
-    // ================================================================== caravana no encontrada y alta (RF-24, RF-25)
-
-    [RelayCommand]
-    private async Task DarDeAltaAsync()
-    {
-        if (Cuadro != CuadroTrabajo.NoEncontrada) return;
-        AltaCaravana = CodigoNoEncontrado;   // precarga editable
-        MensajeCuadro = null;
-        await CambiarCuadroAsync(CuadroTrabajo.Alta);
-    }
+    // ================================================================== caravana no encontrada (RF-24)
 
     /// <summary>"Buscar a mano": cierra el cuadro y deja la búsqueda lista. No se guardó nada.</summary>
     [RelayCommand]
@@ -644,73 +626,6 @@ public sealed partial class TrabajoViewModel : ObservableObject
         await CambiarCuadroAsync(CuadroTrabajo.Ninguno);
     }
 
-    [RelayCommand]
-    private async Task ConfirmarAltaAsync()
-    {
-        if (Cuadro != CuadroTrabajo.Alta || _sesion.Veterinario is not { } vet || _sesion.Rodeo is not { } rodeo) return;
-
-        var caravana = AltaCaravana.Trim();
-        if (caravana.Length == 0)
-        {
-            MensajeCuadro = "Escribí el número de caravana.";
-            return;
-        }
-
-        try
-        {
-            MensajeCuadro = null;
-            // Si el alta viene de "Buscar a mano" no hay código leído: solo se carga la caravana (RF-25).
-            var codigoLeido = _altaDesdeBusquedaManual ? null : CodigoNoEncontrado;
-            var resultado = await EnCampoAsync(() => _campo.AltaEnCampoConMarcaAsync(
-                new AltaConMarcaCommand(rodeo.RodeoId, caravana, codigoLeido, null, vet.Id)));
-            if (!resultado.EsCorrecto)
-            {
-                // Rechazada (caravana o identificador repetido, inválida...): se queda en el formulario con el motivo,
-                // para poder corregir el número y reintentar. No se guardó nada.
-                MensajeCuadro = resultado.Mensaje;
-                return;
-            }
-
-            var alta = resultado.Valor;
-            await CambiarCuadroAsync(CuadroTrabajo.Ninguno);
-            MostrarFicha(alta.Ficha);   // sin estado: el veterinario resuelve desde la ficha
-            NumeroManga = alta.NumeroManga;
-            Contador = alta.ContadorManga;
-            MangaAbierta = true;
-            _avisos.Confirmacion();
-            UltimoGuardado = $"Alta en campo: {alta.Ficha.Caravana}";
-            if (alta.IdElectronicoOmitido) MensajeInfo = MensajeIdOmitido;
-            // En un alta, el id para deshacer es el del animal (anula el alta y su marca juntas, RF-29).
-            PublicarAvisoDeshacer(new AvisoDeshacerDto(TipoDeshacer.Alta, alta.AnimalId, $"Alta en campo {alta.Ficha.Caravana}"));
-            await RecalcularAsync();
-        }
-        catch (Exception) { MensajeCuadro = MensajeFalla; }
-    }
-
-    /// <summary>Vuelve a "Caravana no encontrada" desde el formulario de alta.</summary>
-    [RelayCommand]
-    private async Task CancelarAltaAsync()
-    {
-        if (Cuadro != CuadroTrabajo.Alta) return;
-        MensajeCuadro = null;
-        await CambiarCuadroAsync(CuadroTrabajo.NoEncontrada);
-    }
-
-    /// <summary>"Anular alta" de la ficha de una vaca dada de alta en campo (RF-29).</summary>
-    [RelayCommand]
-    private async Task AnularAltaAsync()
-    {
-        if (!PuedeAnularAlta || Ficha is not { } ficha) return;
-        try
-        {
-            MensajeError = null;
-            var resultado = await DeshacerAsync(TipoDeshacer.Alta, ficha.AnimalId);
-            if (!resultado.EsCorrecto) { MensajeError = resultado.Mensaje; return; }
-            MensajeInfo = "Se anuló el alta: la caravana quedó libre.";
-        }
-        catch (Exception) { MensajeError = MensajeFalla; }
-    }
-
     // ================================================================== deshacer (RF-26, RF-27)
 
     // Deshace y, si salió bien, actualiza lo que se ve: cierra la ficha de una vaca desmarcada o anulada, baja el
@@ -723,14 +638,13 @@ public sealed partial class TrabajoViewModel : ObservableObject
         if (!resultado.EsCorrecto) return resultado;
 
         var deshecho = resultado.Valor;
-        // Desmarcar o anular un alta cierra la ficha de esa vaca (RF-26).
-        if (tipo is TipoDeshacer.Marca or TipoDeshacer.Alta && deshecho.AnimalId is { } animalId && Ficha?.AnimalId == animalId)
+        // Desmarcar una vaca cierra su ficha (RF-26).
+        if (tipo is TipoDeshacer.Marca && deshecho.AnimalId is { } animalId && Ficha?.AnimalId == animalId)
             CerrarFichaInterno();
         if (deshecho.ContadorManga is { } contador) Contador = contador;
         UltimoGuardado = tipo switch
         {
             TipoDeshacer.Marca => "Se desmarcó la vaca.",
-            TipoDeshacer.Alta => "Se anuló el alta.",
             TipoDeshacer.Cierre => "Se reabrió la manga.",
             _ => "Se deshizo el tacto."
         };

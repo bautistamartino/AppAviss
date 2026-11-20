@@ -27,7 +27,7 @@
         </Style>
     </ContentPage.Resources>
 
-    <Grid RowDefinitions="Auto,*,Auto" Padding="24,16" RowSpacing="12">
+    <Grid RowDefinitions="Auto,*,Auto" Padding="14,12" RowSpacing="10">
 
         <!-- Mensaje de error / rechazo: fondo rojo oscuro con texto blanco (alto contraste). -->
         <Border Grid.Row="0"
@@ -157,11 +157,12 @@
         </CollectionView>
 
         <!-- Barra de botones del paso 2: siempre a la vista. -->
-        <Grid Grid.Row="2" IsVisible="{Binding EsPasoVistaPrevia}" ColumnDefinitions="*,*" ColumnSpacing="16">
-            <Button Grid.Column="0" Text="Cancelar" Style="{StaticResource BotonGrande}"
+        <!-- En vertical, uno debajo del otro: "Confirmar importación" no entra en media pantalla. -->
+        <Grid Grid.Row="2" IsVisible="{Binding EsPasoVistaPrevia}" RowDefinitions="Auto,Auto" RowSpacing="8">
+            <Button Grid.Row="1" Text="Cancelar" Style="{StaticResource BotonGrande}" HeightRequest="56"
                     BackgroundColor="#455A64" TextColor="White"
                     Command="{Binding CancelarCommand}" />
-            <Button Grid.Column="1" Style="{StaticResource BotonGrande}"
+            <Button Grid.Row="0" Style="{StaticResource BotonGrande}" HeightRequest="64"
                     Command="{Binding ConfirmarCommand}">
                 <Button.Triggers>
                     <DataTrigger TargetType="Button" Binding="{Binding EstaConfirmando}" Value="True">

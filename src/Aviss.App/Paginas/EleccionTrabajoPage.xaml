@@ -29,11 +29,33 @@
                 </VisualStateGroupList>
             </Setter>
         </Style>
+
+        <!-- Número del paso (1, 2, 3) en un círculo oscuro. -->
+        <Style x:Key="InsigniaPaso" TargetType="Border">
+            <Setter Property="BackgroundColor" Value="{StaticResource CampoPanel}" />
+            <Setter Property="StrokeThickness" Value="0" />
+            <Setter Property="WidthRequest" Value="44" />
+            <Setter Property="HeightRequest" Value="44" />
+            <Setter Property="StrokeShape" Value="RoundRectangle 22" />
+        </Style>
+        <Style x:Key="NumeroPaso" TargetType="Label">
+            <Setter Property="TextColor" Value="White" />
+            <Setter Property="FontSize" Value="26" />
+            <Setter Property="FontAttributes" Value="Bold" />
+            <Setter Property="HorizontalOptions" Value="Center" />
+            <Setter Property="VerticalOptions" Value="Center" />
+        </Style>
+        <Style x:Key="ElegidoPaso" TargetType="Label" BasedOn="{StaticResource TextoCampo}">
+            <Setter Property="FontSize" Value="20" />
+            <Setter Property="FontAttributes" Value="Bold" />
+            <Setter Property="TextColor" Value="{StaticResource CampoExito}" />
+        </Style>
     </ContentPage.Resources>
 
     <!--
         Elegir con qué trabajar (spec 003, RF-1 y RF-2): veterinario (el recordado viene marcado), establecimiento y rodeo
-        con su avance de hoy. Sin lógica acá: todo está en EleccionTrabajoViewModel.
+        con su avance de hoy. Tres pasos en una sola columna, para que se lea igual en vertical y en horizontal.
+        Sin lógica acá: todo está en EleccionTrabajoViewModel.
     -->
     <Grid RowDefinitions="Auto,Auto,*,Auto" Padding="24,16" RowSpacing="12">
 
@@ -59,83 +81,113 @@
             <Button Text="Importar rodeo" Style="{StaticResource BotonCampo}" Command="{Binding IrAImportarCommand}" />
         </VerticalStackLayout>
 
-        <!-- Tres columnas: veterinario | establecimiento | rodeo -->
-        <Grid Grid.Row="2" ColumnDefinitions="*,*,*" ColumnSpacing="16" IsVisible="{Binding NoHayRodeos, Converter={StaticResource Invertir}}">
+        <!-- Tres pasos, uno debajo del otro -->
+        <ScrollView Grid.Row="2" IsVisible="{Binding NoHayRodeos, Converter={StaticResource Invertir}}">
+            <VerticalStackLayout Spacing="28">
 
-            <!-- 1. Veterinario -->
-            <Grid Grid.Column="0" RowDefinitions="Auto,*,Auto" RowSpacing="8">
-                <Label Text="1. Veterinario" Style="{StaticResource TituloCuadro}" FontSize="28" />
-                <CollectionView Grid.Row="1" ItemsSource="{Binding Veterinarios}" SelectionMode="Single"
-                                SelectedItem="{Binding VeterinarioSeleccionado, Mode=TwoWay}">
-                    <CollectionView.EmptyView>
-                        <Label Text="Todavía no hay veterinarios: creá el primero abajo." Style="{StaticResource TextoCampo}" />
-                    </CollectionView.EmptyView>
-                    <CollectionView.ItemTemplate>
-                        <DataTemplate x:DataType="dto:VeterinarioDto">
-                            <Grid Style="{StaticResource FilaElegible}" Margin="0,0,0,8" MinimumHeightRequest="72">
-                                <VerticalStackLayout VerticalOptions="Center">
-                                    <Label Text="{Binding Nombre}" Style="{StaticResource TextoCampo}" FontSize="26" FontAttributes="Bold" />
-                                    <Label Text="{Binding Matricula, StringFormat='Matrícula: {0}'}" Style="{StaticResource TextoCampo}"
-                                           FontSize="18" TextColor="{StaticResource Gray600}" />
-                                </VerticalStackLayout>
-                            </Grid>
-                        </DataTemplate>
-                    </CollectionView.ItemTemplate>
-                </CollectionView>
+                <!-- 1. Veterinario -->
+                <VerticalStackLayout Spacing="10">
+                    <HorizontalStackLayout Spacing="12">
+                        <Border Style="{StaticResource InsigniaPaso}">
+                            <Label Text="1" Style="{StaticResource NumeroPaso}" />
+                        </Border>
+                        <Label Text="¿Quién trabaja?" Style="{StaticResource TituloCuadro}" FontSize="28" VerticalOptions="Center" />
+                    </HorizontalStackLayout>
+                    <Label Text="{Binding TextoVeterinarioElegido}" Style="{StaticResource ElegidoPaso}" />
 
-                <!-- Crear veterinario: nombre obligatorio, matrícula opcional. -->
-                <Border Grid.Row="2" BackgroundColor="{StaticResource CampoClaro}" StrokeThickness="0" Padding="12">
-                    <VerticalStackLayout Spacing="8">
-                        <Label Text="Crear veterinario" Style="{StaticResource TextoCampo}" FontAttributes="Bold" />
-                        <Entry Style="{StaticResource EntradaCampo}" Placeholder="Nombre" Text="{Binding NuevoNombre}" MaxLength="60" />
-                        <Entry Style="{StaticResource EntradaCampo}" Placeholder="Matrícula (opcional)" Text="{Binding NuevaMatricula}" MaxLength="30" />
-                        <Button Text="Crear" Style="{StaticResource BotonCampoSecundario}" Command="{Binding CrearVeterinarioCommand}" />
-                    </VerticalStackLayout>
-                </Border>
-            </Grid>
+                    <CollectionView ItemsSource="{Binding Veterinarios}" SelectionMode="Single"
+                                    SelectedItem="{Binding VeterinarioSeleccionado, Mode=TwoWay}"
+                                    IsVisible="{Binding HayVeterinarios}">
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate x:DataType="dto:VeterinarioDto">
+                                <Grid Style="{StaticResource FilaElegible}" Margin="0,0,0,8" MinimumHeightRequest="72">
+                                    <VerticalStackLayout VerticalOptions="Center">
+                                        <Label Text="{Binding Nombre}" Style="{StaticResource TextoCampo}" FontSize="26" FontAttributes="Bold" />
+                                        <Label Text="{Binding Matricula, StringFormat='Matrícula: {0}'}" Style="{StaticResource TextoCampo}"
+                                               FontSize="18" TextColor="{StaticResource Gray600}" />
+                                    </VerticalStackLayout>
+                                </Grid>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                    </CollectionView>
 
-            <!-- 2. Establecimiento -->
-            <Grid Grid.Column="1" RowDefinitions="Auto,*" RowSpacing="8">
-                <Label Text="2. Establecimiento" Style="{StaticResource TituloCuadro}" FontSize="28" />
-                <CollectionView Grid.Row="1" ItemsSource="{Binding Establecimientos}" SelectionMode="Single"
-                                SelectedItem="{Binding EstablecimientoSeleccionado, Mode=TwoWay}">
-                    <CollectionView.ItemTemplate>
-                        <DataTemplate x:DataType="vm:EstablecimientoParaTrabajar">
-                            <Grid Style="{StaticResource FilaElegible}" Margin="0,0,0,8" MinimumHeightRequest="72">
-                                <Label Text="{Binding Nombre}" Style="{StaticResource TextoCampo}" FontSize="26" FontAttributes="Bold"
-                                       VerticalOptions="Center" />
-                            </Grid>
-                        </DataTemplate>
-                    </CollectionView.ItemTemplate>
-                </CollectionView>
-            </Grid>
+                    <Label Text="Todavía no hay veterinarios. Cargá el primero:" Style="{StaticResource TextoCampo}"
+                           IsVisible="{Binding HayVeterinarios, Converter={StaticResource Invertir}}" />
 
-            <!-- 3. Rodeo, con el avance de hoy -->
-            <Grid Grid.Column="2" RowDefinitions="Auto,*" RowSpacing="8">
-                <Label Text="3. Rodeo" Style="{StaticResource TituloCuadro}" FontSize="28" />
-                <CollectionView Grid.Row="1" ItemsSource="{Binding Rodeos}" SelectionMode="Single"
-                                SelectedItem="{Binding RodeoSeleccionado, Mode=TwoWay}">
-                    <CollectionView.ItemTemplate>
-                        <DataTemplate x:DataType="dto:RodeoParaTrabajarDto">
-                            <Grid Style="{StaticResource FilaElegible}" Margin="0,0,0,8" MinimumHeightRequest="72">
-                                <VerticalStackLayout VerticalOptions="Center">
-                                    <Label Text="{Binding RodeoNombre}" Style="{StaticResource TextoCampo}" FontSize="26" FontAttributes="Bold" />
-                                    <Label Text="{Binding Avance.Porcentaje, StringFormat='Hoy: {0} % procesado'}" Style="{StaticResource TextoCampo}"
-                                           FontSize="20" />
-                                    <Label Text="{Binding Avance.Pendientes, StringFormat='Faltan {0} vacas'}" Style="{StaticResource TextoCampo}"
-                                           FontSize="18" TextColor="{StaticResource Gray600}" />
-                                </VerticalStackLayout>
-                            </Grid>
-                        </DataTemplate>
-                    </CollectionView.ItemTemplate>
-                </CollectionView>
-            </Grid>
-        </Grid>
+                    <Button Text="+ Nuevo veterinario" Style="{StaticResource BotonCampoSecundario}"
+                            Command="{Binding MostrarCrearVeterinarioCommand}" IsVisible="{Binding PuedePedirFormulario}" />
 
-        <!-- Abajo: volver y empezar -->
-        <Grid Grid.Row="3" ColumnDefinitions="Auto,*" ColumnSpacing="16">
-            <Button Grid.Column="0" Text="Volver" Style="{StaticResource BotonCampoSecundario}" Command="{Binding VolverAlInicioCommand}" />
-            <Button Grid.Column="1" Text="Empezar a trabajar" Style="{StaticResource BotonCampo}" BackgroundColor="{StaticResource CampoExito}"
+                    <!-- Crear veterinario: nombre obligatorio, matrícula opcional. -->
+                    <Border BackgroundColor="{StaticResource CampoClaro}" StrokeThickness="0" Padding="16" IsVisible="{Binding MostrarFormularioNuevo}">
+                        <VerticalStackLayout Spacing="10">
+                            <Label Text="Nuevo veterinario" Style="{StaticResource TextoCampo}" FontAttributes="Bold" />
+                            <Entry Style="{StaticResource EntradaCampo}" Placeholder="Nombre" Text="{Binding NuevoNombre}" MaxLength="60" />
+                            <Entry Style="{StaticResource EntradaCampo}" Placeholder="Matrícula (opcional)" Text="{Binding NuevaMatricula}" MaxLength="30" />
+                            <Button Text="Guardar veterinario" Style="{StaticResource BotonCampoSecundario}" Command="{Binding CrearVeterinarioCommand}" />
+                        </VerticalStackLayout>
+                    </Border>
+                </VerticalStackLayout>
+
+                <!-- 2. Establecimiento -->
+                <VerticalStackLayout Spacing="10">
+                    <HorizontalStackLayout Spacing="12">
+                        <Border Style="{StaticResource InsigniaPaso}">
+                            <Label Text="2" Style="{StaticResource NumeroPaso}" />
+                        </Border>
+                        <Label Text="¿En qué establecimiento?" Style="{StaticResource TituloCuadro}" FontSize="28" VerticalOptions="Center" />
+                    </HorizontalStackLayout>
+                    <Label Text="{Binding TextoEstablecimientoElegido}" Style="{StaticResource ElegidoPaso}" />
+                    <CollectionView ItemsSource="{Binding Establecimientos}" SelectionMode="Single"
+                                    SelectedItem="{Binding EstablecimientoSeleccionado, Mode=TwoWay}">
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate x:DataType="vm:EstablecimientoParaTrabajar">
+                                <Grid Style="{StaticResource FilaElegible}" Margin="0,0,0,8" MinimumHeightRequest="72">
+                                    <Label Text="{Binding Nombre}" Style="{StaticResource TextoCampo}" FontSize="26" FontAttributes="Bold"
+                                           VerticalOptions="Center" />
+                                </Grid>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                    </CollectionView>
+                </VerticalStackLayout>
+
+                <!-- 3. Rodeo, con el avance de hoy -->
+                <VerticalStackLayout Spacing="10">
+                    <HorizontalStackLayout Spacing="12">
+                        <Border Style="{StaticResource InsigniaPaso}">
+                            <Label Text="3" Style="{StaticResource NumeroPaso}" />
+                        </Border>
+                        <Label Text="¿Qué rodeo?" Style="{StaticResource TituloCuadro}" FontSize="28" VerticalOptions="Center" />
+                    </HorizontalStackLayout>
+                    <Label Text="{Binding TextoRodeoElegido}" Style="{StaticResource ElegidoPaso}" />
+                    <Label Text="Elegí primero el establecimiento." Style="{StaticResource TextoCampo}" TextColor="{StaticResource Gray600}"
+                           IsVisible="{Binding FaltaEstablecimiento}" />
+                    <CollectionView ItemsSource="{Binding Rodeos}" SelectionMode="Single"
+                                    SelectedItem="{Binding RodeoSeleccionado, Mode=TwoWay}">
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate x:DataType="dto:RodeoParaTrabajarDto">
+                                <Grid Style="{StaticResource FilaElegible}" Margin="0,0,0,8" MinimumHeightRequest="72">
+                                    <VerticalStackLayout VerticalOptions="Center">
+                                        <Label Text="{Binding RodeoNombre}" Style="{StaticResource TextoCampo}" FontSize="26" FontAttributes="Bold" />
+                                        <Label Text="{Binding Avance.Porcentaje, StringFormat='Hoy: {0} % procesado'}" Style="{StaticResource TextoCampo}"
+                                               FontSize="20" />
+                                        <Label Text="{Binding Avance.Pendientes, StringFormat='Faltan {0} vacas'}" Style="{StaticResource TextoCampo}"
+                                               FontSize="18" TextColor="{StaticResource Gray600}" />
+                                    </VerticalStackLayout>
+                                </Grid>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                    </CollectionView>
+                </VerticalStackLayout>
+            </VerticalStackLayout>
+        </ScrollView>
+
+        <!-- Abajo: qué falta, volver y empezar -->
+        <Grid Grid.Row="3" ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto" ColumnSpacing="16" RowSpacing="8">
+            <Label Grid.Row="0" Grid.ColumnSpan="2" Text="{Binding QueFalta}" IsVisible="{Binding FaltaAlgo}"
+                   Style="{StaticResource TextoCampo}" FontSize="22" FontAttributes="Bold" TextColor="{StaticResource CampoPeligro}"
+                   HorizontalTextAlignment="Center" />
+            <Button Grid.Row="1" Grid.Column="0" Text="Volver" Style="{StaticResource BotonCampoSecundario}" Command="{Binding VolverAlInicioCommand}" />
+            <Button Grid.Row="1" Grid.Column="1" Text="Empezar a trabajar" Style="{StaticResource BotonCampo}" BackgroundColor="{StaticResource CampoExito}"
                     Command="{Binding EmpezarCommand}"
                     SemanticProperties.Hint="Abre la pantalla de trabajo con el veterinario y el rodeo elegidos" />
         </Grid>
