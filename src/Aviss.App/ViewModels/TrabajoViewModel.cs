@@ -70,7 +70,7 @@ public sealed partial class TrabajoViewModel : ObservableObject
         _sesion = sesion;
         _simulador = simulador;
         _cola = new ColaDeLecturas(ProcesarLecturaAsync);
-        CargarPreferenciasDelVeterinario();
+        CargarPreferenciasDelEstablecimiento();
     }
 
     // ================================================================== encabezado (RF-3)
@@ -370,9 +370,9 @@ public sealed partial class TrabajoViewModel : ObservableObject
     private bool _cargandoPreferencias;
 
     /// <summary>
-    /// El veterinario activo lleva el control por manga: contador "7/10", cantidad de la manga, cierre automático y "Finalizar
+    /// Se lleva el control por manga en este establecimiento: contador "7/10", cantidad de la manga, cierre automático y "Finalizar
     /// manga". Apagado, se ve todo lo demás sin lo de las mangas (la app sigue usando una manga interna para guardar los datos).
-    /// Es una preferencia de cada veterinario: se guarda al cambiarla y se vuelve a leer al cambiar de veterinario.
+    /// Es una preferencia de cada establecimiento (cada tambo trabaja a su manera): se guarda al cambiarla y se vuelve a leer al empezar. No depende del veterinario.
     /// </summary>
     [ObservableProperty]
     private bool _usaMangas = IPreferenciasDispositivo.ControlPorMangaPorDefecto;
@@ -383,20 +383,20 @@ public sealed partial class TrabajoViewModel : ObservableObject
         OnPropertyChanged(nameof(TextoSegundaConfirmacion));
         OnPropertyChanged(nameof(HayAdvertenciaMangaAbierta));
         OnPropertyChanged(nameof(AdvertenciaMangaAbierta));
-        if (_cargandoPreferencias || _sesion.Veterinario is not { } vet) return;
-        _preferencias.GuardarControlPorManga(vet.Id, value);
+        if (_cargandoPreferencias || _sesion.Rodeo is not { } rodeo) return;
+        _preferencias.GuardarControlPorManga(rodeo.EstablecimientoId, value);
     }
 
-    // Lee la preferencia del veterinario activo (sin volver a guardarla). Si nunca eligió, queda apagado.
-    private void CargarPreferenciasDelVeterinario()
+    // Lee la preferencia del establecimiento en trabajo (sin volver a guardarla). Si nunca se eligió, queda apagado.
+    private void CargarPreferenciasDelEstablecimiento()
     {
-        if (_sesion.Veterinario is not { } vet) return;
+        if (_sesion.Rodeo is not { } rodeo) return;
         _cargandoPreferencias = true;
-        try { UsaMangas = _preferencias.ObtenerControlPorManga(vet.Id) ?? IPreferenciasDispositivo.ControlPorMangaPorDefecto; }
+        try { UsaMangas = _preferencias.ObtenerControlPorManga(rodeo.EstablecimientoId) ?? IPreferenciasDispositivo.ControlPorMangaPorDefecto; }
         finally { _cargandoPreferencias = false; }
     }
 
-    // ---- Configuración (el engranaje): una capa con las opciones del veterinario, de un solo toque
+    // ---- Configuración (el engranaje): una capa con las opciones del establecimiento, de un solo toque
 
     public bool HayConfiguracion => Cuadro == CuadroTrabajo.Configuracion;
 
@@ -569,7 +569,7 @@ public sealed partial class TrabajoViewModel : ObservableObject
             return;
         }
 
-        CargarPreferenciasDelVeterinario();
+        CargarPreferenciasDelEstablecimiento();
         OnPropertyChanged(nameof(NombreRodeo));
         OnPropertyChanged(nameof(TituloBarra));
         OnPropertyChanged(nameof(NombreEstablecimiento));
@@ -1389,7 +1389,6 @@ public sealed partial class TrabajoViewModel : ObservableObject
     {
         if (veterinario is null) return;
         _sesion.CambiarVeterinario(veterinario);
-        CargarPreferenciasDelVeterinario();   // cada veterinario trabaja a su manera
         _preferencias.GuardarVeterinarioRecordado(veterinario.Id);
         OnPropertyChanged(nameof(NombreVeterinario));
     }

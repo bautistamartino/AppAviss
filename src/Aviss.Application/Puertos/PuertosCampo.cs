@@ -54,13 +54,13 @@ public interface IPreferenciasDispositivo
     void GuardarVeterinarioRecordado(Guid veterinarioId);
 
     /// <summary>
-    /// Si el veterinario eligió llevar el control por manga (contador "7/10" y cierre de mangas), o nulo si nunca eligió
-    /// (en ese caso se usa <see cref="ControlPorMangaPorDefecto"/>). Es una preferencia de cada veterinario.
+    /// Si en ese establecimiento se eligió llevar el control por manga (contador "7/10" y cierre de mangas), o nulo si nunca se eligió
+    /// (en ese caso se usa <see cref="ControlPorMangaPorDefecto"/>). Es una preferencia de cada establecimiento (cada tambo trabaja a su manera).
     /// </summary>
-    bool? ObtenerControlPorManga(Guid veterinarioId);
-    void GuardarControlPorManga(Guid veterinarioId, bool valor);
+    bool? ObtenerControlPorManga(Guid establecimientoId);
+    void GuardarControlPorManga(Guid establecimientoId, bool valor);
 
-    /// <summary>Lo que se usa mientras el veterinario no elija: apagado (cada uno lo prende si lo quiere).</summary>
+    /// <summary>Lo que se usa mientras no se elija: apagado (cada establecimiento lo prende si lo quiere).</summary>
     const bool ControlPorMangaPorDefecto = false;
 }
 

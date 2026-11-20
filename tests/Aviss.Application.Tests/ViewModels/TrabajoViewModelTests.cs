@@ -1602,15 +1602,17 @@ public class TrabajoViewModelTests
         Assert.Equal("", b.Vm.TextoMetaVerificacion);
     }
 
-    // ------------------------------------------------------------------ control por manga: se prende o se apaga (por veterinario)
+    // ------------------------------------------------------------------ control por manga: se prende o se apaga (por establecimiento)
 
     private static readonly VeterinarioDto OtroVet = new(Guid.Parse("33333333-0000-0000-0000-000000000009"), "Dr. Luis", null);
 
+    private static Guid Establecimiento(Banco b) => b.Sesion.Rodeo!.EstablecimientoId;
+
     [Fact]
-    public async Task Sin_haber_elegido_nunca_el_control_por_manga_arranca_apagado()
+    public async Task Sin_haberlo_elegido_nunca_el_control_por_manga_arranca_apagado()
     {
         var b = new Banco();
-        b.Preferencias.ControlPorMangaPorDefecto = null;   // el veterinario nunca eligió
+        b.Preferencias.ControlPorMangaPorDefecto = null;   // en este establecimiento nunca se eligió
 
         await b.Vm.IniciarAsync();
 
@@ -1619,10 +1621,10 @@ public class TrabajoViewModelTests
     }
 
     [Fact]
-    public async Task El_control_por_manga_se_carga_de_la_preferencia_del_veterinario_activo()
+    public async Task El_control_por_manga_se_carga_de_la_preferencia_del_establecimiento_en_trabajo()
     {
         var b = new Banco();
-        b.Preferencias.ControlPorManga[Datos.Vet.Id] = false;
+        b.Preferencias.ControlPorManga[Establecimiento(b)] = false;
 
         await b.Vm.IniciarAsync();
 
@@ -1630,7 +1632,7 @@ public class TrabajoViewModelTests
     }
 
     [Fact]
-    public async Task Cambiar_el_interruptor_guarda_la_preferencia_solo_de_ese_veterinario()
+    public async Task Cambiar_el_interruptor_guarda_la_preferencia_solo_de_ese_establecimiento()
     {
         var b = new Banco();
         await b.Vm.IniciarAsync();
@@ -1638,15 +1640,15 @@ public class TrabajoViewModelTests
 
         b.Vm.UsaMangas = false;
 
-        Assert.Equal([(Datos.Vet.Id, false)], b.Preferencias.ControlGuardado);
-        Assert.False(b.Preferencias.ControlPorManga.ContainsKey(OtroVet.Id));
+        Assert.Equal([(Establecimiento(b), false)], b.Preferencias.ControlGuardado);
+        Assert.Single(b.Preferencias.ControlPorManga);
     }
 
     [Fact]
     public async Task Cargar_la_preferencia_no_la_vuelve_a_guardar()
     {
         var b = new Banco();
-        b.Preferencias.ControlPorManga[Datos.Vet.Id] = false;
+        b.Preferencias.ControlPorManga[Establecimiento(b)] = false;
 
         await b.Vm.IniciarAsync();
 
@@ -1654,17 +1656,31 @@ public class TrabajoViewModelTests
     }
 
     [Fact]
-    public async Task Al_cambiar_de_veterinario_se_carga_la_preferencia_del_nuevo()
+    public async Task Cada_establecimiento_tiene_su_propia_preferencia()
     {
         var b = new Banco();
-        b.Preferencias.ControlPorManga[Datos.Vet.Id] = true;
-        b.Preferencias.ControlPorManga[OtroVet.Id] = false;
+        var otroEstablecimiento = Guid.NewGuid();
+        b.Preferencias.ControlPorManga[Establecimiento(b)] = true;
+        b.Preferencias.ControlPorManga[otroEstablecimiento] = false;
         await b.Vm.IniciarAsync();
         Assert.True(b.Vm.UsaMangas);
 
-        b.Vm.CambiarVeterinarioCommand.Execute(OtroVet);
+        b.Sesion.Empezar(Datos.Vet, Datos.Rodeo(establecimientoId: otroEstablecimiento));
+        await b.Vm.IniciarAsync();
 
         Assert.False(b.Vm.UsaMangas);
+    }
+
+    [Fact]
+    public async Task Cambiar_de_veterinario_no_cambia_la_preferencia_porque_es_del_establecimiento()
+    {
+        var b = new Banco();
+        b.Preferencias.ControlPorManga[Establecimiento(b)] = true;
+        await b.Vm.IniciarAsync();
+
+        b.Vm.CambiarVeterinarioCommand.Execute(OtroVet);
+
+        Assert.True(b.Vm.UsaMangas);
         Assert.Empty(b.Preferencias.ControlGuardado);   // cambiar de veterinario no escribe preferencias de mangas
     }
 

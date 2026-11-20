@@ -5,7 +5,7 @@ namespace Aviss.App.Servicios;
 /// <summary>
 /// Preferencias de la tablet con el almacén de MAUI (SharedPreferences en Android). Guardan el último veterinario
 /// activo fuera de la base, igual que el identificador del dispositivo: no cambia si se restaura o recrea la base (RF-1).
-/// También guardan, por veterinario, si lleva el control por manga.
+/// También guardan, por establecimiento, si se lleva el control por manga.
 /// </summary>
 public sealed class PreferenciasMaui : IPreferenciasDispositivo
 {
@@ -20,15 +20,15 @@ public sealed class PreferenciasMaui : IPreferenciasDispositivo
     public void GuardarVeterinarioRecordado(Guid veterinarioId)
         => Preferences.Default.Set(ClaveVeterinario, veterinarioId.ToString());
 
-    // Una clave por veterinario: cada uno tiene su forma de trabajar. Nulo si nunca eligió.
-    private static string ClaveControlPorManga(Guid veterinarioId) => $"control_por_manga_{veterinarioId}";
+    // Una clave por establecimiento: cada tambo trabaja a su manera. Nulo si nunca se eligió.
+    private static string ClaveControlPorManga(Guid establecimientoId) => $"control_por_manga_{establecimientoId}";
 
-    public bool? ObtenerControlPorManga(Guid veterinarioId)
+    public bool? ObtenerControlPorManga(Guid establecimientoId)
     {
-        var clave = ClaveControlPorManga(veterinarioId);
+        var clave = ClaveControlPorManga(establecimientoId);
         return Preferences.Default.ContainsKey(clave) ? Preferences.Default.Get(clave, IPreferenciasDispositivo.ControlPorMangaPorDefecto) : null;
     }
 
-    public void GuardarControlPorManga(Guid veterinarioId, bool valor)
-        => Preferences.Default.Set(ClaveControlPorManga(veterinarioId), valor);
+    public void GuardarControlPorManga(Guid establecimientoId, bool valor)
+        => Preferences.Default.Set(ClaveControlPorManga(establecimientoId), valor);
 }
