@@ -53,6 +53,14 @@ internal sealed class CampoService : ICampoService
     public Task<IReadOnlyList<EstadoActivoDto>> ListarEstadosActivosAsync(CancellationToken ct = default)
         => LeerAsync(p => p.GetRequiredService<ConsultaCampoService>().ListarEstadosActivosAsync(ct));
 
+    public Task<Resultado<Guid>> CrearEstadoAsync(string nombre, string codigoDairyComp, CancellationToken ct = default)
+    {
+        var codigo = Aviss.Domain.Reglas.CodigoEstado.DesdeNombre(nombre);
+        if (codigo.Length == 0)
+            return Task.FromResult(Resultado.Error<Guid>(CodigoError.DatosInvalidos, "Escribí un nombre con letras o números."));
+        return EscribirAsync(p => p.GetRequiredService<ICatalogoEstadosService>().CrearAsync(codigo, nombre, codigoDairyComp, ct), ct);
+    }
+
     // ---- Mangas ----
 
     public Task<Resultado<EstadoTrabajoDto>> IniciarTrabajoAsync(Guid rodeoId, Guid usuarioId, CancellationToken ct = default)

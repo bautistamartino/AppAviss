@@ -23,6 +23,25 @@ public sealed class AvisosAndroid : IAvisosCampo
         Pitar();
     }
 
+    /// <summary>
+    /// "No entra en tacto" (CVET 0): la chicharra. Vibración larga y un zumbido grave por el canal de alarma, bien distinto
+    /// del pitido de "repetido", para saber de oído que esa vaca no se tacta.
+    /// </summary>
+    public void SinTacto()
+    {
+        Vibrar(milisegundos: 500);
+        Zumbar();
+    }
+
+
+    /// <summary>La manga llegó a su cantidad y se cerró sola: una vibración corta y un tono positivo de confirmación.</summary>
+    public void MangaCompleta()
+    {
+        Vibrar(milisegundos: 150);
+        Tono(Tone.PropAck, 300);
+    }
+
+
     private static void Vibrar(long milisegundos)
     {
         try
@@ -69,6 +88,37 @@ public sealed class AvisosAndroid : IAvisosCampo
         catch (Exception)
         {
             // Sin sonido el aviso visible alcanza.
+        }
+    }
+
+    // Un tono corto por el canal de notificaciones; se libera después para no dejar un recurso de audio abierto.
+    private static void Tono(Tone tipo, int milisegundos)
+    {
+        try
+        {
+            var tono = new ToneGenerator(Android.Media.Stream.Notification, 100);
+            tono.StartTone(tipo, milisegundos);
+            _ = Task.Delay(milisegundos + 300).ContinueWith(_ => tono.Release());
+        }
+        catch (Exception)
+        {
+            // Sin sonido alcanzan la vibración y el aviso visible.
+        }
+    }
+
+    private static void Zumbar()
+    {
+        try
+        {
+            // Canal de alarma y volumen máximo del generador: se oye sobre el ruido de la manga. PropNack es un zumbido doble
+            // grave ("negativo"), parecido a una chicharra.
+            var tono = new ToneGenerator(Android.Media.Stream.Alarm, 100);
+            tono.StartTone(Tone.PropNack, 600);
+            _ = Task.Delay(900).ContinueWith(_ => tono.Release());
+        }
+        catch (Exception)
+        {
+            // Sin sonido alcanzan la vibración y el aviso visible.
         }
     }
 }

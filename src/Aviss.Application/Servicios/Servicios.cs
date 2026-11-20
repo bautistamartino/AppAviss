@@ -88,6 +88,8 @@ public interface ICampoService
     Task<IReadOnlyList<VeterinarioDto>> ListarVeterinariosActivosAsync(CancellationToken ct = default);
     Task<Resultado<Guid>> CrearVeterinarioAsync(string nombre, string? matricula, CancellationToken ct = default);
     Task<IReadOnlyList<EstadoActivoDto>> ListarEstadosActivosAsync(CancellationToken ct = default);
+    /// <summary>Crea un estado nuevo en el catálogo desde el campo ("Agregar evento"). El código interno sale del nombre.</summary>
+    Task<Resultado<Guid>> CrearEstadoAsync(string nombre, string codigoDairyComp, CancellationToken ct = default);
 
     // ---- Mangas (RF-4 a RF-10) ----
     /// <summary>Empieza a trabajar un rodeo: cierra como automática la manga abierta de un día anterior y devuelve el estado.</summary>

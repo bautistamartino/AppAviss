@@ -33,6 +33,14 @@ public enum CuadroTrabajo
     Verificacion,
     /// <summary>Cantidad real de animales, con teclado numérico (RF-6).</summary>
     CantidadReal,
+    /// <summary>"Agregar evento": todas las opciones de estado para elegir una (RF-15).</summary>
+    Eventos,
+    /// <summary>"Configuración": el engranaje, con las opciones del veterinario.</summary>
+    Configuracion,
+    /// <summary>"Cantidad de la manga": cuántas vacas entran, que se pone a mano al empezar cada manga.</summary>
+    CantidadManga,
+    /// <summary>"Agregar observación": un texto opcional que viaja con el próximo evento.</summary>
+    Observacion,
     /// <summary>"¿Terminar el tacto?" (RF-7).</summary>
     SegundaConfirmacion
 }

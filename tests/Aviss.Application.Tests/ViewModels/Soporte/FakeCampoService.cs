@@ -48,6 +48,18 @@ public class FakeCampoService : ICampoService
     public virtual Task<IReadOnlyList<VeterinarioDto>> ListarVeterinariosActivosAsync(CancellationToken ct = default) => Task.FromResult(Veterinarios);
     public Task<IReadOnlyList<EstadoActivoDto>> ListarEstadosActivosAsync(CancellationToken ct = default) => Task.FromResult(Estados);
 
+    public List<(string Nombre, string CodigoDairyComp)> EstadosCreados { get; } = [];
+    public Func<string, Resultado<Guid>>? OnCrearEstado { get; set; }
+
+    public Task<Resultado<Guid>> CrearEstadoAsync(string nombre, string codigoDairyComp, CancellationToken ct = default)
+    {
+        EstadosCreados.Add((nombre, codigoDairyComp));
+        if (OnCrearEstado is not null) return Task.FromResult(OnCrearEstado(nombre));
+        var id = Guid.NewGuid();
+        Estados = [.. Estados, new EstadoActivoDto(id, nombre.ToUpperInvariant())];
+        return Task.FromResult(Resultado.Ok(id));
+    }
+
     public Task<Resultado<Guid>> CrearVeterinarioAsync(string nombre, string? matricula, CancellationToken ct = default)
     {
         VeterinariosCreados.Add((nombre, matricula));
@@ -127,20 +139,24 @@ public static class Datos
     public static readonly Guid RodeoId = Guid.Parse("11111111-0000-0000-0000-000000000001");
     public static readonly VeterinarioDto Vet = new(Guid.Parse("22222222-0000-0000-0000-000000000001"), "Dra. Ana", "M-1");
 
-    public static AvanceRodeoDto Avance(int total = 100, int procesadas = 0)
-        => new(new DateOnly(2026, 11, 17), total, procesadas, total - procesadas, total == 0 ? 0 : procesadas * 100 / total);
+    public static AvanceRodeoDto Avance(int total = 100, int procesadas = 0, DateTime? primera = null, DateTime? fin = null, bool terminado = false)
+        => new(new DateOnly(2026, 11, 17), total, procesadas, total - procesadas, total == 0 ? 0 : procesadas * 100 / total, primera, fin, terminado);
 
-    public static EstadoTrabajoDto EstadoTrabajo(int manga = 1, bool abierta = false, int contador = 0, int procesadas = 0)
-        => new(RodeoId, manga, abierta, abierta ? Guid.NewGuid() : null, contador, Avance(procesadas: procesadas));
+    public static EstadoTrabajoDto EstadoTrabajo(int manga = 1, bool abierta = false, int contador = 0, int procesadas = 0, AvanceRodeoDto? avance = null)
+        => new(RodeoId, manga, abierta, abierta ? Guid.NewGuid() : null, contador, avance ?? Avance(procesadas: procesadas));
 
     public static RodeoParaTrabajarDto Rodeo(string establecimiento = "Tambo Norte", string rodeo = "Rodeo 1", Guid? establecimientoId = null, Guid? rodeoId = null)
         => new(establecimientoId ?? Guid.NewGuid(), establecimiento, rodeoId ?? RodeoId, rodeo, new DateTime(2026, 11, 1, 0, 0, 0, DateTimeKind.Utc), EstadoRodeo.Abierto, Avance());
 
-    public static FichaAnimalDto Ficha(Guid? animalId = null, string caravana = "1001", string? idElectronico = null)
-        => new(animalId ?? Guid.NewGuid(), caravana, idElectronico, null, null, null, [], "", "", []);
+    public static FichaAnimalDto Ficha(Guid? animalId = null, string caravana = "1001", string? idElectronico = null, string cvet = "", bool entraEnTacto = true)
+        => new(animalId ?? Guid.NewGuid(), caravana, idElectronico, null, null, null, [], "", "", [], cvet, entraEnTacto);
 
     public static ResultadoLecturaDto Marcada(Guid animalId, string caravana, Guid? marcaId = null, int manga = 1, int contador = 1)
         => new(TipoResultadoLectura.Marcada, caravana, animalId, caravana, Ficha(animalId, caravana), marcaId ?? Guid.NewGuid(), manga, contador, null, null, false);
+
+    /// <summary>Una vaca con CVET 0: queda marcada y suma al conteo, pero sin ficha.</summary>
+    public static ResultadoLecturaDto SinTacto(Guid animalId, string caravana, Guid? marcaId = null, int manga = 1, int contador = 1)
+        => new(TipoResultadoLectura.SinTacto, caravana, animalId, caravana, null, marcaId ?? Guid.NewGuid(), manga, contador, null, null, false);
 
     public static UltimoRegistroDto Ultimo(TipoRegistroCampo tipo = TipoRegistroCampo.Marca, string? estado = null, int? manga = 1)
         => new(tipo, Guid.NewGuid(), new DateTime(2026, 11, 17, 13, 0, 0, DateTimeKind.Utc), estado, "Dra. Ana", manga);

@@ -130,4 +130,32 @@ public class ConstructorFichaTests
         var f = Armar("""{"FPART":"5/11/26"}""");
         Assert.Single(f.Historial);
     }
+
+    // ---- CVET y columnas extra (DCC, DDUC, LECHE...)
+
+    [Theory]
+    [InlineData("""{"CVET":"PRE"}""", "PRE")]
+    [InlineData("""{"cvet":" 0 "}""", "0")]
+    [InlineData("""{"CVET":0}""", "0")]
+    [InlineData("""{"LACT":"2"}""", "")]
+    [InlineData("{roto", "")]
+    [InlineData(null, "")]
+    public void Lee_el_cvet_sin_distinguir_mayusculas_y_sin_fallar(string? json, string esperado)
+        => Assert.Equal(esperado, ConstructorFicha.LeerCvet(json));
+
+    [Fact]
+    public void La_ficha_trae_el_cvet()
+        => Assert.Equal("FRES", Armar("""{"CVET":"FRES"}""").Cvet);
+
+    [Fact]
+    public void Las_columnas_que_la_ficha_no_conoce_van_como_extras_en_el_orden_del_archivo_y_solo_con_valor()
+    {
+        var f = Armar("""{"ID":"1014","CVET":"PRE","RPRO":"INSEMIN","LACT":"3","DDUC":"34","DEL":"95","DCC":"0","VACIA":"","LECHE":"24","UTORO":"FUNKI"}""");
+
+        Assert.Equal([("DDUC", "34"), ("DCC", "0"), ("LECHE", "24")], f.Extras!.Select(c => (c.Nombre, c.Valor)));
+    }
+
+    [Fact]
+    public void Sin_columnas_extra_la_lista_queda_vacia()
+        => Assert.Empty(Armar("""{"ID":"1","CVET":"0","RPRO":"SECA","LACT":"1"}""").Extras!);
 }

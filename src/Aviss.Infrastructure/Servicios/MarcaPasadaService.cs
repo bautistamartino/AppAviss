@@ -95,6 +95,13 @@ internal sealed class MarcaPasadaService
             try
             {
                 var preparada = await _marcador.MarcarAsync(animal.Id, c.RodeoId, ahora, c.UsuarioId, ct);
+
+                // CVET 0: la vaca no entra en tacto. Igual queda marcada (suma al conteo de la manga y se puede deshacer),
+                // pero no se arma ni se devuelve la ficha: la pantalla solo hace sonar la chicharra y sigue con la próxima.
+                if (!Aviss.Domain.Reglas.ReglasCvet.EntraEnTacto(ConstructorFicha.LeerCvet(animal.DatosOriginalesJson)))
+                    return Resultado.Ok(new ResultadoLecturaDto(TipoResultadoLectura.SinTacto, codigo, animal.Id, animal.NumeroCaravana,
+                        null, preparada.Marca.Id, preparada.Manga.Numero, preparada.Contador, null, null, false));
+
                 var ficha = await _ficha.ArmarAsync(animal, ct);
                 return Resultado.Ok(new ResultadoLecturaDto(TipoResultadoLectura.Marcada, codigo, animal.Id, animal.NumeroCaravana,
                     ficha, preparada.Marca.Id, preparada.Manga.Numero, preparada.Contador, null, null, false));

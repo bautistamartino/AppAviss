@@ -28,36 +28,83 @@
         <!-- *** PANTALLA PRINCIPAL *** -->
         <Grid RowDefinitions="Auto,Auto,*,Auto,Auto">
 
-            <!-- Encabezado: rodeo, veterinario, manga y contador, avance del día, cierre de manga (RF-3) -->
-            <!-- Pensado para la tablet en vertical: filas de arriba a abajo, todo el ancho. -->
-            <Border Grid.Row="0" BackgroundColor="{StaticResource CampoPanel}" StrokeThickness="0" Padding="12,6">
-                <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="10" RowSpacing="4">
-                    <!-- Fila 1: rodeo y establecimiento a la izquierda, manga y contador a la derecha. -->
-                    <VerticalStackLayout Grid.Row="0" Grid.Column="0" Spacing="0" VerticalOptions="Center">
-                        <Label Text="{Binding NombreRodeo}" Style="{StaticResource TextoCampoClaro}" FontSize="22" FontAttributes="Bold"
-                               LineBreakMode="TailTruncation" />
-                        <Label Text="{Binding NombreEstablecimiento}" Style="{StaticResource TextoCampoClaro}" FontSize="14"
-                               TextColor="{StaticResource Gray200}" LineBreakMode="TailTruncation" />
-                    </VerticalStackLayout>
-                    <Label Grid.Row="0" Grid.Column="1" Text="{Binding TextoManga}" Style="{StaticResource ContadorManga}" FontSize="28"
-                           VerticalOptions="Center" HorizontalTextAlignment="End" />
+            <!-- Encabezado contraíble (RF-3). La barra de arriba se ve siempre: flechita para contraer o abrir, el ID y el CVET de la
+                 vaca abierta (o el rodeo si no hay) y el contador de la manga. Abierta, muestra además el rodeo, el avance, los
+                 horarios de la primera y la última vaca, el veterinario y los botones de cierre. -->
+            <Border Grid.Row="0" BackgroundColor="{StaticResource CampoPanel}" StrokeThickness="0" Padding="8,4,12,4">
+                <VerticalStackLayout Spacing="6">
 
-                    <!-- Fila 2: avance del día a la izquierda; a la derecha, el veterinario (tocarlo abre la lista, RF-1). -->
-                    <Label Grid.Row="1" Grid.Column="0" Text="{Binding TextoAvance}" Style="{StaticResource TextoCampoClaro}" FontSize="14"
-                           TextColor="{StaticResource Gray200}" VerticalOptions="Center" />
-                    <Button Grid.Row="1" Grid.Column="1" Text="{Binding NombreVeterinario, StringFormat='Vet: {0} ▾'}"
-                            Style="{StaticResource BotonCampoSecundario}" FontSize="15" HeightRequest="40" MinimumWidthRequest="0"
-                            Padding="10,0" Clicked="OnCambiarVeterinarioClicked"
-                            SemanticProperties.Hint="Cambiar el veterinario que firma los registros" />
-
-                    <!-- Fila 3: cierre de manga y fin del tacto, lado a lado. -->
-                    <Grid Grid.Row="2" Grid.ColumnSpan="2" ColumnDefinitions="*,*" ColumnSpacing="8">
-                        <Button Grid.Column="0" Text="Finalizar manga" Style="{StaticResource BotonCampo}" FontSize="17" HeightRequest="44"
-                                Padding="6,0" Command="{Binding FinalizarMangaCommand}" />
-                        <Button Grid.Column="1" Text="Terminar el tacto" Style="{StaticResource BotonCampoPeligro}" FontSize="17" HeightRequest="44"
-                                Padding="6,0" Command="{Binding TerminarElTactoCommand}" />
+                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+                        <!-- Esquina de arriba a la izquierda: el engranaje (configuración, de un solo toque) y, bien separada para no tocar
+                             una por la otra, la flechita que contrae o abre los datos. -->
+                        <HorizontalStackLayout Grid.Column="0" Spacing="26" VerticalOptions="Center">
+                            <Button Text="⚙" BackgroundColor="#78909C" TextColor="White" FontSize="22" CornerRadius="8"
+                                    WidthRequest="40" HeightRequest="40" MinimumWidthRequest="0" Padding="0" VerticalOptions="Center"
+                                    Command="{Binding AbrirConfiguracionCommand}"
+                                    SemanticProperties.Description="Configuración" />
+                            <Button Text="{Binding TextoFlecha}" BackgroundColor="Transparent" TextColor="White" FontSize="22"
+                                    WidthRequest="44" HeightRequest="44" MinimumWidthRequest="0" Padding="0" VerticalOptions="Center"
+                                    Command="{Binding AlternarCabeceraCommand}"
+                                    SemanticProperties.Description="Contraer o mostrar los datos de arriba" />
+                        </HorizontalStackLayout>
+                        <Label Grid.Column="1" Text="{Binding TituloBarra}" Style="{StaticResource TextoCampoClaro}" FontSize="22" FontAttributes="Bold"
+                               HorizontalTextAlignment="Center" VerticalOptions="Center" LineBreakMode="TailTruncation" />
+                        <!-- El veterinario: tocarlo abre la lista para cambiarlo sin salir de la manga (RF-1). -->
+                        <Button Grid.Column="2" Text="{Binding NombreVeterinario, StringFormat='Vet: {0} ▾'}"
+                                Style="{StaticResource BotonCampoSecundario}" FontSize="15" HeightRequest="40" MinimumWidthRequest="0"
+                                Padding="10,0" VerticalOptions="Center" Clicked="OnCambiarVeterinarioClicked"
+                                SemanticProperties.Hint="Cambiar el veterinario que firma los registros" />
                     </Grid>
-                </Grid>
+
+                    <!-- Lo que se contrae -->
+                    <VerticalStackLayout Spacing="6" Padding="4,0,0,2" IsVisible="{Binding CabeceraAbierta}">
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                            <VerticalStackLayout Grid.Column="0" Spacing="0" VerticalOptions="Center">
+                                <Label Text="{Binding NombreRodeo}" Style="{StaticResource TextoCampoClaro}" FontSize="20" FontAttributes="Bold"
+                                       LineBreakMode="TailTruncation" />
+                                <Label Text="{Binding NombreEstablecimiento}" Style="{StaticResource TextoCampoClaro}" FontSize="14"
+                                       TextColor="{StaticResource Gray200}" LineBreakMode="TailTruncation" />
+                            </VerticalStackLayout>
+                            <!-- El contador de la manga ("Manga 3 · 7/10"). Tocarlo abre el cuadro para poner cuántas vacas entran. Se pone
+                                 verde cuando está completa (10/10) y rojo cuando sobran (11/10). -->
+                            <Border Grid.Column="1" StrokeThickness="0" BackgroundColor="Transparent" Padding="4,2" VerticalOptions="Center" IsVisible="{Binding UsaMangas}">
+                                <Border.GestureRecognizers>
+                                    <TapGestureRecognizer Command="{Binding AbrirCantidadMangaCommand}" />
+                                </Border.GestureRecognizers>
+                                <Label Text="{Binding TextoManga}" Style="{StaticResource ContadorManga}" FontSize="22" HorizontalTextAlignment="End"
+                                       SemanticProperties.Hint="Tocá para poner cuántas vacas entran en esta manga">
+                                    <Label.Triggers>
+                                        <DataTrigger TargetType="Label" Binding="{Binding MangaCompleta}" Value="True">
+                                            <Setter Property="TextColor" Value="#69F0AE" />
+                                        </DataTrigger>
+                                        <DataTrigger TargetType="Label" Binding="{Binding MangaExcedida}" Value="True">
+                                            <Setter Property="TextColor" Value="#FF5252" />
+                                        </DataTrigger>
+                                    </Label.Triggers>
+                                </Label>
+                            </Border>
+                        </Grid>
+
+                        <Label Text="{Binding TextoAvance}" Style="{StaticResource TextoCampoClaro}" FontSize="14" TextColor="{StaticResource Gray200}" />
+                        <Label Text="{Binding TextoHorarios}" Style="{StaticResource TextoCampoClaro}" FontSize="16" FontAttributes="Bold" />
+
+                        <!-- Cada vez que entra una manga se pone cuántas vacas son (también se puede tocando el contador de arriba). -->
+                        <Button Text="Cantidad de vacas de esta manga" Style="{StaticResource BotonCampoSecundario}" FontSize="16" HeightRequest="40"
+                                Padding="10,0" IsVisible="{Binding UsaMangas}" Command="{Binding AbrirCantidadMangaCommand}" />
+
+                        <!-- Cierre de manga y fin del tacto, lado a lado. -->
+                        <Grid ColumnDefinitions="*,*" ColumnSpacing="8" IsVisible="{Binding UsaMangas}">
+                            <Button Grid.Column="0" Text="Finalizar manga" Style="{StaticResource BotonCampo}" FontSize="17" HeightRequest="44"
+                                    Padding="6,0" Command="{Binding FinalizarMangaCommand}" />
+                            <Button Grid.Column="1" Text="Terminar el tacto" Style="{StaticResource BotonCampoPeligro}" FontSize="17" HeightRequest="44"
+                                    Padding="6,0" Command="{Binding TerminarElTactoCommand}" />
+                        </Grid>
+
+                        <!-- Sin control por manga: solo "Terminar el tacto", que termina todo el trabajo, a todo el ancho. -->
+                        <Button Text="Terminar el tacto" Style="{StaticResource BotonCampoPeligro}" FontSize="17" HeightRequest="44" Padding="6,0"
+                                IsVisible="{Binding UsaMangas, Converter={StaticResource Invertir}}" Command="{Binding TerminarElTactoCommand}" />
+                    </VerticalStackLayout>
+                </VerticalStackLayout>
             </Border>
 
             <!-- Mensajes (error en rojo, información en ámbar) -->
@@ -85,115 +132,132 @@
                         <Label Text="{Binding UltimoGuardado, StringFormat='Último: {0}'}" Style="{StaticResource TextoCampo}" FontSize="28"
                                FontAttributes="Bold" HorizontalTextAlignment="Center" />
                     </Border>
+                    <!-- Tras una vaca con CVET 0 (que no entra en tacto): un botón para mirar su ficha, por si se quiere saber algo de ella. -->
+                    <Button Text="{Binding TextoVerFichaSinTacto}" Style="{StaticResource BotonCampoSecundario}" FontSize="20" HeightRequest="56"
+                            IsVisible="{Binding HayVerFichaSinTacto}" Command="{Binding VerFichaSinTactoCommand}"
+                            SemanticProperties.Hint="Abre la ficha de la última vaca que no entró en tacto, solo para mirar" />
                 </VerticalStackLayout>
 
-                <!-- Ficha de la vaca (RF-13). Arriba lo informativo (con scroll); abajo, fijos, los botones de estado. -->
-                <Grid RowDefinitions="*,Auto" IsVisible="{Binding HayFicha}">
-                    <ScrollView Grid.Row="0">
-                        <VerticalStackLayout Padding="16,8" Spacing="8">
-                            <Label Text="{Binding Ficha.Caravana}" Style="{StaticResource CaravanaGrande}" FontSize="56"
-                                   SemanticProperties.Description="Caravana de la vaca" />
+                <!-- Ficha de la vaca, como en el Daily: título con el ID y el CVET, Evento y Observación lado a lado, pestañas
+                     Datos e Historial y la barra de abajo con Saltar y Entrar (RF-13 a RF-15). -->
+                <Grid RowDefinitions="Auto,Auto,*,Auto" IsVisible="{Binding HayFicha}">
 
-                            <HorizontalStackLayout Spacing="12">
-                                <Button Text="Cerrar ficha" Style="{StaticResource BotonCampoSecundario}" HeightRequest="56" FontSize="20"
-                                        Command="{Binding CerrarFichaCommand}" />
-                            </HorizontalStackLayout>
+                    <!-- El ID y el CVET (el motivo del tacto) están en la barra de arriba de la pantalla, que se ve siempre. Una vaca con
+                         CVET 0 abierta con "Ver ficha" lo avisa en rojo. -->
+                    <VerticalStackLayout Grid.Row="0">
+                        <Border IsVisible="{Binding NoEntraEnTacto}" BackgroundColor="{StaticResource CampoPeligro}" StrokeThickness="0" Padding="14,6">
+                            <Label Text="No entra en tacto (CVET 0)" TextColor="White" FontSize="20" FontAttributes="Bold" />
+                        </Border>
+                    </VerticalStackLayout>
 
-                            <Label Text="{Binding Ficha.EstadoNombre, TargetNullValue='Sin estado', FallbackValue='Sin estado', StringFormat='Estado: {0}'}"
-                                   Style="{StaticResource TextoCampo}" FontSize="32" FontAttributes="Bold" />
-                            <Label Text="{Binding Ficha.FechaUltimoTactoUtc, Converter={StaticResource FechaLocal}, StringFormat='Último tacto: {0}'}"
-                                   Style="{StaticResource TextoCampo}" FontSize="24" />
-                            <Label Text="{Binding Ficha.IdElectronico, StringFormat='Identificador electrónico: {0}'}"
-                                   Style="{StaticResource TextoCampo}" FontSize="20" TextColor="{StaticResource Gray600}" />
+                    <!-- Evento y Observación: tocar cada casillero abre su lista o su texto. Nada se guarda hasta "Entrar". -->
+                    <VerticalStackLayout Grid.Row="1" Spacing="4" Padding="10,8,10,4" IsVisible="{Binding PuedeAgregarEventos}">
+                        <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+                            <Label Grid.Column="0" Text="Evento" Style="{StaticResource TextoCampo}" FontSize="16" FontAttributes="Bold" TextColor="{StaticResource Gray600}" />
+                            <Label Grid.Column="1" Text="Observación" Style="{StaticResource TextoCampo}" FontSize="16" FontAttributes="Bold" TextColor="{StaticResource Gray600}" />
+                        </Grid>
+                        <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+                            <Button Grid.Column="0" Text="{Binding TextoEventoElegido}" Style="{StaticResource BotonCampoSecundario}" FontSize="20"
+                                    HeightRequest="56" MinimumWidthRequest="0" Padding="8,0" LineBreakMode="TailTruncation"
+                                    Command="{Binding AbrirEventosCommand}"
+                                    SemanticProperties.Hint="Elegir el evento de esta vaca" />
+                            <Button Grid.Column="1" Text="{Binding TextoCasilleroObservacion}" Style="{StaticResource BotonCampoSecundario}" FontSize="18"
+                                    HeightRequest="56" MinimumWidthRequest="0" Padding="8,0" LineBreakMode="TailTruncation"
+                                    Command="{Binding AbrirObservacionCommand}"
+                                    SemanticProperties.Hint="Opcional: escribir una observación" />
+                        </Grid>
+                    </VerticalStackLayout>
 
-                            <!-- Las columnas del Excel (LACT, DEL, FPART...), en un FlexLayout que salta de línea. -->
-                            <FlexLayout BindableLayout.ItemsSource="{Binding Ficha.Campos}" Wrap="Wrap" Direction="Row">
+                    <!-- Pestañas y su contenido -->
+                    <Grid Grid.Row="2" RowDefinitions="Auto,*">
+                        <Grid ColumnDefinitions="*,*" ColumnSpacing="2" Padding="0,4,0,0">
+                            <Button Grid.Column="0" Text="Datos" Style="{StaticResource BotonCampoSecundario}" FontSize="18" HeightRequest="48" CornerRadius="0"
+                                    Command="{Binding VerDatosCommand}">
+                                <Button.Triggers>
+                                    <DataTrigger TargetType="Button" Binding="{Binding HayDatos}" Value="True">
+                                        <Setter Property="BackgroundColor" Value="{StaticResource CampoPanel}" />
+                                    </DataTrigger>
+                                </Button.Triggers>
+                            </Button>
+                            <Button Grid.Column="1" Text="Historial" Style="{StaticResource BotonCampoSecundario}" FontSize="18" HeightRequest="48" CornerRadius="0"
+                                    Command="{Binding VerHistorialCommand}">
+                                <Button.Triggers>
+                                    <DataTrigger TargetType="Button" Binding="{Binding HayDatos}" Value="False">
+                                        <Setter Property="BackgroundColor" Value="{StaticResource CampoPanel}" />
+                                    </DataTrigger>
+                                </Button.Triggers>
+                            </Button>
+                        </Grid>
+
+                        <!-- Datos: una tabla "dato → valor" con renglones separados. Trae todas las columnas del Excel (DCC, DDUC, LECHE...). -->
+                        <ScrollView Grid.Row="1" IsVisible="{Binding HayDatos}">
+                            <VerticalStackLayout BindableLayout.ItemsSource="{Binding FilasDatos}" Padding="10,0">
                                 <BindableLayout.ItemTemplate>
                                     <DataTemplate x:DataType="dto:CampoFichaDto">
-                                        <VerticalStackLayout WidthRequest="170" Margin="0,6,12,6">
-                                            <Label Text="{Binding Nombre}" Style="{StaticResource TextoCampo}" FontSize="16"
-                                                   TextColor="{StaticResource Gray600}" />
-                                            <Label Text="{Binding Valor}" Style="{StaticResource TextoCampo}" FontSize="26" FontAttributes="Bold"
-                                                   LineBreakMode="TailTruncation" />
+                                        <VerticalStackLayout>
+                                            <Grid ColumnDefinitions="110,*" ColumnSpacing="10" Padding="0,8">
+                                                <Label Grid.Column="0" Text="{Binding Nombre}" Style="{StaticResource TextoCampo}" FontSize="20" FontAttributes="Bold"
+                                                       TextColor="{StaticResource Gray600}" VerticalOptions="Center" />
+                                                <Label Grid.Column="1" Text="{Binding Valor}" Style="{StaticResource TextoCampo}" FontSize="24" FontAttributes="Bold"
+                                                       VerticalOptions="Center" LineBreakMode="TailTruncation" />
+                                            </Grid>
+                                            <BoxView HeightRequest="1" Color="{StaticResource Gray200}" />
                                         </VerticalStackLayout>
                                     </DataTemplate>
                                 </BindableLayout.ItemTemplate>
-                            </FlexLayout>
-
-                            <!-- VINS (cantidad de inseminaciones) y UTORO (último toro): aparte y sin fecha. -->
-                            <VerticalStackLayout Spacing="4">
-                                <Label Text="{Binding Ficha.Inseminaciones, StringFormat='Inseminaciones (VINS): {0}'}"
-                                       Style="{StaticResource TextoCampo}" FontSize="20" />
-                                <Label Text="{Binding Ficha.UltimoToro, StringFormat='Último toro: {0}'}"
-                                       Style="{StaticResource TextoCampo}" FontSize="20" />
                             </VerticalStackLayout>
+                        </ScrollView>
 
-                            <!-- Historial cronológico, al final de la ficha (RF-14): se baja con el dedo y no tapa los botones de estado. -->
-                            <Border BackgroundColor="{StaticResource CampoClaro}" StrokeThickness="0" Padding="12,10" Margin="0,8,0,0">
-                                <VerticalStackLayout Spacing="8">
-                                    <Label Text="Historial" Style="{StaticResource TituloCuadro}" FontSize="24" />
-                                    <VerticalStackLayout BindableLayout.ItemsSource="{Binding Ficha.Historial}" Spacing="10">
-                                        <BindableLayout.ItemTemplate>
-                                            <DataTemplate x:DataType="dto:EventoFichaDto">
-                                                <VerticalStackLayout Spacing="2">
-                                                    <Label Text="{Binding Titulo}" Style="{StaticResource TextoCampo}" FontSize="20" FontAttributes="Bold">
-                                                        <Label.Triggers>
-                                                            <DataTrigger TargetType="Label" Binding="{Binding Anulado}" Value="True">
-                                                                <Setter Property="TextDecorations" Value="Strikethrough" />
-                                                            </DataTrigger>
-                                                        </Label.Triggers>
-                                                    </Label>
-                                                    <Label Text="{Binding ., Converter={StaticResource FechaEvento}}" Style="{StaticResource TextoCampo}"
-                                                           FontSize="17" TextColor="{StaticResource Gray600}" />
-                                                </VerticalStackLayout>
-                                            </DataTemplate>
-                                        </BindableLayout.ItemTemplate>
-                                    </VerticalStackLayout>
-                                </VerticalStackLayout>
-                            </Border>
-                        </VerticalStackLayout>
-                    </ScrollView>
-
-                    <!-- Botones de estado: un toque guarda el tacto (RF-15). FlexLayout con salto de línea. -->
-                    <Border Grid.Row="1" BackgroundColor="{StaticResource CampoClaro}" StrokeThickness="0" Padding="6,2">
-                        <VerticalStackLayout Spacing="4">
-                            <Label Style="{StaticResource TextoCampo}" FontSize="20" FontAttributes="Bold"
-                                   IsVisible="{Binding HayEstadosActivos, Converter={StaticResource Invertir}}"
-                                   Text="No hay estados activos: se puede leer y marcar, pero no tactar." />
-                            <FlexLayout BindableLayout.ItemsSource="{Binding Estados}" Wrap="Wrap" Direction="Row"
-                                        IsVisible="{Binding HayEstadosActivos}">
+                        <!-- Historial cronológico (RF-14). -->
+                        <ScrollView Grid.Row="1" IsVisible="{Binding MostrarHistorial}">
+                            <VerticalStackLayout BindableLayout.ItemsSource="{Binding Ficha.Historial}" Spacing="10" Padding="14,10">
                                 <BindableLayout.ItemTemplate>
-                                    <DataTemplate x:DataType="dto:EstadoActivoDto">
-                                        <Button Text="{Binding Nombre}" Style="{StaticResource BotonEstado}"
-                                                FlexLayout.Basis="30%" FlexLayout.Grow="1"
-                                                Command="{Binding Source={RelativeSource AncestorType={x:Type vm:TrabajoViewModel}}, Path=SeleccionarEstadoCommand, x:DataType=vm:TrabajoViewModel}"
-                                                CommandParameter="{Binding .}">
-                                            <Button.BackgroundColor>
-                                                <MultiBinding Converter="{StaticResource EstadoActual}" ConverterParameter="fondo">
-                                                    <Binding Path="Id" />
-                                                    <Binding Source="{RelativeSource AncestorType={x:Type vm:TrabajoViewModel}}" Path="Ficha.EstadoId" x:DataType="vm:TrabajoViewModel" />
-                                                </MultiBinding>
-                                            </Button.BackgroundColor>
-                                            <Button.TextColor>
-                                                <MultiBinding Converter="{StaticResource EstadoActual}" ConverterParameter="texto">
-                                                    <Binding Path="Id" />
-                                                    <Binding Source="{RelativeSource AncestorType={x:Type vm:TrabajoViewModel}}" Path="Ficha.EstadoId" x:DataType="vm:TrabajoViewModel" />
-                                                </MultiBinding>
-                                            </Button.TextColor>
-                                        </Button>
+                                    <DataTemplate x:DataType="dto:EventoFichaDto">
+                                        <VerticalStackLayout Spacing="2">
+                                            <Label Text="{Binding Titulo}" Style="{StaticResource TextoCampo}" FontSize="20" FontAttributes="Bold">
+                                                <Label.Triggers>
+                                                    <DataTrigger TargetType="Label" Binding="{Binding Anulado}" Value="True">
+                                                        <Setter Property="TextDecorations" Value="Strikethrough" />
+                                                    </DataTrigger>
+                                                </Label.Triggers>
+                                            </Label>
+                                            <Label Text="{Binding ., Converter={StaticResource FechaEvento}}" Style="{StaticResource TextoCampo}"
+                                                   FontSize="17" TextColor="{StaticResource Gray600}" />
+                                        </VerticalStackLayout>
                                     </DataTemplate>
                                 </BindableLayout.ItemTemplate>
-                            </FlexLayout>
-                        </VerticalStackLayout>
-                    </Border>
+                            </VerticalStackLayout>
+                        </ScrollView>
+                    </Grid>
+
+                    <!-- Barra de abajo: Saltar (cierra sin guardar, sirve para solo mirar los datos) y Entrar (guarda). -->
+                    <Grid Grid.Row="3" ColumnDefinitions="*,2*" ColumnSpacing="8" Padding="10,6" BackgroundColor="{StaticResource CampoClaro}">
+                        <Button Grid.Column="0" Text="Saltar" Style="{StaticResource BotonCampoSecundario}" FontSize="20" HeightRequest="56" MinimumWidthRequest="0"
+                                Command="{Binding CerrarFichaCommand}"
+                                SemanticProperties.Hint="Cerrar la ficha sin guardar nada" />
+                        <Button Grid.Column="1" Text="Entrar" Style="{StaticResource BotonCampo}" BackgroundColor="{StaticResource CampoExito}" FontSize="22"
+                                HeightRequest="56" IsVisible="{Binding PuedeAgregarEventos}" Command="{Binding EntrarCommand}"
+                                SemanticProperties.Hint="Guardar el evento elegido para esta vaca" />
+                    </Grid>
                 </Grid>
 
             </Grid>
 
-            <!-- Abajo: búsqueda manual (teclado numérico) y "Últimos movimientos" (RF-23). El aviso de 5 segundos con
-                 "Deshacer" se pone SOBRE esta barra: así no tapa los botones de estado ni mueve nada de lugar (RF-27). -->
-            <Grid Grid.Row="3" BackgroundColor="{StaticResource CampoClaro}">
-                <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8" Padding="10,4">
+            <!-- El aviso de 5 segundos con "Deshacer" va justo arriba de la barra de búsqueda: chico y centrado (RF-27). Mientras
+                 se ve, empuja un poco hacia arriba lo que tiene encima; cuando se va, todo vuelve a su lugar. -->
+            <Border Grid.Row="3" IsVisible="{Binding HayAvisoDeshacer}" HorizontalOptions="Center" Margin="0,4,0,4"
+                    BackgroundColor="#212121" StrokeThickness="0" StrokeShape="RoundRectangle 10" Padding="12,3">
+                <HorizontalStackLayout Spacing="10">
+                    <Label Text="{Binding AvisoDeshacer.Texto}" TextColor="White" FontSize="14" FontAttributes="Bold"
+                           VerticalOptions="Center" MaximumWidthRequest="200" LineBreakMode="TailTruncation" />
+                    <Button Text="Deshacer" Style="{StaticResource BotonCampoAlerta}" FontSize="14" HeightRequest="32" MinimumWidthRequest="0"
+                            Padding="10,0" CornerRadius="8" VerticalOptions="Center" Command="{Binding DeshacerAvisoCommand}" />
+                </HorizontalStackLayout>
+            </Border>
+
+            <!-- Abajo: búsqueda manual (teclado numérico) y "Últimos movimientos" (RF-23). -->
+            <Grid Grid.Row="4" BackgroundColor="{StaticResource CampoClaro}">
+                <Grid ColumnDefinitions="*,Auto,Auto,Auto" ColumnSpacing="8" Padding="10,4">
                     <Entry Grid.Column="0" Style="{StaticResource EntradaCampo}" Keyboard="Numeric" FontSize="20" HeightRequest="48"
                            Placeholder="Caravana a mano" ReturnType="Search"
                            Text="{Binding TextoBusqueda}" ReturnCommand="{Binding BuscarCommand}"
@@ -203,22 +267,13 @@
                     <Button Grid.Column="2" Text="Movimientos" Style="{StaticResource BotonCampoSecundario}" FontSize="17" HeightRequest="48"
                             MinimumWidthRequest="0" Padding="14,0" Command="{Binding MostrarMovimientosCommand}"
                             SemanticProperties.Hint="Muestra los últimos movimientos y permite deshacer" />
+                    <!-- Simulador: un botoncito sin texto que simula una lectura de caravana (solo existe donde hay simulador). -->
+                    <Button Grid.Column="3" Style="{StaticResource BotonCampoSecundario}" WidthRequest="30" HeightRequest="30" MinimumWidthRequest="0"
+                            Padding="0" CornerRadius="15" VerticalOptions="Center" IsVisible="{Binding HaySimulador}"
+                            Command="{Binding SimularExistenteCommand}"
+                            SemanticProperties.Description="Simular la lectura de una caravana" />
                 </Grid>
-
-                <Border IsVisible="{Binding HayAvisoDeshacer}" BackgroundColor="#212121" StrokeThickness="0" Padding="20,10">
-                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
-                        <Label Text="{Binding AvisoDeshacer.Texto}" TextColor="White" FontSize="26" FontAttributes="Bold"
-                               VerticalOptions="Center" LineBreakMode="TailTruncation" />
-                        <Button Grid.Column="1" Text="Deshacer" Style="{StaticResource BotonCampoAlerta}"
-                                Command="{Binding DeshacerAvisoCommand}" />
-                    </Grid>
-                </Border>
             </Grid>
-
-            <!-- Panel del simulador: SOLO en la compilación de desarrollo. Lo arma el código de la página dentro de
-                 #if DEBUG; en Release este contenedor queda vacío y oculto (RF-31). -->
-            <FlexLayout Grid.Row="4" x:Name="PanelSimulador" IsVisible="False" Wrap="Wrap" AlignItems="Center" Padding="12,4"
-                        BackgroundColor="{StaticResource Gray200}" />
         </Grid>
 
         <!-- *** CAPAS (de abajo hacia arriba) *** -->
@@ -289,6 +344,10 @@
                     <Label Text="{Binding ResumenManga.NumeroManga, StringFormat='Verificar la manga {0}'}" Style="{StaticResource TituloCuadro}" FontSize="26" />
                     <Label Text="{Binding ResumenManga.Contador, StringFormat='Aviss contó {0} vacas. ¿Coincide con las que pasaron?'}"
                            Style="{StaticResource TextoCampo}" FontSize="22" FontAttributes="Bold" />
+                    <!-- Si se puso la cantidad de la manga: lo esperado contra lo marcado, para no cerrarla con una vaca sin marcar. -->
+                    <Border IsVisible="{Binding HayMetaVerificacion}" BackgroundColor="{StaticResource CampoAlerta}" StrokeThickness="0" Padding="12,8">
+                        <Label Text="{Binding TextoMetaVerificacion}" TextColor="Black" FontSize="20" FontAttributes="Bold" />
+                    </Border>
                     <ScrollView HeightRequest="170" BackgroundColor="{StaticResource CampoClaro}">
                         <FlexLayout BindableLayout.ItemsSource="{Binding ResumenManga.Caravanas}" Wrap="Wrap" Direction="Row" Padding="8">
                             <BindableLayout.ItemTemplate>
@@ -337,6 +396,10 @@
             <Border BackgroundColor="White" StrokeThickness="0" Padding="18,16" HorizontalOptions="Fill" VerticalOptions="Center"
                    >
                 <VerticalStackLayout Spacing="20">
+                    <!-- Con el control por manga prendido y una manga abierta, se advierte cuál es antes de terminar. -->
+                    <Border IsVisible="{Binding HayAdvertenciaMangaAbierta}" BackgroundColor="{StaticResource CampoAlerta}" StrokeThickness="0" Padding="14,10">
+                        <Label Text="{Binding AdvertenciaMangaAbierta}" TextColor="Black" FontSize="20" FontAttributes="Bold" />
+                    </Border>
                     <Label Text="{Binding TextoSegundaConfirmacion}" Style="{StaticResource TituloCuadro}" FontSize="26" />
                     <Border IsVisible="{Binding HayMensajeCuadro}" BackgroundColor="{StaticResource CampoPeligro}" StrokeThickness="0" Padding="16,10">
                         <Label Text="{Binding MensajeCuadro}" TextColor="White" FontSize="22" FontAttributes="Bold" />
@@ -364,6 +427,132 @@
                     <Button Grid.Row="1" Text="Salir" Style="{StaticResource BotonCampo}" Command="{Binding SalirCommand}" />
                 </Grid>
             </VerticalStackLayout>
+        </Grid>
+
+        <!-- Configuración (el engranaje): las opciones de trabajo de cada veterinario. Los cambios valen al instante y se recuerdan. -->
+        <Grid IsVisible="{Binding HayConfiguracion}" BackgroundColor="{StaticResource CampoVelo}" Padding="14">
+            <Grid.GestureRecognizers><TapGestureRecognizer /></Grid.GestureRecognizers>
+            <Border BackgroundColor="White" StrokeThickness="0" Padding="18,16" HorizontalOptions="Fill" VerticalOptions="Start" Margin="0,60,0,0">
+                <VerticalStackLayout Spacing="14">
+                    <Label Text="Configuración" Style="{StaticResource TituloCuadro}" FontSize="26" />
+                    <Label Text="{Binding NombreVeterinario, StringFormat='Preferencias de {0}'}" Style="{StaticResource TextoCampo}" FontSize="16"
+                           TextColor="{StaticResource Gray600}" />
+
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12" BackgroundColor="{StaticResource CampoClaro}" Padding="12,10">
+                        <VerticalStackLayout Grid.Column="0" Spacing="2" VerticalOptions="Center">
+                            <Label Text="Llevar control por manga" Style="{StaticResource TextoCampo}" FontSize="20" FontAttributes="Bold" />
+                            <Label Text="Contador por manga (7/10), cantidad de vacas, cierre automático y Finalizar manga."
+                                   Style="{StaticResource TextoCampo}" FontSize="14" TextColor="{StaticResource Gray600}" />
+                        </VerticalStackLayout>
+                        <Switch Grid.Column="1" IsToggled="{Binding UsaMangas}" VerticalOptions="Center"
+                                SemanticProperties.Description="Llevar control por manga" />
+                    </Grid>
+
+                    <Button Text="Cerrar" Style="{StaticResource BotonCampo}" HeightRequest="56" FontSize="20"
+                            Command="{Binding CerrarConfiguracionCommand}" />
+                </VerticalStackLayout>
+            </Border>
+        </Grid>
+
+        <!-- Cantidad de la manga: cuántas vacas entran, que se pone a mano cada vez que entra una manga. El contador pasa a "7/10". -->
+        <Grid IsVisible="{Binding HayCantidadManga}" BackgroundColor="{StaticResource CampoVelo}" Padding="14">
+            <Grid.GestureRecognizers><TapGestureRecognizer /></Grid.GestureRecognizers>
+            <Border BackgroundColor="White" StrokeThickness="0" Padding="18,16" HorizontalOptions="Fill" VerticalOptions="Start" Margin="0,60,0,0">
+                <VerticalStackLayout Spacing="12">
+                    <Label Text="{Binding NumeroManga, StringFormat='Manga {0}'}" Style="{StaticResource TextoCampo}" FontSize="18" TextColor="{StaticResource Gray600}" />
+                    <Label Text="¿Cuántas vacas entran en esta manga?" Style="{StaticResource TituloCuadro}" FontSize="26" />
+                    <Entry Style="{StaticResource EntradaCampo}" Keyboard="Numeric" MaxLength="3" HeightRequest="64" FontSize="30"
+                           Text="{Binding TextoCantidadManga}" Placeholder="Cantidad" HorizontalTextAlignment="Center" />
+                    <Border IsVisible="{Binding HayMensajeCuadro}" BackgroundColor="{StaticResource CampoPeligro}" StrokeThickness="0" Padding="12,8">
+                        <Label Text="{Binding MensajeCuadro}" TextColor="White" FontSize="18" FontAttributes="Bold" />
+                    </Border>
+                    <Button Text="Guardar" Style="{StaticResource BotonCampo}" HeightRequest="56" FontSize="22"
+                            Command="{Binding GuardarCantidadMangaCommand}" />
+                    <Button Text="Cancelar" Style="{StaticResource BotonCampoSecundario}" HeightRequest="52" FontSize="20"
+                            Command="{Binding CerrarCantidadMangaCommand}" />
+                </VerticalStackLayout>
+            </Border>
+        </Grid>
+
+        <!-- "Agregar evento": todas las opciones de estado; un toque guarda el tacto (RF-15). -->
+        <Grid IsVisible="{Binding HayEventos}" BackgroundColor="{StaticResource CampoVelo}" Padding="14">
+            <Grid.GestureRecognizers><TapGestureRecognizer /></Grid.GestureRecognizers>
+            <Border BackgroundColor="White" StrokeThickness="0" Padding="18,16" HorizontalOptions="Fill" VerticalOptions="Center">
+                <VerticalStackLayout Spacing="12">
+                    <Label Text="Elegí el evento" Style="{StaticResource TituloCuadro}" FontSize="26" />
+                    <Label Text="{Binding ObservacionPendiente, StringFormat='Se guarda con la observación: {0}'}" IsVisible="{Binding HayObservacionPendiente}"
+                           Style="{StaticResource TextoCampo}" FontSize="16" />
+                    <!-- Un mensaje (por ejemplo, "ya existe un evento con ese nombre") sobre la lista o el formulario. -->
+                    <Border IsVisible="{Binding HayMensajeCuadro}" BackgroundColor="{StaticResource CampoPeligro}" StrokeThickness="0" Padding="12,8">
+                        <Label Text="{Binding MensajeCuadro}" TextColor="White" FontSize="18" FontAttributes="Bold" />
+                    </Border>
+
+                    <!-- Formulario de evento nuevo: por si no existe el que se busca. No guarda ningún tacto: después se elige de la lista. -->
+                    <VerticalStackLayout Spacing="10" IsVisible="{Binding HayFormularioEvento}">
+                        <Label Text="Evento nuevo" Style="{StaticResource TextoCampo}" FontAttributes="Bold" FontSize="20" />
+                        <Entry Text="{Binding NuevoEventoNombre}" Placeholder="Nombre del evento (ej.: Aborto)" MaxLength="40"
+                               Style="{StaticResource EntradaCampo}" HeightRequest="56" FontSize="20" />
+                        <Entry Text="{Binding NuevoEventoCodigoDc}" Placeholder="Código en Dairy Comp (opcional)" MaxLength="30"
+                               Style="{StaticResource EntradaCampo}" HeightRequest="56" FontSize="20" />
+                        <Label Text="Si no escribís el código de Dairy Comp, se usa el nombre en mayúsculas. Revisalo: Dairy Comp lo usa al importar."
+                               Style="{StaticResource TextoCampo}" FontSize="14" TextColor="{StaticResource Gray600}" />
+                        <Button Text="Guardar evento" Style="{StaticResource BotonCampo}" HeightRequest="56" FontSize="20"
+                                Command="{Binding CrearEventoCommand}" />
+                        <Button Text="Cancelar" Style="{StaticResource BotonCampoSecundario}" HeightRequest="52" FontSize="20"
+                                Command="{Binding CancelarNuevoEventoCommand}" />
+                    </VerticalStackLayout>
+
+                    <VerticalStackLayout Spacing="12" IsVisible="{Binding HayFormularioEvento, Converter={StaticResource Invertir}}">
+                    <ScrollView MaximumHeightRequest="340">
+                        <VerticalStackLayout BindableLayout.ItemsSource="{Binding Estados}" Spacing="8">
+                            <BindableLayout.ItemTemplate>
+                                <DataTemplate x:DataType="dto:EstadoActivoDto">
+                                    <Button Text="{Binding Nombre}" Style="{StaticResource BotonCampo}" HeightRequest="60" FontSize="22"
+                                            Command="{Binding Source={RelativeSource AncestorType={x:Type vm:TrabajoViewModel}}, Path=ElegirEventoCommand, x:DataType=vm:TrabajoViewModel}"
+                                            CommandParameter="{Binding .}">
+                                        <Button.BackgroundColor>
+                                            <MultiBinding Converter="{StaticResource EstadoActual}" ConverterParameter="fondo">
+                                                <Binding Path="Id" />
+                                                <Binding Source="{RelativeSource AncestorType={x:Type vm:TrabajoViewModel}}" Path="Ficha.EstadoId" x:DataType="vm:TrabajoViewModel" />
+                                            </MultiBinding>
+                                        </Button.BackgroundColor>
+                                        <Button.TextColor>
+                                            <MultiBinding Converter="{StaticResource EstadoActual}" ConverterParameter="texto">
+                                                <Binding Path="Id" />
+                                                <Binding Source="{RelativeSource AncestorType={x:Type vm:TrabajoViewModel}}" Path="Ficha.EstadoId" x:DataType="vm:TrabajoViewModel" />
+                                            </MultiBinding>
+                                        </Button.TextColor>
+                                    </Button>
+                                </DataTemplate>
+                            </BindableLayout.ItemTemplate>
+                        </VerticalStackLayout>
+                    </ScrollView>
+                    <Button Text="+ Nuevo evento" Style="{StaticResource BotonCampoAlerta}" HeightRequest="56" FontSize="20"
+                            Command="{Binding AbrirNuevoEventoCommand}"
+                            SemanticProperties.Hint="Crear un evento nuevo si no está en la lista" />
+                    <Button Text="Cancelar" Style="{StaticResource BotonCampoSecundario}" HeightRequest="52" FontSize="20"
+                            Command="{Binding CerrarCuadroAgregarCommand}" />
+                    </VerticalStackLayout>
+                </VerticalStackLayout>
+            </Border>
+        </Grid>
+
+        <!-- "Agregar observación": texto opcional que se guarda con el próximo evento. -->
+        <Grid IsVisible="{Binding HayObservacion}" BackgroundColor="{StaticResource CampoVelo}" Padding="14">
+            <Grid.GestureRecognizers><TapGestureRecognizer /></Grid.GestureRecognizers>
+            <Border BackgroundColor="White" StrokeThickness="0" Padding="18,16" HorizontalOptions="Fill" VerticalOptions="Start" Margin="0,40,0,0">
+                <VerticalStackLayout Spacing="12">
+                    <Label Text="Agregar observación" Style="{StaticResource TituloCuadro}" FontSize="26" />
+                    <Label Text="Opcional. Se guarda junto con el próximo evento que elijas." Style="{StaticResource TextoCampo}" FontSize="16" />
+                    <Editor Text="{Binding TextoObservacion}" Placeholder="Escribí la observación" MaxLength="300"
+                            HeightRequest="140" FontSize="20" TextColor="Black" BackgroundColor="{StaticResource CampoClaro}"
+                            AutoSize="Disabled" />
+                    <Button Text="Guardar observación" Style="{StaticResource BotonCampo}" HeightRequest="56" FontSize="20"
+                            Command="{Binding GuardarObservacionCommand}" />
+                    <Button Text="Cancelar" Style="{StaticResource BotonCampoSecundario}" HeightRequest="52" FontSize="20"
+                            Command="{Binding CerrarCuadroAgregarCommand}" />
+                </VerticalStackLayout>
+            </Border>
         </Grid>
 
         <!-- Cambiar de veterinario: lo arma el código de la página (llama a ListarVeterinariosAsync y CambiarVeterinarioCommand). -->

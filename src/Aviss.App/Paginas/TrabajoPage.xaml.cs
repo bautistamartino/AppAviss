@@ -18,9 +18,6 @@ public partial class TrabajoPage : ContentPage
 		InitializeComponent();
 		BindingContext = _vm = viewModel;
 
-#if DEBUG
-		ConstruirPanelSimulador();
-#endif
 	}
 
 	protected override async void OnAppearing()
@@ -95,38 +92,4 @@ public partial class TrabajoPage : ContentPage
 
 	private void OnCerrarVeterinariosClicked(object? sender, EventArgs e) => CapaVeterinarios.IsVisible = false;
 
-#if DEBUG
-	// ---- Panel del simulador: SOLO en la compilación de desarrollo (RF-31) ----
-	// Está armado desde código, dentro de #if DEBUG, para que en la versión que se distribuye ni siquiera exista.
-	private void ConstruirPanelSimulador()
-	{
-		if (!_vm.HaySimulador) return;
-
-		PanelSimulador.Children.Add(new Label
-		{
-			Text = "Simulador (solo Debug):",
-			TextColor = Colors.Black,
-			FontAttributes = FontAttributes.Bold,
-			FontSize = 16,
-			Margin = new Thickness(0, 0, 8, 0),
-			VerticalOptions = LayoutOptions.Center
-		});
-		PanelSimulador.Children.Add(BotonSimulador("Leer vaca existente", _vm.SimularExistenteCommand));
-		PanelSimulador.Children.Add(BotonSimulador("Leer vaca ya leída", _vm.SimularYaLeidaCommand));
-		PanelSimulador.Children.Add(BotonSimulador("Leer caravana inexistente", _vm.SimularInexistenteCommand));
-		PanelSimulador.IsVisible = true;
-	}
-
-	private static Button BotonSimulador(string texto, System.Windows.Input.ICommand comando) => new()
-	{
-		Text = texto,
-		Command = comando,
-		FontSize = 16,
-		HeightRequest = 44,
-		Padding = new Thickness(10, 0),
-		Margin = new Thickness(0, 2, 6, 2),
-		BackgroundColor = Color.FromArgb("#455A64"),
-		TextColor = Colors.White
-	};
-#endif
 }

@@ -111,6 +111,110 @@ public sealed class ConsultasCampoTests : IDisposable
         Assert.Equal(0, (await _e.EstadoAsync()).Avance.Procesadas);
     }
 
+    // ---------- Horario de la primera y de la última vaca del día ----------
+
+    [Fact]
+    public async Task Sin_registros_de_hoy_no_hay_horarios()
+    {
+        var avance = (await _e.EstadoAsync()).Avance;
+
+        Assert.Null(avance.PrimeraVacaUtc);
+        Assert.Null(avance.FinUtc);
+        Assert.False(avance.Terminado);
+    }
+
+    [Fact]
+    public async Task El_horario_es_el_de_la_primera_vaca_y_el_de_la_ultima_que_se_detecto()
+    {
+        var primera = _e.Reloj.UtcAhora;
+        await _e.VacaMarcadaAsync("1");
+        _e.Reloj.Avanzar(TimeSpan.FromMinutes(20));
+        await _e.VacaMarcadaAsync("2");
+        _e.Reloj.Avanzar(TimeSpan.FromMinutes(25));
+        var ultima = _e.Reloj.UtcAhora;
+        await _e.VacaMarcadaAsync("3");
+
+        var avance = (await _e.EstadoAsync()).Avance;
+
+        Assert.Equal(primera, avance.PrimeraVacaUtc);
+        Assert.Equal(ultima, avance.FinUtc);
+        Assert.False(avance.Terminado);
+    }
+
+    [Fact]
+    public async Task Un_tacto_posterior_a_la_ultima_marca_tambien_cuenta_como_ultimo_movimiento()
+    {
+        var (animal, _) = await _e.VacaMarcadaAsync("1", _e.EstadoSeca);
+        _e.Reloj.Avanzar(TimeSpan.FromMinutes(5));
+        var instante = _e.Reloj.UtcAhora;
+        await _e.TactoAsync(animal, _e.EstadoPrenada);
+
+        Assert.Equal(instante, (await _e.EstadoAsync()).Avance.FinUtc);
+    }
+
+    [Fact]
+    public async Task Lo_de_ayer_y_lo_anulado_no_cuentan_para_los_horarios()
+    {
+        var ayer = _e.AnimalImportado("1");
+        var anulada = _e.AnimalImportado("2");
+        var manga = _e.Base.Manga(_e.RodeoId, 1, _e.UsuarioId);
+        _e.Base.MarcaPasada(ayer, manga, _e.UsuarioId, fechaHora: _e.Reloj.UtcAhora.AddDays(-1));
+        _e.Base.MarcaPasada(anulada, manga, _e.UsuarioId, fechaHora: _e.Reloj.UtcAhora.AddMinutes(-30), anulada: true);
+
+        var avance = (await _e.EstadoAsync()).Avance;
+
+        Assert.Null(avance.PrimeraVacaUtc);
+        Assert.Null(avance.FinUtc);
+    }
+
+    [Fact]
+    public async Task Al_terminar_el_tacto_el_fin_es_la_hora_en_que_se_apreto_el_boton()
+    {
+        await _e.VacaMarcadaAsync("1");
+        _e.Reloj.Avanzar(TimeSpan.FromMinutes(10));
+        await _e.VacaMarcadaAsync("2");
+        _e.Reloj.Avanzar(TimeSpan.FromMinutes(7));
+        var terminar = _e.Reloj.UtcAhora;
+
+        var cierre = await _e.Campo.TerminarElTactoAsync(new TerminarElTactoCommand(_e.RodeoId, null, _e.UsuarioId));
+        Assert.True(cierre.EsCorrecto, cierre.Mensaje);
+
+        var avance = (await _e.EstadoAsync()).Avance;
+        Assert.Equal(terminar, avance.FinUtc);
+        Assert.True(avance.Terminado);
+    }
+
+    [Fact]
+    public async Task Si_despues_de_terminar_se_lee_otra_vaca_el_fin_vuelve_a_ser_la_ultima_vaca()
+    {
+        await _e.VacaMarcadaAsync("1");
+        _e.Reloj.Avanzar(TimeSpan.FromMinutes(5));
+        await _e.Campo.TerminarElTactoAsync(new TerminarElTactoCommand(_e.RodeoId, null, _e.UsuarioId));
+        _e.Reloj.Avanzar(TimeSpan.FromMinutes(5));
+        var nueva = _e.Reloj.UtcAhora;
+        await _e.VacaMarcadaAsync("2");
+
+        var avance = (await _e.EstadoAsync()).Avance;
+
+        Assert.Equal(nueva, avance.FinUtc);
+        Assert.False(avance.Terminado);
+    }
+
+    [Fact]
+    public async Task Deshacer_el_terminar_el_tacto_quita_ese_horario_de_fin()
+    {
+        await _e.VacaMarcadaAsync("1");
+        var ultimaVaca = _e.Reloj.UtcAhora;
+        _e.Reloj.Avanzar(TimeSpan.FromMinutes(5));
+        var cierre = (await _e.Campo.TerminarElTactoAsync(new TerminarElTactoCommand(_e.RodeoId, null, _e.UsuarioId))).Valor.Cierre!;
+
+        await _e.DeshacerAsync(TipoDeshacer.Cierre, cierre.CierreId);
+
+        var avance = (await _e.EstadoAsync()).Avance;
+        Assert.Equal(ultimaVaca, avance.FinUtc);
+        Assert.False(avance.Terminado);
+    }
+
     [Fact]
     public async Task Un_cambio_de_zona_horaria_cambia_que_se_cuenta_como_hoy_sin_tocar_lo_guardado()
     {
@@ -300,6 +404,23 @@ public sealed class ConsultasCampoTests : IDisposable
         _e.Base.Usuario("Sin asignar", id: Usuario.SinAsignarId);
         var sinAsignar = await _e.Campo.CrearVeterinarioAsync("SIN ASIGNAR", null);
         Assert.False(sinAsignar.EsCorrecto);
+    }
+
+    [Fact]
+    public async Task Crear_un_estado_desde_el_campo_lo_deja_activo_y_uno_repetido_o_sin_letras_se_rechaza()
+    {
+        var r = await _e.Campo.CrearEstadoAsync("  Revisión de pata ", "REV_PATA");
+        Assert.True(r.EsCorrecto, r.Mensaje);
+        var nuevo = Assert.Single(await _e.Campo.ListarEstadosActivosAsync(), e => e.Id == r.Valor);
+        Assert.Equal("Revisión de pata", nuevo.Nombre);
+        Assert.Equal("REVISION_DE_PATA", _e.Base.Escalar("SELECT Codigo FROM EstadoReproductivo WHERE Nombre = 'Revisión de pata'")!.ToString());
+        Assert.Equal("REV_PATA", _e.Base.Escalar("SELECT CodigoDairyComp FROM EstadoReproductivo WHERE Nombre = 'Revisión de pata'")!.ToString());
+
+        var repetido = await _e.Campo.CrearEstadoAsync("revisión de pata", "OTRO_CODIGO");
+        Assert.Equal(CodigoError.Duplicado, repetido.Codigo);
+
+        var sinLetras = await _e.Campo.CrearEstadoAsync("¿?!", "X");
+        Assert.Equal(CodigoError.DatosInvalidos, sinLetras.Codigo);
     }
 
     // ---------- Caravana de muestra (simulador) ----------

@@ -18,6 +18,8 @@ public enum TipoResultadoLectura
     Repetido,
     /// <summary>La vaca ya estaba procesada hoy en otra manga, o con un tacto sin marca: "Ya pasó".</summary>
     YaPaso,
+    /// <summary>La vaca quedó marcada y suma al conteo, pero su CVET es 0: no entra en tacto. No trae ficha y suena la chicharra.</summary>
+    SinTacto,
     /// <summary>No existe en el rodeo: se ofrece buscar a mano; no se guardó nada.</summary>
     NoEncontrada
 }
@@ -58,7 +60,10 @@ public sealed record FichaAnimalDto(
     IReadOnlyList<CampoFichaDto> Campos,
     string Inseminaciones,
     string UltimoToro,
-    IReadOnlyList<EventoFichaDto> Historial);
+    IReadOnlyList<EventoFichaDto> Historial,
+    string Cvet = "",
+    bool EntraEnTacto = true,
+    IReadOnlyList<CampoFichaDto>? Extras = null);
 
 /// <summary>El último registro vigente de una vaca, para el aviso "Ya pasó / Animal repetido" (RF-22).</summary>
 public sealed record UltimoRegistroDto(
@@ -82,7 +87,12 @@ public sealed record ResultadoLecturaDto(
     UltimoRegistroDto? UltimoRegistro,
     bool PuedeCorregir);
 
-public sealed record AvanceRodeoDto(DateOnly Fecha, int TotalVacas, int Procesadas, int Pendientes, int Porcentaje);
+/// <param name="PrimeraVacaUtc">Hora de la primera vaca de hoy (marca o tacto vigente), o nulo si todavía no hubo ninguna.</param>
+/// <param name="FinUtc">Hora del último movimiento de hoy o, si es posterior, de "Terminar el tacto"; nulo si no hubo nada.</param>
+/// <param name="Terminado">El fin es la hora en que se apretó "Terminar el tacto" (y no la de la última vaca).</param>
+public sealed record AvanceRodeoDto(
+    DateOnly Fecha, int TotalVacas, int Procesadas, int Pendientes, int Porcentaje,
+    DateTime? PrimeraVacaUtc = null, DateTime? FinUtc = null, bool Terminado = false);
 
 /// <summary>El estado del trabajo en un rodeo: la manga (abierta o por empezar), su contador y el avance del día (RF-3, RF-4, RF-30).</summary>
 /// <param name="MangaAbierta">False = manga por empezar ("Manga N · 0"): la primera marca la abre.</param>
