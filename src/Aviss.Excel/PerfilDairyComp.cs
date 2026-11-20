@@ -79,7 +79,17 @@ public sealed class PerfilDairyComp : IExcelProfile
         if (TieneRegistroFilePass(sistemaArchivos, nombreFlujo))
             return ResultadoLectura.Rechazado(MotivoRechazoArchivo.Protegido);
 
-        var libro = new HSSFWorkbook(sistemaArchivos);
+        HSSFWorkbook libro;
+        try
+        {
+            libro = new HSSFWorkbook(sistemaArchivos);
+        }
+        catch (Exception ex) when (ex is not EncryptedDocumentException)
+        {
+            // NPOI no sabe armar algunos libros que Excel sí abre (por ejemplo, registros de selección en un orden que no
+            // espera). Se reconstruye leyendo el archivo registro por registro; si eso también falla, es "corrupto".
+            libro = LectorBiffTolerante.Reconstruir(sistemaArchivos);
+        }
         if (libro.NumberOfSheets == 0)
             return ResultadoLectura.Rechazado(MotivoRechazoArchivo.SinHojas);
 
