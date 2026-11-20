@@ -44,7 +44,7 @@ public static class DependencyInjection
         servicios.AddScoped<IRodeoService, RodeoService>();
         servicios.AddScoped<IUsuarioService, UsuarioService>();
         servicios.AddScoped<ICatalogoEstadosService, CatalogoEstadosService>();
-        // AnimalService también se pide por su clase: el alta con marca reutiliza su núcleo dentro de su propia transacción.
+        // AnimalService también se pide por su clase (los servicios de campo lo usan dentro de su propia transacción).
         servicios.AddScoped<AnimalService>();
         servicios.AddScoped<IAnimalService>(p => p.GetRequiredService<AnimalService>());
         servicios.AddScoped<ITrabajoCampoService, TrabajoCampoService>();
@@ -55,7 +55,6 @@ public static class DependencyInjection
         servicios.AddScoped<Marcador>();
         servicios.AddScoped<MarcaPasadaService>();
         servicios.AddScoped<MangaService>();
-        servicios.AddScoped<AltaCampoService>();
         servicios.AddScoped<ConsultaCampoService>();
         servicios.AddSingleton<ICampoService, CampoService>();
 

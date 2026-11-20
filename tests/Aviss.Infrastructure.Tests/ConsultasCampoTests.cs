@@ -111,6 +111,110 @@ public sealed class ConsultasCampoTests : IDisposable
         Assert.Equal(0, (await _e.EstadoAsync()).Avance.Procesadas);
     }
 
+    // ---------- Horario de la primera y de la última vaca del día ----------
+
+    [Fact]
+    public async Task Sin_registros_de_hoy_no_hay_horarios()
+    {
+        var avance = (await _e.EstadoAsync()).Avance;
+
+        Assert.Null(avance.PrimeraVacaUtc);
+        Assert.Null(avance.FinUtc);
+        Assert.False(avance.Terminado);
+    }
+
+    [Fact]
+    public async Task El_horario_es_el_de_la_primera_vaca_y_el_de_la_ultima_que_se_detecto()
+    {
+        var primera = _e.Reloj.UtcAhora;
+        await _e.VacaMarcadaAsync("1");
+        _e.Reloj.Avanzar(TimeSpan.FromMinutes(20));
+        await _e.VacaMarcadaAsync("2");
+        _e.Reloj.Avanzar(TimeSpan.FromMinutes(25));
+        var ultima = _e.Reloj.UtcAhora;
+        await _e.VacaMarcadaAsync("3");
+
+        var avance = (await _e.EstadoAsync()).Avance;
+
+        Assert.Equal(primera, avance.PrimeraVacaUtc);
+        Assert.Equal(ultima, avance.FinUtc);
+        Assert.False(avance.Terminado);
+    }
+
+    [Fact]
+    public async Task Un_tacto_posterior_a_la_ultima_marca_tambien_cuenta_como_ultimo_movimiento()
+    {
+        var (animal, _) = await _e.VacaMarcadaAsync("1", _e.EstadoSeca);
+        _e.Reloj.Avanzar(TimeSpan.FromMinutes(5));
+        var instante = _e.Reloj.UtcAhora;
+        await _e.TactoAsync(animal, _e.EstadoPrenada);
+
+        Assert.Equal(instante, (await _e.EstadoAsync()).Avance.FinUtc);
+    }
+
+    [Fact]
+    public async Task Lo_de_ayer_y_lo_anulado_no_cuentan_para_los_horarios()
+    {
+        var ayer = _e.AnimalImportado("1");
+        var anulada = _e.AnimalImportado("2");
+        var manga = _e.Base.Manga(_e.RodeoId, 1, _e.UsuarioId);
+        _e.Base.MarcaPasada(ayer, manga, _e.UsuarioId, fechaHora: _e.Reloj.UtcAhora.AddDays(-1));
+        _e.Base.MarcaPasada(anulada, manga, _e.UsuarioId, fechaHora: _e.Reloj.UtcAhora.AddMinutes(-30), anulada: true);
+
+        var avance = (await _e.EstadoAsync()).Avance;
+
+        Assert.Null(avance.PrimeraVacaUtc);
+        Assert.Null(avance.FinUtc);
+    }
+
+    [Fact]
+    public async Task Al_terminar_el_tacto_el_fin_es_la_hora_en_que_se_apreto_el_boton()
+    {
+        await _e.VacaMarcadaAsync("1");
+        _e.Reloj.Avanzar(TimeSpan.FromMinutes(10));
+        await _e.VacaMarcadaAsync("2");
+        _e.Reloj.Avanzar(TimeSpan.FromMinutes(7));
+        var terminar = _e.Reloj.UtcAhora;
+
+        var cierre = await _e.Campo.TerminarElTactoAsync(new TerminarElTactoCommand(_e.RodeoId, null, _e.UsuarioId));
+        Assert.True(cierre.EsCorrecto, cierre.Mensaje);
+
+        var avance = (await _e.EstadoAsync()).Avance;
+        Assert.Equal(terminar, avance.FinUtc);
+        Assert.True(avance.Terminado);
+    }
+
+    [Fact]
+    public async Task Si_despues_de_terminar_se_lee_otra_vaca_el_fin_vuelve_a_ser_la_ultima_vaca()
+    {
+        await _e.VacaMarcadaAsync("1");
+        _e.Reloj.Avanzar(TimeSpan.FromMinutes(5));
+        await _e.Campo.TerminarElTactoAsync(new TerminarElTactoCommand(_e.RodeoId, null, _e.UsuarioId));
+        _e.Reloj.Avanzar(TimeSpan.FromMinutes(5));
+        var nueva = _e.Reloj.UtcAhora;
+        await _e.VacaMarcadaAsync("2");
+
+        var avance = (await _e.EstadoAsync()).Avance;
+
+        Assert.Equal(nueva, avance.FinUtc);
+        Assert.False(avance.Terminado);
+    }
+
+    [Fact]
+    public async Task Deshacer_el_terminar_el_tacto_quita_ese_horario_de_fin()
+    {
+        await _e.VacaMarcadaAsync("1");
+        var ultimaVaca = _e.Reloj.UtcAhora;
+        _e.Reloj.Avanzar(TimeSpan.FromMinutes(5));
+        var cierre = (await _e.Campo.TerminarElTactoAsync(new TerminarElTactoCommand(_e.RodeoId, null, _e.UsuarioId))).Valor.Cierre!;
+
+        await _e.DeshacerAsync(TipoDeshacer.Cierre, cierre.CierreId);
+
+        var avance = (await _e.EstadoAsync()).Avance;
+        Assert.Equal(ultimaVaca, avance.FinUtc);
+        Assert.False(avance.Terminado);
+    }
+
     [Fact]
     public async Task Un_cambio_de_zona_horaria_cambia_que_se_cuenta_como_hoy_sin_tocar_lo_guardado()
     {
@@ -151,8 +255,6 @@ public sealed class ConsultasCampoTests : IDisposable
         Assert.Equal("100", f.Caravana);
         Assert.Equal("PREÑADA", f.EstadoNombre);
         Assert.NotNull(f.FechaUltimoTactoUtc);
-        Assert.False(f.EsAltaEnCampo);
-        Assert.False(f.PuedeAnularAlta);
         Assert.Equal("3", f.Campos.Single(c => c.Nombre == "LACT").Valor);
         Assert.Equal("2", f.Inseminaciones);
         Assert.Equal("TORO 9", f.UltimoToro);
@@ -197,20 +299,20 @@ public sealed class ConsultasCampoTests : IDisposable
     }
 
     [Fact]
-    public async Task Los_movimientos_mezclan_marcas_tactos_altas_y_cierres_y_marcan_lo_anulado()
+    public async Task Los_movimientos_mezclan_marcas_tactos_y_cierres_y_marcan_lo_anulado()
     {
         var (animal, lectura) = await _e.VacaMarcadaAsync("100", _e.EstadoSeca);
         _e.Reloj.Avanzar(TimeSpan.FromSeconds(1));
         var tacto = await _e.TactoAsync(animal, _e.EstadoPrenada);
         _e.Reloj.Avanzar(TimeSpan.FromSeconds(1));
-        var alta = (await _e.Campo.AltaEnCampoConMarcaAsync(new AltaConMarcaCommand(_e.RodeoId, "900", null, null, _e.UsuarioId))).Valor;
+        await _e.VacaMarcadaAsync("900");
         _e.Reloj.Avanzar(TimeSpan.FromSeconds(1));
         var cierre = (await _e.FinalizarAsync()).Cierre!;
 
         var lista = await _e.Campo.ListarMovimientosAsync(_e.RodeoId);
 
-        // Más reciente primero: cierre, marca del alta, alta, tacto, marca de la vaca 100 (la anulación del tacto no se lista).
-        Assert.Equal([TipoMovimiento.Cierre, TipoMovimiento.Marca, TipoMovimiento.Alta, TipoMovimiento.Tacto, TipoMovimiento.Marca],
+        // Más reciente primero: cierre, marca de la vaca 900, tacto, marca de la vaca 100 (la anulación del tacto no se lista).
+        Assert.Equal([TipoMovimiento.Cierre, TipoMovimiento.Marca, TipoMovimiento.Tacto, TipoMovimiento.Marca],
             lista.Select(m => m.Tipo));
         var mCierre = lista[0];
         Assert.Equal(cierre.CierreId, mCierre.RegistroId);
@@ -219,14 +321,12 @@ public sealed class ConsultasCampoTests : IDisposable
         Assert.Equal(2, mCierre.CantidadConfirmada);
         Assert.Equal("Manual", mCierre.Detalle);
         Assert.True(mCierre.PuedeDeshacer);
-        Assert.Equal(alta.AnimalId, lista[2].RegistroId); // el alta se deshace por el Id del animal
-        Assert.Equal("900", lista[2].Caravana);
-        Assert.Equal("PREÑADA", lista[3].Detalle);
-        // Lo único deshacible: el cierre (último del rodeo), el tacto (último de la vaca) y la marca/alta del alta (solo tiene la marca).
+        Assert.Equal("900", lista[1].Caravana);
+        Assert.Equal("PREÑADA", lista[2].Detalle);
+        // Deshacible: el cierre (último del rodeo), la marca de la 900 y el tacto (último de su vaca); la marca de la 100 no.
         Assert.True(lista[1].PuedeDeshacer);
         Assert.True(lista[2].PuedeDeshacer);
-        Assert.True(lista[3].PuedeDeshacer);
-        Assert.False(lista[4].PuedeDeshacer); // la marca de la vaca 100 quedó detrás del tacto
+        Assert.False(lista[3].PuedeDeshacer); // la marca de la vaca 100 quedó detrás del tacto
 
         // Deshacer el tacto lo deja marcado como anulado y ya no se puede volver a deshacer.
         await _e.DeshacerAsync(TipoDeshacer.Tacto, tacto);
@@ -239,17 +339,35 @@ public sealed class ConsultasCampoTests : IDisposable
     }
 
     [Fact]
-    public async Task Un_alta_con_un_tacto_no_se_puede_deshacer_desde_la_lista_y_una_marca_desmarcada_sale_anulada()
+    public async Task Los_movimientos_traen_el_cvet_de_la_vaca_y_la_observacion_del_tacto()
     {
-        var alta = (await _e.Campo.AltaEnCampoConMarcaAsync(new AltaConMarcaCommand(_e.RodeoId, "900", null, null, _e.UsuarioId))).Valor;
+        var animal = _e.AnimalImportado("100", _e.EstadoSeca, json: """{"ID":"100","CVET":"PRE"}""");
+        await _e.LeerAsync("100");
         _e.Reloj.Avanzar(TimeSpan.FromSeconds(1));
-        await _e.TactoAsync(alta.AnimalId, _e.EstadoSeca);
+        var r = await _e.Campo.RegistrarTactoAsync(new Aviss.Application.Comandos.RegistrarTactoCommand(animal, _e.EstadoPrenada, null, "Cojera", _e.UsuarioId));
+        Assert.True(r.EsCorrecto, r.Mensaje);
+        var sinCvet = _e.AnimalImportado("200", _e.EstadoSeca);
+        await _e.LeerAsync("200");
+
+        var lista = await _e.Campo.ListarMovimientosAsync(_e.RodeoId);
+
+        var tacto = lista.Single(m => m.Tipo == TipoMovimiento.Tacto);
+        Assert.Equal("PRE", tacto.Cvet);
+        Assert.Equal("Cojera", tacto.Observaciones);
+        Assert.Equal("PREÑADA", tacto.Detalle);
+        Assert.Equal("PRE", lista.Single(m => m.Tipo == TipoMovimiento.Marca && m.Caravana == "100").Cvet);
+        Assert.Equal("", lista.Single(m => m.Tipo == TipoMovimiento.Marca && m.Caravana == "200").Cvet);
+        _ = sinCvet;
+    }
+
+    [Fact]
+    public async Task Una_marca_desmarcada_sale_anulada_y_ya_no_se_puede_deshacer()
+    {
         var (_, lectura) = await _e.VacaMarcadaAsync("100");
         await _e.DeshacerAsync(TipoDeshacer.Marca, lectura.MarcaId!.Value);
 
         var lista = await _e.Campo.ListarMovimientosAsync(_e.RodeoId);
 
-        Assert.False(lista.Single(m => m.Tipo == TipoMovimiento.Alta).PuedeDeshacer);
         var marcaDesmarcada = lista.Single(m => m.RegistroId == lectura.MarcaId);
         Assert.True(marcaDesmarcada.Anulado);
         Assert.False(marcaDesmarcada.PuedeDeshacer);
@@ -308,6 +426,23 @@ public sealed class ConsultasCampoTests : IDisposable
         _e.Base.Usuario("Sin asignar", id: Usuario.SinAsignarId);
         var sinAsignar = await _e.Campo.CrearVeterinarioAsync("SIN ASIGNAR", null);
         Assert.False(sinAsignar.EsCorrecto);
+    }
+
+    [Fact]
+    public async Task Crear_un_estado_desde_el_campo_lo_deja_activo_y_uno_repetido_o_sin_letras_se_rechaza()
+    {
+        var r = await _e.Campo.CrearEstadoAsync("  Revisión de pata ", "REV_PATA");
+        Assert.True(r.EsCorrecto, r.Mensaje);
+        var nuevo = Assert.Single(await _e.Campo.ListarEstadosActivosAsync(), e => e.Id == r.Valor);
+        Assert.Equal("Revisión de pata", nuevo.Nombre);
+        Assert.Equal("REVISION_DE_PATA", _e.Base.Escalar("SELECT Codigo FROM EstadoReproductivo WHERE Nombre = 'Revisión de pata'")!.ToString());
+        Assert.Equal("REV_PATA", _e.Base.Escalar("SELECT CodigoDairyComp FROM EstadoReproductivo WHERE Nombre = 'Revisión de pata'")!.ToString());
+
+        var repetido = await _e.Campo.CrearEstadoAsync("revisión de pata", "OTRO_CODIGO");
+        Assert.Equal(CodigoError.Duplicado, repetido.Codigo);
+
+        var sinLetras = await _e.Campo.CrearEstadoAsync("¿?!", "X");
+        Assert.Equal(CodigoError.DatosInvalidos, sinLetras.Codigo);
     }
 
     // ---------- Caravana de muestra (simulador) ----------

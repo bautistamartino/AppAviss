@@ -25,16 +25,22 @@ public enum CuadroTrabajo
     Ninguno,
     /// <summary>"Animal repetido" o "Ya pasó" (RF-22).</summary>
     Aviso,
-    /// <summary>"Caravana no encontrada": dar de alta o buscar a mano (RF-24).</summary>
+    /// <summary>"Caravana no encontrada": buscar a mano o cerrar (RF-24).</summary>
     NoEncontrada,
-    /// <summary>Formulario de alta en campo (RF-25).</summary>
-    Alta,
     /// <summary>"¿Deshacer lo último de esta vaca?" (RF-22).</summary>
     ConfirmarCorregir,
     /// <summary>Contador y caravanas con "Coincide" / "No coincide" (RF-6, RF-7).</summary>
     Verificacion,
     /// <summary>Cantidad real de animales, con teclado numérico (RF-6).</summary>
     CantidadReal,
+    /// <summary>"Agregar evento": todas las opciones de estado para elegir una (RF-15).</summary>
+    Eventos,
+    /// <summary>"Configuración": el engranaje, con las opciones del veterinario.</summary>
+    Configuracion,
+    /// <summary>"Cantidad de la manga": cuántas vacas entran, que se pone a mano al empezar cada manga.</summary>
+    CantidadManga,
+    /// <summary>"Agregar observación": un texto opcional que viaja con el próximo evento.</summary>
+    Observacion,
     /// <summary>"¿Terminar el tacto?" (RF-7).</summary>
     SegundaConfirmacion
 }

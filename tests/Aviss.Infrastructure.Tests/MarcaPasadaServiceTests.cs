@@ -42,6 +42,68 @@ public sealed class MarcaPasadaServiceTests : IDisposable
         Assert.Equal(0, _e.Cuenta("Tacto"));
     }
 
+    // ---------- CVET: solo entran en tacto las vacas con CVET distinto de 0 ----------
+
+    [Fact]
+    public async Task Una_vaca_con_cvet_cero_queda_marcada_y_suma_al_conteo_pero_no_trae_la_ficha()
+    {
+        var animal = _e.AnimalImportado("100", _e.EstadoSeca, json: """{"ID":"100","CVET":"0"}""");
+
+        var r = await _e.LeerAsync("100");
+
+        Assert.Equal(TipoResultadoLectura.SinTacto, r.Tipo);
+        Assert.Equal(animal, r.AnimalId);
+        Assert.Equal("100", r.Caravana);
+        Assert.Null(r.Ficha);
+        Assert.Equal(1, r.ContadorManga);
+        Assert.Equal(1, r.NumeroManga);
+        // La marca existe (se puede deshacer y suma a la manga) y no se guardó ningún tacto.
+        Assert.NotNull(r.MarcaId);
+        Assert.Equal(T(animal), _e.Col("MarcaPasada", r.MarcaId!.Value, "AnimalId"));
+        Assert.Equal(1, _e.Cuenta("MarcaPasada"));
+        Assert.Equal(0, _e.Cuenta("Tacto"));
+    }
+
+    [Fact]
+    public async Task Leer_otra_vez_una_vaca_con_cvet_cero_avisa_que_es_repetida_y_no_suma_de_nuevo()
+    {
+        _e.AnimalImportado("100", json: """{"CVET":"0"}""");
+        await _e.LeerAsync("100");
+
+        var segunda = await _e.LeerAsync("100");
+
+        Assert.Equal(TipoResultadoLectura.Repetido, segunda.Tipo);
+        Assert.Equal(1, _e.Cuenta("MarcaPasada"));
+    }
+
+    [Theory]
+    [InlineData("""{"CVET":"PRE"}""", "PRE")]
+    [InlineData("""{"CVET":"ABT"}""", "ABT")]
+    [InlineData("""{"CVET":"3"}""", "3")]
+    [InlineData("""{"LACT":"2"}""", "")]          // sin la columna: no se bloquea el trabajo
+    [InlineData("{esto no es json", "")]
+    public async Task Una_vaca_con_cvet_distinto_de_cero_o_sin_dato_trae_la_ficha_con_su_motivo(string json, string cvetEsperado)
+    {
+        _e.AnimalImportado("100", json: json);
+
+        var r = await _e.LeerAsync("100");
+
+        Assert.Equal(TipoResultadoLectura.Marcada, r.Tipo);
+        Assert.Equal(cvetEsperado, r.Ficha!.Cvet);
+        Assert.True(r.Ficha.EntraEnTacto);
+    }
+
+    [Fact]
+    public async Task La_ficha_de_una_vaca_con_cvet_cero_dice_que_no_entra_en_tacto()
+    {
+        var animal = _e.AnimalImportado("100", json: """{"CVET":"0"}""");
+
+        var ficha = (await _e.Campo.ObtenerFichaAsync(animal)).Valor;
+
+        Assert.Equal("0", ficha.Cvet);
+        Assert.False(ficha.EntraEnTacto);
+    }
+
     [Fact]
     public async Task La_primera_marca_abre_la_manga_y_guarda_manga_marca_e_historial_juntos()
     {

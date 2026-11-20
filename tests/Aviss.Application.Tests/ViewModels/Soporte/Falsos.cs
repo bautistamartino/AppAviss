@@ -55,14 +55,25 @@ public sealed class FakePreferencias : IPreferenciasDispositivo
     public int Guardados { get; private set; }
     public Guid? ObtenerVeterinarioRecordado() => Recordado;
     public void GuardarVeterinarioRecordado(Guid veterinarioId) { Recordado = veterinarioId; Guardados++; }
+
+    // Control por manga: una preferencia por establecimiento. Si nunca se eligió, se devuelve el valor por defecto de la prueba.
+    public Dictionary<Guid, bool> ControlPorManga { get; } = [];
+    public bool? ControlPorMangaPorDefecto { get; set; }
+    public List<(Guid EstablecimientoId, bool Valor)> ControlGuardado { get; } = [];
+    public bool? ObtenerControlPorManga(Guid establecimientoId) => ControlPorManga.TryGetValue(establecimientoId, out var v) ? v : ControlPorMangaPorDefecto;
+    public void GuardarControlPorManga(Guid establecimientoId, bool valor) { ControlPorManga[establecimientoId] = valor; ControlGuardado.Add((establecimientoId, valor)); }
 }
 
 public sealed class FakeAvisos : IAvisosCampo
 {
     public int Confirmaciones { get; private set; }
     public int Repetidos { get; private set; }
+    public int SinTactos { get; private set; }
+    public int MangasCompletas { get; private set; }
     public void Confirmacion() => Confirmaciones++;
     public void Repetido() => Repetidos++;
+    public void SinTacto() => SinTactos++;
+    public void MangaCompleta() => MangasCompletas++;
 }
 
 public sealed class FakePantalla : IPantalla

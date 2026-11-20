@@ -7,9 +7,11 @@ namespace Aviss.Application.Campo;
 /// <summary>Un tacto de la vaca tal como lo necesita el historial de la ficha.</summary>
 public sealed record TactoParaFicha(DateTime FechaHoraUtc, string? EstadoNombre, bool Anulado);
 
-/// <summary>Lo que arma <see cref="ConstructorFicha"/>: los campos del Excel, el dato de inseminaciones y el historial.</summary>
+/// <summary>Lo que arma <see cref="ConstructorFicha"/>: los campos del Excel, el dato de inseminaciones, el historial y el CVET.</summary>
 public sealed record FichaArmada(
-    IReadOnlyList<CampoFichaDto> Campos, string Inseminaciones, string UltimoToro, IReadOnlyList<EventoFichaDto> Historial);
+    IReadOnlyList<CampoFichaDto> Campos, string Inseminaciones, string UltimoToro, IReadOnlyList<EventoFichaDto> Historial,
+    string Cvet = "",
+    IReadOnlyList<CampoFichaDto>? Extras = null);
 
 /// <summary>
 /// Arma lo que la ficha muestra a partir de las columnas originales del Excel (JSON) y los tactos de Aviss (spec 003,
@@ -69,8 +71,31 @@ public static class ConstructorFicha
         // Cronológico, del más viejo al más nuevo. OrderBy es estable: con la misma fecha queda primero el del Excel.
         var historial = datados.OrderBy(e => e.FechaLocal).Concat(ilegibles).ToList();
 
-        return new FichaArmada(campos, Valor("VINS"), Valor("UTORO"), historial);
+        return new FichaArmada(campos, Valor("VINS"), Valor("UTORO"), historial, Valor("CVET"), ColumnasExtra(originales));
     }
+
+    // Columnas que la ficha ya muestra por su cuenta (o que no son un dato para mirar): no van entre las "extras".
+    private static readonly HashSet<string> ColumnasPropias = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "ID", "CVET", "RPRO", "LACT", "DEL", "FPART", "FCELO", "FAPAR", "COM", "VINS", "UTORO"
+    };
+
+    /// <summary>
+    /// Las demás columnas que traiga el Excel (por ejemplo DCC, DDUC o LECHE), en el orden del archivo y solo las que tienen
+    /// valor, para mostrarlas en la pestaña de datos sin tener que tocar el código cuando Dairy Comp exporta más columnas.
+    /// </summary>
+    private static List<CampoFichaDto> ColumnasExtra(Dictionary<string, string> originales)
+        => originales
+            .Where(c => !ColumnasPropias.Contains(c.Key) && !string.IsNullOrWhiteSpace(c.Value))
+            .Select(c => new CampoFichaDto(c.Key, c.Value))
+            .ToList();
+
+    /// <summary>
+    /// El CVET original de la vaca (por qué está en la lista de tacto), o vacío si el Excel no lo traía o no se puede leer.
+    /// Nunca falla. Con <see cref="ReglasCvet"/> se decide si la vaca entra en tacto.
+    /// </summary>
+    public static string LeerCvet(string? datosOriginalesJson)
+        => LeerOriginales(datosOriginalesJson).TryGetValue("CVET", out var cvet) ? cvet : "";
 
     /// <summary>
     /// Lee el objeto JSON { "columna": "valor" } a un diccionario sin distinguir mayúsculas. Si no es un objeto o está

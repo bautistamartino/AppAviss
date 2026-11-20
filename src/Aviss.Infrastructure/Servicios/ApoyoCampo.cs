@@ -15,27 +15,35 @@ internal sealed class CalculadorAvance
 {
     private readonly IRodeoRepository _rodeos;
     private readonly IRegistroCampoRepository _registros;
+    private readonly IMangaRepository _mangas;
     private readonly IRelojService _reloj;
     private readonly IZonaHoraria _zona;
 
-    public CalculadorAvance(IRodeoRepository rodeos, IRegistroCampoRepository registros, IRelojService reloj, IZonaHoraria zona)
-        => (_rodeos, _registros, _reloj, _zona) = (rodeos, registros, reloj, zona);
+    public CalculadorAvance(IRodeoRepository rodeos, IRegistroCampoRepository registros, IMangaRepository mangas, IRelojService reloj, IZonaHoraria zona)
+        => (_rodeos, _registros, _mangas, _reloj, _zona) = (rodeos, registros, mangas, reloj, zona);
 
     public async Task<AvanceRodeoDto> CalcularAsync(Guid rodeoId, CancellationToken ct)
     {
         var ahora = _reloj.UtcAhora;
         var zona = _zona.Zona;
+        var hoy = DiaLocal.RangoUtcDeHoy(ahora, zona);
         var total = await _rodeos.ContarAnimalesAsync(rodeoId, ct);
-        var procesadas = await _registros.ContarProcesadasAsync(rodeoId, DiaLocal.RangoUtcDeHoy(ahora, zona), ct);
-        return Armar(total, procesadas, DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(ahora, zona)));
+        var procesadas = await _registros.ContarProcesadasAsync(rodeoId, hoy, ct);
+        var horario = await _registros.ObtenerHorarioAsync(rodeoId, hoy, ct);
+        var termino = await _mangas.ObtenerFechaTerminoElTactoAsync(rodeoId, hoy, ct);
+
+        // El fin es el último movimiento o, si es posterior, la hora en que se apretó "Terminar el tacto".
+        var terminado = termino is not null && (horario.UltimoUtc is null || termino >= horario.UltimoUtc);
+        var fin = terminado ? termino : horario.UltimoUtc;
+        return Armar(total, procesadas, DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(ahora, zona)), horario.PrimeroUtc, fin, terminado);
     }
 
-    public static AvanceRodeoDto Armar(int total, int procesadas, DateOnly fecha)
+    public static AvanceRodeoDto Armar(int total, int procesadas, DateOnly fecha, DateTime? primeraVacaUtc = null, DateTime? finUtc = null, bool terminado = false)
     {
         var pendientes = Math.Max(0, total - procesadas);
         // Porcentaje entero hacia abajo: nunca se muestra 100 % hasta que no falte ninguna. Sin vacas, 0 (no falla).
         var porcentaje = total == 0 ? 0 : procesadas * 100 / total;
-        return new AvanceRodeoDto(fecha, total, procesadas, pendientes, porcentaje);
+        return new AvanceRodeoDto(fecha, total, procesadas, pendientes, porcentaje, primeraVacaUtc, finUtc, terminado);
     }
 }
 
@@ -59,11 +67,11 @@ internal sealed class ArmadorFicha
             .Select(t => new TactoParaFicha(t.FechaHoraUtc, Nombre(t.EstadoNuevoId), t.Anulado));
         var armada = ConstructorFicha.Armar(animal.DatosOriginalesJson, tactos, _reloj.UtcAhora, _zona.Zona);
 
-        var esAlta = animal.Origen == OrigenAnimal.AltaEnCampo;
         return new FichaAnimalDto(
             animal.Id, animal.NumeroCaravana, animal.IdElectronico, animal.EstadoReproductivoId,
-            Nombre(animal.EstadoReproductivoId), animal.FechaUltimoTactoUtc, esAlta, esAlta && !animal.Anulado,
-            armada.Campos, armada.Inseminaciones, armada.UltimoToro, armada.Historial);
+            Nombre(animal.EstadoReproductivoId), animal.FechaUltimoTactoUtc,
+            armada.Campos, armada.Inseminaciones, armada.UltimoToro, armada.Historial,
+            armada.Cvet, Aviss.Domain.Reglas.ReglasCvet.EntraEnTacto(armada.Cvet), armada.Extras);
     }
 }
 
@@ -73,7 +81,7 @@ internal sealed record MarcaPreparada(MarcaPasada Marca, Manga Manga, int Contad
 /// <summary>
 /// El paso común de "marcar a una vaca en la manga actual" (RF-4, RF-12): obtiene la manga abierta o crea la siguiente
 /// (la manga se abre con su primera marca), toma el orden compartido y deja marca, manga e historial listos para que
-/// la transacción del que llama los guarde juntos. Lo usan la lectura y el alta en campo.
+/// la transacción del que llama los guarde juntos. Lo usa la lectura.
 /// </summary>
 internal sealed class Marcador
 {

@@ -255,6 +255,18 @@ internal sealed class MangaRepository : IMangaRepository
     public Task<int> ContarVacasAsync(Guid mangaId, CancellationToken ct = default)
         => _db.MarcasPasada.CountAsync(m => m.MangaId == mangaId && !m.Anulado, ct);
 
+    public Task<DateTime?> ObtenerFechaTerminoElTactoAsync(Guid rodeoId, RangoUtc rango, CancellationToken ct = default)
+    {
+        var desde = rango.Desde;
+        var hasta = rango.Hasta;
+        return (from c in _db.CierresManga.AsNoTracking()
+                join m in _db.Mangas on c.MangaId equals m.Id
+                where m.RodeoId == rodeoId && !c.Anulado && c.Tipo == TipoCierreManga.TerminoElTacto
+                      && c.FechaHoraUtc >= desde && c.FechaHoraUtc < hasta
+                orderby c.FechaHoraUtc descending
+                select (DateTime?)c.FechaHoraUtc).FirstOrDefaultAsync(ct);
+    }
+
     public async Task<IReadOnlyList<string>> ListarCaravanasMarcadasAsync(Guid mangaId, CancellationToken ct = default)
         => await (from m in _db.MarcasPasada.AsNoTracking()
                   join a in _db.Animales on m.AnimalId equals a.Id
@@ -350,4 +362,32 @@ internal sealed class RegistroCampoRepository : IRegistroCampoRepository
                        select a.Id;
         return porMarca.Union(porTacto).CountAsync(ct);
     }
+
+    // Primer y último movimiento de hoy: se mira la marca y el tacto normal más tempranos y más tardíos (vigentes, de vacas
+    // no anuladas del rodeo) y se queda con el menor y el mayor. Se ordena y se toma uno (no MIN/MAX) para no depender de
+    // cómo traduce SQLite las fechas guardadas como texto.
+    public async Task<HorarioDeRegistros> ObtenerHorarioAsync(Guid rodeoId, RangoUtc rango, CancellationToken ct = default)
+    {
+        var desde = rango.Desde;
+        var hasta = rango.Hasta;
+        var marcas = from m in _db.MarcasPasada.AsNoTracking()
+                     join a in _db.Animales on m.AnimalId equals a.Id
+                     where a.RodeoId == rodeoId && !a.Anulado && !m.Anulado && m.FechaHoraUtc >= desde && m.FechaHoraUtc < hasta
+                     select m.FechaHoraUtc;
+        var tactos = from t in _db.Tactos.AsNoTracking()
+                     join a in _db.Animales on t.AnimalId equals a.Id
+                     where a.RodeoId == rodeoId && !a.Anulado && t.Tipo == TipoTacto.Normal && !t.Anulado
+                           && t.FechaHoraUtc >= desde && t.FechaHoraUtc < hasta
+                     select t.FechaHoraUtc;
+
+        DateTime? primeraMarca = await marcas.OrderBy(f => f).Select(f => (DateTime?)f).FirstOrDefaultAsync(ct);
+        DateTime? primerTacto = await tactos.OrderBy(f => f).Select(f => (DateTime?)f).FirstOrDefaultAsync(ct);
+        DateTime? ultimaMarca = await marcas.OrderByDescending(f => f).Select(f => (DateTime?)f).FirstOrDefaultAsync(ct);
+        DateTime? ultimoTacto = await tactos.OrderByDescending(f => f).Select(f => (DateTime?)f).FirstOrDefaultAsync(ct);
+
+        return new HorarioDeRegistros(Menor(primeraMarca, primerTacto), Mayor(ultimaMarca, ultimoTacto));
+    }
+
+    private static DateTime? Menor(DateTime? a, DateTime? b) => a is null ? b : b is null ? a : (a < b ? a : b);
+    private static DateTime? Mayor(DateTime? a, DateTime? b) => a is null ? b : b is null ? a : (a > b ? a : b);
 }

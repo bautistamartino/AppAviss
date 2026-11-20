@@ -29,6 +29,9 @@ public sealed record RegistrarTactoCommand(
 
 public sealed record AnularTactoCommand(Guid TactoId, Guid UsuarioId);
 
+/// <summary>Corregir un tacto: se anula y se registra uno nuevo con otro evento y/o otra observación (el animal y el veterinario son los del tacto y el activo).</summary>
+public sealed record CorregirTactoCommand(Guid TactoId, Guid EstadoNuevoId, string? Observaciones, Guid UsuarioId);
+
 public sealed record AltaEnCampoCommand(
     Guid RodeoId,
     string NumeroCaravana,

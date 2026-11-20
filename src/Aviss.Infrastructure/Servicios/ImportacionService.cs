@@ -238,6 +238,39 @@ internal sealed class ImportacionService : IImportacionService
 
     public void Descartar(Guid vistaPreviaId) => _almacen.Descartar(vistaPreviaId);
 
+    // ------------------------------------------------------------------ Resetear un rodeo (para pruebas)
+
+    public async Task<Resultado<Guid>> ResetearRodeoAsync(Guid rodeoId, CancellationToken ct = default)
+    {
+        string nombreArchivo, nombreRodeo;
+        byte[] contenido;
+        Guid establecimientoId;
+        using (var scope = _scopes.CreateScope())
+        {
+            var rodeo = await scope.ServiceProvider.GetRequiredService<IRodeoRepository>().ObtenerAsync(rodeoId, ct);
+            if (rodeo is null) return Resultado.Error<Guid>(CodigoError.NoEncontrado, "El rodeo no existe.");
+            (nombreArchivo, nombreRodeo, contenido, establecimientoId) = (rodeo.ArchivoOrigenNombre, rodeo.Nombre, rodeo.ArchivoOrigenBlob, rodeo.EstablecimientoId);
+        }
+
+        // Primero se crea el rodeo nuevo desde el Excel original; recién si salió bien se da de baja el viejo (nunca se pierde nada).
+        var vista = await PrepararAsync(nombreArchivo, new MemoryStream(contenido), ct);
+        if (!vista.EsCorrecto) return Resultado.Error<Guid>(vista.Codigo!.Value, vista.Mensaje!);
+
+        var nuevo = await ConfirmarAsync(new ConfirmarImportacionCommand(vista.Valor.Id, establecimientoId, null, nombreRodeo, true), ct);
+        if (!nuevo.EsCorrecto)
+        {
+            Descartar(vista.Valor.Id);
+            return Resultado.Error<Guid>(nuevo.Codigo!.Value, nuevo.Mensaje!);
+        }
+
+        using (var scope = _scopes.CreateScope())
+        {
+            var baja = await scope.ServiceProvider.GetRequiredService<IRodeoService>().DarDeBajaAsync(rodeoId, ct);
+            if (!baja.EsCorrecto) return Resultado.Error<Guid>(baja.Codigo!.Value, baja.Mensaje!);
+        }
+        return Resultado.Ok(nuevo.Valor.RodeoId);
+    }
+
     // ------------------------------------------------------------------ Ayudas
 
     private static Resultado<ResultadoImportacion> Error(CodigoError codigo)

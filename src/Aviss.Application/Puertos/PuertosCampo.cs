@@ -52,6 +52,16 @@ public interface IPreferenciasDispositivo
 {
     Guid? ObtenerVeterinarioRecordado();
     void GuardarVeterinarioRecordado(Guid veterinarioId);
+
+    /// <summary>
+    /// Si en ese establecimiento se eligió llevar el control por manga (contador "7/10" y cierre de mangas), o nulo si nunca se eligió
+    /// (en ese caso se usa <see cref="ControlPorMangaPorDefecto"/>). Es una preferencia de cada establecimiento (cada tambo trabaja a su manera).
+    /// </summary>
+    bool? ObtenerControlPorManga(Guid establecimientoId);
+    void GuardarControlPorManga(Guid establecimientoId, bool valor);
+
+    /// <summary>Lo que se usa mientras no se elija: apagado (cada establecimiento lo prende si lo quiere).</summary>
+    const bool ControlPorMangaPorDefecto = false;
 }
 
 /// <summary>Vibración y sonido simples del sistema, sin voz (RF-16, RF-22).</summary>
@@ -62,6 +72,12 @@ public interface IAvisosCampo
 
     /// <summary>Sonido o vibración de "animal repetido / ya pasó".</summary>
     void Repetido();
+
+    /// <summary>La chicharra de "no entra en tacto" (CVET 0): fuerte y corta, para que se oiga sin mirar la pantalla.</summary>
+    void SinTacto();
+
+    /// <summary>La manga llegó a su cantidad y se cerró sola: un aviso corto y positivo, distinto de la chicharra.</summary>
+    void MangaCompleta();
 }
 
 /// <summary>Mantener la pantalla encendida mientras se trabaja (RF-3).</summary>
@@ -97,6 +113,9 @@ public interface IMangaRepository
 
     /// <summary>Cantidad de vacas distintas con marca vigente en la manga: el contador (RF-5).</summary>
     Task<int> ContarVacasAsync(Guid mangaId, CancellationToken ct = default);
+
+    /// <summary>La hora del último "Terminar el tacto" vigente (no anulado) del rodeo dentro del rango, o nulo si no hubo.</summary>
+    Task<DateTime?> ObtenerFechaTerminoElTactoAsync(Guid rodeoId, RangoUtc rango, CancellationToken ct = default);
 
     /// <summary>Caravanas con marca vigente en la manga, en el orden en que se marcaron.</summary>
     Task<IReadOnlyList<string>> ListarCaravanasMarcadasAsync(Guid mangaId, CancellationToken ct = default);
@@ -141,7 +160,13 @@ public interface IRegistroCampoRepository
 
     /// <summary>Vacas no anuladas del rodeo con una marca o un tacto vigente dentro del rango (procesadas hoy).</summary>
     Task<int> ContarProcesadasAsync(Guid rodeoId, RangoUtc rango, CancellationToken ct = default);
+
+    /// <summary>La hora del primer y del último movimiento de hoy en el rodeo (marca o tacto normal vigente de vacas no anuladas).</summary>
+    Task<HorarioDeRegistros> ObtenerHorarioAsync(Guid rodeoId, RangoUtc rango, CancellationToken ct = default);
 }
+
+/// <summary>La hora del primer y del último movimiento de un día (nulos si no hubo ninguno).</summary>
+public readonly record struct HorarioDeRegistros(DateTime? PrimeroUtc, DateTime? UltimoUtc);
 
 /// <summary>El último registro de campo vigente de una vaca, sin importar de qué tipo sea.</summary>
 public sealed record RegistroCampoVigente(

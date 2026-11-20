@@ -28,6 +28,7 @@ public class TrabajoViewModelTests
         {
             if (conSesion) Sesion.Empezar(Datos.Vet, Datos.Rodeo());
             Campo.Estados = [Prenada, Vacia];
+            Preferencias.ControlPorMangaPorDefecto = true;   // las pruebas existentes trabajan con el control por manga prendido
             Vm = new TrabajoViewModel(Campo, Lector, Preferencias, Avisos, Pantalla, Temporizador, Navegacion, Sesion,
                 conSimulador ? Lector : null);
         }
@@ -42,6 +43,13 @@ public class TrabajoViewModelTests
         }
 
         public Task LeerAsync(string codigo) => Vm.EncolarLecturaAsync(codigo);
+
+        /// <summary>Elegir el evento y tocar "Entrar": el tacto se guarda recién con "Entrar".</summary>
+        public async Task ElegirYEntrarAsync(EstadoActivoDto estado)
+        {
+            await Vm.ElegirEventoCommand.ExecuteAsync(estado);
+            await Vm.EntrarCommand.ExecuteAsync(null);
+        }
     }
 
     // ------------------------------------------------------------------ arranque
@@ -122,7 +130,7 @@ public class TrabajoViewModelTests
     public async Task Una_lectura_marca_la_vaca_muestra_la_ficha_y_sube_el_contador()
     {
         var b = new Banco();
-        var (animal, marca) = b.Vaca("1001", manga: 1, contador: 1);
+        var (animal, _) = b.Vaca("1001", manga: 1, contador: 1);
         b.Campo.Estado = Datos.EstadoTrabajo(abierta: true, contador: 1, procesadas: 1);
 
         await b.LeerAsync("1001");
@@ -132,8 +140,8 @@ public class TrabajoViewModelTests
         Assert.Equal("Manga 1 · 1", b.Vm.TextoManga);
         Assert.Equal("Marcada: 1001", b.Vm.UltimoGuardado);
         Assert.Equal(1, b.Avisos.Confirmaciones);
-        // El aviso de deshacer es de la marca (RF-27).
-        Assert.Equal(new AvisoDeshacerDto(TipoDeshacer.Marca, marca, "Marcada 1001"), b.Vm.AvisoDeshacer);
+        // Marcar no muestra el aviso de deshacer (se puede deshacer desde "Movimientos").
+        Assert.Null(b.Vm.AvisoDeshacer);
         Assert.Single(b.Campo.LecturasProcesadas);
         Assert.Equal(Datos.Vet.Id, b.Campo.LecturasProcesadas[0].UsuarioId);
     }
@@ -193,6 +201,385 @@ public class TrabajoViewModelTests
         Assert.Equal(animal, b.Vm.Ficha!.AnimalId);   // la ficha sigue abierta
     }
 
+    // ------------------------------------------------------------------ CVET: solo entran en tacto las de CVET distinto de 0
+
+    [Fact]
+    public async Task Una_vaca_con_cvet_cero_hace_sonar_la_chicharra_suma_al_conteo_y_no_abre_la_ficha()
+    {
+        var b = new Banco();
+        var animal = Guid.NewGuid();
+        var marca = Guid.NewGuid();
+        b.Campo.Lecturas["2224"] = Datos.SinTacto(animal, "2224", marca, manga: 1, contador: 5);
+        b.Campo.Estado = Datos.EstadoTrabajo(manga: 1, abierta: true, contador: 5);   // lo que devuelve el servicio tras marcar
+
+        await b.LeerAsync("2224");
+
+        Assert.Equal(1, b.Avisos.SinTactos);
+        Assert.Equal(0, b.Avisos.Confirmaciones);   // no es el "guardado" normal: suena la chicharra
+        Assert.Null(b.Vm.Ficha);
+        Assert.Equal(EtapaTrabajo.Esperando, b.Vm.Etapa);
+        Assert.Equal(CuadroTrabajo.Ninguno, b.Vm.Cuadro);   // nada que cerrar: se puede leer la siguiente
+        Assert.Equal(5, b.Vm.Contador);                     // suma al conteo de la manga
+        Assert.True(b.Vm.MangaAbierta);
+        Assert.Equal("2224: no entra en tacto (CVET 0)", b.Vm.UltimoGuardado);
+        Assert.Null(b.Vm.AvisoDeshacer);   // tampoco acá hay aviso de deshacer (queda en "Movimientos")
+    }
+
+    [Fact]
+    public async Task Despues_de_una_vaca_con_cvet_cero_la_siguiente_se_procesa_enseguida()
+    {
+        var b = new Banco();
+        b.Campo.Lecturas["1"] = Datos.SinTacto(Guid.NewGuid(), "1");
+        var (siguiente, _) = b.Vaca("2");
+
+        await b.LeerAsync("1");
+        await b.LeerAsync("2");
+
+        Assert.Equal(["1", "2"], b.Campo.LecturasProcesadas.Select(l => l.Codigo));
+        Assert.Equal(siguiente, b.Vm.Ficha!.AnimalId);
+    }
+
+    [Fact]
+    public async Task Una_vaca_con_cvet_cero_cierra_la_ficha_de_la_anterior()
+    {
+        var b = new Banco();
+        b.Vaca("1001");
+        b.Campo.Lecturas["2224"] = Datos.SinTacto(Guid.NewGuid(), "2224");
+        await b.LeerAsync("1001");
+        Assert.NotNull(b.Vm.Ficha);
+
+        await b.LeerAsync("2224");
+
+        Assert.Null(b.Vm.Ficha);
+    }
+
+    [Fact]
+    public async Task La_ficha_de_una_vaca_que_entra_en_tacto_muestra_el_cvet_como_motivo()
+    {
+        var b = new Banco();
+        var animal = Guid.NewGuid();
+        b.Campo.Lecturas["9"] = Datos.Marcada(animal, "9") with { Ficha = Datos.Ficha(animal, "9", cvet: "PRE") };
+
+        await b.LeerAsync("9");
+
+        Assert.True(b.Vm.HayMotivoTacto);
+        Assert.Equal("Motivo del tacto · CVET: PRE", b.Vm.TextoMotivoTacto);
+        Assert.False(b.Vm.NoEntraEnTacto);
+        Assert.True(b.Vm.PuedeAgregarEventos);
+    }
+
+    // ---- "Ver ficha" de la última vaca que no entró en tacto (CVET 0), para mirar sus datos por curiosidad
+
+    private static async Task<(Banco Banco, Guid Animal)> BancoConUnaVacaSinTactoAsync()
+    {
+        var b = new Banco();
+        var animal = Guid.NewGuid();
+        b.Campo.Lecturas["2224"] = Datos.SinTacto(animal, "2224");
+        b.Campo.Fichas[animal] = Datos.Ficha(animal, "2224", cvet: "0", entraEnTacto: false);
+        await b.LeerAsync("2224");
+        return (b, animal);
+    }
+
+    [Fact]
+    public async Task Tras_una_vaca_con_cvet_cero_aparece_la_opcion_de_ver_su_ficha()
+    {
+        var (b, _) = await BancoConUnaVacaSinTactoAsync();
+
+        Assert.True(b.Vm.HayVerFichaSinTacto);
+        Assert.Equal("Ver ficha de 2224", b.Vm.TextoVerFichaSinTacto);
+    }
+
+    [Fact]
+    public async Task Ver_la_ficha_la_abre_solo_para_mirar_sin_marcar_de_nuevo_ni_dejar_tactar()
+    {
+        var (b, animal) = await BancoConUnaVacaSinTactoAsync();
+
+        await b.Vm.VerFichaSinTactoCommand.ExecuteAsync(null);
+
+        Assert.Equal(animal, b.Vm.Ficha!.AnimalId);
+        Assert.Equal(EtapaTrabajo.Ficha, b.Vm.Etapa);
+        Assert.True(b.Vm.NoEntraEnTacto);
+        Assert.False(b.Vm.PuedeAgregarEventos);
+        Assert.Equal(["2224"], b.Campo.LecturasProcesadas.Select(l => l.Codigo));   // no se leyó ni se marcó otra vez
+        Assert.Equal([animal], b.Campo.FichasPedidas);
+        Assert.False(b.Vm.HayVerFichaSinTacto);   // ya no se está esperando: el botón no se ve mientras está la ficha
+    }
+
+    [Fact]
+    public async Task Al_saltar_la_ficha_vuelve_el_Ultimo_y_la_opcion_de_verla()
+    {
+        var (b, _) = await BancoConUnaVacaSinTactoAsync();
+        await b.Vm.VerFichaSinTactoCommand.ExecuteAsync(null);
+
+        b.Vm.CerrarFichaCommand.Execute(null);
+
+        Assert.Equal(EtapaTrabajo.Esperando, b.Vm.Etapa);
+        Assert.Equal("2224: no entra en tacto (CVET 0)", b.Vm.UltimoGuardado);
+        Assert.True(b.Vm.HayVerFichaSinTacto);
+    }
+
+    [Fact]
+    public async Task Una_lectura_posterior_o_un_tacto_guardado_hacen_desaparecer_la_opcion()
+    {
+        var (b, _) = await BancoConUnaVacaSinTactoAsync();
+        b.Vaca("1001");
+
+        await b.LeerAsync("1001");   // otra vaca que sí entra: "Marcada: 1001"
+        b.Vm.CerrarFichaCommand.Execute(null);
+
+        Assert.False(b.Vm.HayVerFichaSinTacto);
+        Assert.Equal("Marcada: 1001", b.Vm.UltimoGuardado);
+    }
+
+    [Fact]
+    public async Task Sin_ninguna_vaca_con_cvet_cero_no_hay_opcion_de_ver_ficha()
+    {
+        var b = new Banco();
+        b.Vaca("1001");
+
+        await b.LeerAsync("1001");
+        b.Vm.CerrarFichaCommand.Execute(null);
+
+        Assert.False(b.Vm.HayVerFichaSinTacto);
+    }
+
+    [Fact]
+    public async Task Si_no_se_puede_traer_la_ficha_se_muestra_el_motivo_y_no_se_abre_nada()
+    {
+        var (b, animal) = await BancoConUnaVacaSinTactoAsync();
+        b.Campo.Fichas.Remove(animal);
+
+        await b.Vm.VerFichaSinTactoCommand.ExecuteAsync(null);
+
+        Assert.Equal("No se encontró la vaca.", b.Vm.MensajeError);
+        Assert.Null(b.Vm.Ficha);
+    }
+
+    [Fact]
+    public async Task Sin_una_vaca_con_cvet_cero_el_comando_de_ver_ficha_no_hace_nada()
+    {
+        var b = new Banco();
+
+        await b.Vm.VerFichaSinTactoCommand.ExecuteAsync(null);
+
+        Assert.Null(b.Vm.Ficha);
+        Assert.Empty(b.Campo.FichasPedidas);
+    }
+
+    [Fact]
+    public async Task Sin_dato_de_cvet_no_se_muestra_el_motivo_pero_se_puede_tactar()
+    {
+        var b = new Banco();
+        b.Vaca("1001");
+
+        await b.LeerAsync("1001");
+
+        Assert.False(b.Vm.HayMotivoTacto);
+        Assert.True(b.Vm.PuedeAgregarEventos);
+    }
+
+    [Fact]
+    public async Task La_ficha_de_una_vaca_con_cvet_cero_no_deja_agregar_eventos_ni_observaciones()
+    {
+        var b = new Banco();
+        var animal = Guid.NewGuid();
+        // Se llega a esta ficha con "Ver ficha" desde un aviso de repetida.
+        b.Campo.Fichas[animal] = Datos.Ficha(animal, "2224", cvet: "0", entraEnTacto: false);
+        b.Campo.Lecturas["2224"] = Datos.Repetido(animal, "2224");
+        await b.LeerAsync("2224");
+        await b.Vm.VerFichaCommand.ExecuteAsync(null);
+        Assert.NotNull(b.Vm.Ficha);
+
+        Assert.True(b.Vm.NoEntraEnTacto);
+        Assert.False(b.Vm.PuedeAgregarEventos);
+        Assert.False(b.Vm.HayMotivoTacto);
+
+        await b.Vm.AbrirEventosCommand.ExecuteAsync(null);
+        await b.Vm.AbrirObservacionCommand.ExecuteAsync(null);
+        await b.ElegirYEntrarAsync(Prenada);
+
+        Assert.Equal(CuadroTrabajo.Ninguno, b.Vm.Cuadro);
+        Assert.Empty(b.Campo.Tactos);
+    }
+
+    // ------------------------------------------------------------------ elegir el evento y "Entrar" (como en el Daily)
+
+    [Fact]
+    public async Task Elegir_un_evento_no_guarda_nada_queda_en_el_casillero_y_habilita_Entrar()
+    {
+        var b = new Banco();
+        b.Vaca("1001");
+        await b.LeerAsync("1001");
+        Assert.Equal("Tocá para elegir", b.Vm.TextoEventoElegido);
+        Assert.False(b.Vm.EntrarCommand.CanExecute(null));   // sin evento no se puede entrar
+
+        await b.Vm.ElegirEventoCommand.ExecuteAsync(Prenada);
+
+        Assert.Empty(b.Campo.Tactos);
+        Assert.NotNull(b.Vm.Ficha);
+        Assert.Equal(Prenada, b.Vm.EventoElegido);
+        Assert.Equal("PREÑADA", b.Vm.TextoEventoElegido);
+        Assert.True(b.Vm.EntrarCommand.CanExecute(null));
+    }
+
+    [Fact]
+    public async Task Entrar_guarda_el_tacto_con_el_evento_elegido_y_la_observacion()
+    {
+        var b = new Banco();
+        var (animal, _) = b.Vaca("1001");
+        await b.LeerAsync("1001");
+        await b.Vm.AbrirObservacionCommand.ExecuteAsync(null);
+        b.Vm.TextoObservacion = "Cojera";
+        await b.Vm.GuardarObservacionCommand.ExecuteAsync(null);
+        Assert.Equal("Cojera", b.Vm.TextoCasilleroObservacion);
+        await b.Vm.ElegirEventoCommand.ExecuteAsync(Prenada);
+
+        await b.Vm.EntrarCommand.ExecuteAsync(null);
+
+        var cmd = Assert.Single(b.Campo.Tactos);
+        Assert.Equal((animal, Prenada.Id, "Cojera", Datos.Vet.Id), (cmd.AnimalId, cmd.EstadoNuevoId, cmd.Observaciones, cmd.UsuarioId));
+        Assert.Null(b.Vm.Ficha);
+        Assert.Null(b.Vm.EventoElegido);
+        Assert.Equal("Opcional", b.Vm.TextoCasilleroObservacion);
+        Assert.Equal(2, b.Avisos.Confirmaciones);   // vibró la marca y vibró el tacto
+    }
+
+    [Fact]
+    public async Task Entrar_sin_evento_elegido_no_guarda_nada()
+    {
+        var b = new Banco();
+        b.Vaca("1001");
+        await b.LeerAsync("1001");
+
+        await b.Vm.EntrarCommand.ExecuteAsync(null);
+
+        Assert.Empty(b.Campo.Tactos);
+        Assert.NotNull(b.Vm.Ficha);
+    }
+
+    [Fact]
+    public async Task Elegir_otro_evento_reemplaza_al_anterior()
+    {
+        var b = new Banco();
+        b.Vaca("1001");
+        await b.LeerAsync("1001");
+        await b.Vm.ElegirEventoCommand.ExecuteAsync(Prenada);
+
+        await b.Vm.AbrirEventosCommand.ExecuteAsync(null);
+        await b.Vm.ElegirEventoCommand.ExecuteAsync(Vacia);
+        await b.Vm.EntrarCommand.ExecuteAsync(null);
+
+        Assert.Equal(Vacia.Id, Assert.Single(b.Campo.Tactos).EstadoNuevoId);
+    }
+
+    [Fact]
+    public async Task Un_tacto_rechazado_en_Entrar_conserva_el_evento_y_la_observacion()
+    {
+        var b = new Banco();
+        b.Vaca("1001");
+        b.Campo.OnRegistrarTacto = _ => Resultado.Error<Guid>(CodigoError.EstadoDeBaja, "Ese estado está dado de baja.");
+        await b.LeerAsync("1001");
+        await b.Vm.AbrirObservacionCommand.ExecuteAsync(null);
+        b.Vm.TextoObservacion = "Revisar";
+        await b.Vm.GuardarObservacionCommand.ExecuteAsync(null);
+        await b.Vm.ElegirEventoCommand.ExecuteAsync(Prenada);
+
+        await b.Vm.EntrarCommand.ExecuteAsync(null);
+
+        Assert.Equal("Ese estado está dado de baja.", b.Vm.MensajeError);
+        Assert.Equal(Prenada, b.Vm.EventoElegido);
+        Assert.Equal("Revisar", b.Vm.ObservacionPendiente);
+        Assert.NotNull(b.Vm.Ficha);
+    }
+
+    [Fact]
+    public async Task Saltar_cierra_la_ficha_sin_guardar_y_descarta_lo_elegido()
+    {
+        var b = new Banco();
+        b.Vaca("1001");
+        await b.LeerAsync("1001");
+        await b.Vm.ElegirEventoCommand.ExecuteAsync(Prenada);
+
+        b.Vm.CerrarFichaCommand.Execute(null);   // el botón "Saltar"
+
+        Assert.Null(b.Vm.Ficha);
+        Assert.Null(b.Vm.EventoElegido);
+        Assert.Empty(b.Campo.Tactos);
+        Assert.False(b.Vm.EntrarCommand.CanExecute(null));
+    }
+
+    [Fact]
+    public async Task Una_ficha_nueva_empieza_sin_evento_elegido_y_en_la_pestana_de_datos()
+    {
+        var b = new Banco();
+        b.Vaca("1001");
+        b.Vaca("1002", contador: 2);
+        await b.LeerAsync("1001");
+        await b.Vm.ElegirEventoCommand.ExecuteAsync(Prenada);
+        b.Vm.VerHistorialCommand.Execute(null);
+        Assert.True(b.Vm.MostrarHistorial);
+
+        await b.LeerAsync("1002");
+
+        Assert.Null(b.Vm.EventoElegido);
+        Assert.False(b.Vm.MostrarHistorial);
+        Assert.True(b.Vm.HayDatos);
+    }
+
+    [Fact]
+    public async Task Las_pestanas_alternan_entre_datos_e_historial()
+    {
+        var b = new Banco();
+        b.Vaca("1001");
+        await b.LeerAsync("1001");
+        Assert.True(b.Vm.HayDatos);
+
+        b.Vm.VerHistorialCommand.Execute(null);
+        Assert.False(b.Vm.HayDatos);
+        Assert.True(b.Vm.MostrarHistorial);
+
+        b.Vm.VerDatosCommand.Execute(null);
+        Assert.True(b.Vm.HayDatos);
+    }
+
+    [Fact]
+    public async Task El_titulo_de_la_ficha_lleva_el_id_y_el_cvet_si_entra_en_tacto()
+    {
+        var b = new Banco();
+        var conCvet = Guid.NewGuid();
+        var sinCvet = Guid.NewGuid();
+        b.Campo.Lecturas["1014"] = Datos.Marcada(conCvet, "1014") with { Ficha = Datos.Ficha(conCvet, "1014", cvet: "PRE") };
+        b.Campo.Lecturas["77"] = Datos.Marcada(sinCvet, "77");
+
+        await b.LeerAsync("1014");
+        Assert.Equal("ID 1014 · CVET PRE", b.Vm.TituloFicha);
+
+        await b.LeerAsync("77");
+        Assert.Equal("ID 77", b.Vm.TituloFicha);
+    }
+
+    [Fact]
+    public async Task La_tabla_de_datos_trae_el_estado_los_campos_conocidos_y_las_columnas_extra_con_valor()
+    {
+        var b = new Banco();
+        var animal = Guid.NewGuid();
+        var ficha = Datos.Ficha(animal, "1014", cvet: "PRE") with
+        {
+            EstadoNombre = "INSEMIN",
+            Campos = [new("LACT", "3"), new("DEL", "95"), new("FPART", ""), new("FAPAR", ""), new("COM", "")],
+            Inseminaciones = "2",
+            UltimoToro = "FUNKI",
+            Extras = [new("DCC", "0"), new("LECHE", "24")]
+        };
+        b.Campo.Lecturas["1014"] = Datos.Marcada(animal, "1014") with { Ficha = ficha };
+
+        await b.LeerAsync("1014");
+
+        Assert.Equal(
+            [("Estado", "INSEMIN"), ("LACT", "3"), ("DEL", "95"), ("VINS", "2"), ("UTORO", "FUNKI"), ("DCC", "0"), ("LECHE", "24")],
+            b.Vm.FilasDatos.Select(f => (f.Nombre, f.Valor)));
+    }
+
     // ------------------------------------------------------------------ tacto con un toque
 
     [Fact]
@@ -204,7 +591,7 @@ public class TrabajoViewModelTests
         b.Campo.OnRegistrarTacto = _ => Resultado.Ok(tactoId);
         await b.LeerAsync("1001");
 
-        await b.Vm.SeleccionarEstadoCommand.ExecuteAsync(Prenada);
+        await b.ElegirYEntrarAsync(Prenada);
 
         var cmd = Assert.Single(b.Campo.Tactos);
         Assert.Equal(animal, cmd.AnimalId);
@@ -226,11 +613,255 @@ public class TrabajoViewModelTests
         b.Campo.OnRegistrarTacto = _ => Resultado.Error<Guid>(CodigoError.EstadoDeBaja, "Ese estado está dado de baja.");
         await b.LeerAsync("1001");
 
-        await b.Vm.SeleccionarEstadoCommand.ExecuteAsync(Prenada);
+        await b.ElegirYEntrarAsync(Prenada);
 
         Assert.Equal("Ese estado está dado de baja.", b.Vm.MensajeError);
         Assert.NotNull(b.Vm.Ficha);
         Assert.Equal(EtapaTrabajo.Ficha, b.Vm.Etapa);
+    }
+
+    // ------------------------------------------------------------------ "Agregar evento" y "Agregar observación"
+
+    [Fact]
+    public async Task Agregar_evento_abre_el_cuadro_con_las_opciones_y_elegir_una_guarda_el_tacto()
+    {
+        var b = new Banco();
+        var (animal, _) = b.Vaca("1001");
+        await b.LeerAsync("1001");
+
+        await b.Vm.AbrirEventosCommand.ExecuteAsync(null);
+        Assert.Equal(CuadroTrabajo.Eventos, b.Vm.Cuadro);
+        Assert.True(b.Vm.HayEventos);
+
+        await b.ElegirYEntrarAsync(Prenada);
+
+        var cmd = Assert.Single(b.Campo.Tactos);
+        Assert.Equal((animal, Prenada.Id), (cmd.AnimalId, cmd.EstadoNuevoId));
+        Assert.Null(cmd.Observaciones);
+        Assert.Equal(CuadroTrabajo.Ninguno, b.Vm.Cuadro);
+        Assert.Null(b.Vm.Ficha);
+    }
+
+    [Fact]
+    public async Task Sin_ficha_abierta_agregar_evento_u_observacion_no_abre_nada()
+    {
+        var b = new Banco();
+
+        await b.Vm.AbrirEventosCommand.ExecuteAsync(null);
+        await b.Vm.AbrirObservacionCommand.ExecuteAsync(null);
+
+        Assert.Equal(CuadroTrabajo.Ninguno, b.Vm.Cuadro);
+    }
+
+    [Fact]
+    public async Task Crear_un_evento_nuevo_lo_suma_a_la_lista_y_no_guarda_ningun_tacto()
+    {
+        var b = new Banco();
+        b.Vaca("1001");
+        await b.Vm.IniciarAsync();   // carga los estados
+        await b.LeerAsync("1001");
+        await b.Vm.AbrirEventosCommand.ExecuteAsync(null);
+        b.Vm.AbrirNuevoEventoCommand.Execute(null);
+        Assert.True(b.Vm.HayFormularioEvento);
+        b.Vm.NuevoEventoNombre = "  Aborto ";
+
+        await b.Vm.CrearEventoCommand.ExecuteAsync(null);
+
+        Assert.Equal([("Aborto", "ABORTO")], b.Campo.EstadosCreados);   // sin código de Dairy Comp: nombre en mayúsculas
+        Assert.Contains(b.Vm.Estados, e => e.Nombre == "ABORTO");
+        Assert.False(b.Vm.HayFormularioEvento);
+        Assert.Equal(CuadroTrabajo.Eventos, b.Vm.Cuadro);   // sigue la lista abierta para elegirlo
+        Assert.Empty(b.Campo.Tactos);
+    }
+
+    [Fact]
+    public async Task Crear_un_evento_con_codigo_de_dairy_comp_manda_ese_codigo()
+    {
+        var b = new Banco();
+        b.Vaca("1001");
+        await b.LeerAsync("1001");
+        await b.Vm.AbrirEventosCommand.ExecuteAsync(null);
+        b.Vm.AbrirNuevoEventoCommand.Execute(null);
+        b.Vm.NuevoEventoNombre = "Aborto";
+        b.Vm.NuevoEventoCodigoDc = " ABORT ";
+
+        await b.Vm.CrearEventoCommand.ExecuteAsync(null);
+
+        Assert.Equal([("Aborto", "ABORT")], b.Campo.EstadosCreados);
+    }
+
+    [Fact]
+    public async Task Crear_un_evento_sin_nombre_pide_el_nombre_y_no_llama_al_servicio()
+    {
+        var b = new Banco();
+        b.Vaca("1001");
+        await b.LeerAsync("1001");
+        await b.Vm.AbrirEventosCommand.ExecuteAsync(null);
+        b.Vm.AbrirNuevoEventoCommand.Execute(null);
+        b.Vm.NuevoEventoNombre = "   ";
+
+        await b.Vm.CrearEventoCommand.ExecuteAsync(null);
+
+        Assert.Equal("Escribí el nombre del evento.", b.Vm.MensajeCuadro);
+        Assert.True(b.Vm.HayFormularioEvento);
+        Assert.Empty(b.Campo.EstadosCreados);
+    }
+
+    [Fact]
+    public async Task Un_evento_repetido_muestra_el_motivo_y_deja_el_formulario_abierto()
+    {
+        var b = new Banco();
+        b.Vaca("1001");
+        b.Campo.OnCrearEstado = _ => Resultado.Error<Guid>(CodigoError.Duplicado, "Ya existe un estado con ese nombre.");
+        await b.LeerAsync("1001");
+        await b.Vm.AbrirEventosCommand.ExecuteAsync(null);
+        b.Vm.AbrirNuevoEventoCommand.Execute(null);
+        b.Vm.NuevoEventoNombre = "Vacia";
+
+        await b.Vm.CrearEventoCommand.ExecuteAsync(null);
+
+        Assert.Equal("Ya existe un estado con ese nombre.", b.Vm.MensajeCuadro);
+        Assert.True(b.Vm.HayFormularioEvento);
+    }
+
+    [Fact]
+    public async Task Cancelar_el_evento_nuevo_cierra_el_formulario_y_al_reabrir_la_lista_arranca_cerrado()
+    {
+        var b = new Banco();
+        b.Vaca("1001");
+        await b.LeerAsync("1001");
+        await b.Vm.AbrirEventosCommand.ExecuteAsync(null);
+        b.Vm.AbrirNuevoEventoCommand.Execute(null);
+
+        b.Vm.CancelarNuevoEventoCommand.Execute(null);
+        Assert.False(b.Vm.HayFormularioEvento);
+
+        b.Vm.AbrirNuevoEventoCommand.Execute(null);
+        await b.Vm.CerrarCuadroAgregarCommand.ExecuteAsync(null);
+        await b.Vm.AbrirEventosCommand.ExecuteAsync(null);
+        Assert.False(b.Vm.HayFormularioEvento);
+    }
+
+    [Fact]
+    public async Task Sin_el_cuadro_de_eventos_abierto_no_se_puede_crear_un_evento()
+    {
+        var b = new Banco();
+        b.Vaca("1001");
+        await b.LeerAsync("1001");
+        b.Vm.NuevoEventoNombre = "Aborto";
+
+        await b.Vm.CrearEventoCommand.ExecuteAsync(null);
+
+        Assert.Empty(b.Campo.EstadosCreados);
+    }
+
+    [Fact]
+    public async Task Cerrar_el_cuadro_de_eventos_vuelve_a_la_ficha_sin_guardar()
+    {
+        var b = new Banco();
+        b.Vaca("1001");
+        await b.LeerAsync("1001");
+        await b.Vm.AbrirEventosCommand.ExecuteAsync(null);
+
+        await b.Vm.CerrarCuadroAgregarCommand.ExecuteAsync(null);
+
+        Assert.Equal(CuadroTrabajo.Ninguno, b.Vm.Cuadro);
+        Assert.NotNull(b.Vm.Ficha);
+        Assert.Empty(b.Campo.Tactos);
+    }
+
+    [Fact]
+    public async Task La_observacion_se_guarda_con_el_proximo_evento_y_despues_se_borra()
+    {
+        var b = new Banco();
+        b.Vaca("1001");
+        await b.LeerAsync("1001");
+
+        await b.Vm.AbrirObservacionCommand.ExecuteAsync(null);
+        Assert.Equal(CuadroTrabajo.Observacion, b.Vm.Cuadro);
+        b.Vm.TextoObservacion = "  Cojera pata izquierda ";
+        await b.Vm.GuardarObservacionCommand.ExecuteAsync(null);
+
+        Assert.Equal("Cojera pata izquierda", b.Vm.ObservacionPendiente);
+        Assert.True(b.Vm.HayObservacionPendiente);
+        Assert.Equal(CuadroTrabajo.Ninguno, b.Vm.Cuadro);
+        Assert.Empty(b.Campo.Tactos);   // la observación sola no guarda nada
+
+        await b.Vm.AbrirEventosCommand.ExecuteAsync(null);
+        await b.ElegirYEntrarAsync(Prenada);
+
+        Assert.Equal("Cojera pata izquierda", Assert.Single(b.Campo.Tactos).Observaciones);
+        Assert.Equal("", b.Vm.ObservacionPendiente);
+        Assert.False(b.Vm.HayObservacionPendiente);
+    }
+
+    [Fact]
+    public async Task Una_observacion_vacia_no_deja_nada_pendiente_y_se_puede_quitar()
+    {
+        var b = new Banco();
+        b.Vaca("1001");
+        await b.LeerAsync("1001");
+        await b.Vm.AbrirObservacionCommand.ExecuteAsync(null);
+        b.Vm.TextoObservacion = "   ";
+        await b.Vm.GuardarObservacionCommand.ExecuteAsync(null);
+        Assert.False(b.Vm.HayObservacionPendiente);
+
+        await b.Vm.AbrirObservacionCommand.ExecuteAsync(null);
+        b.Vm.TextoObservacion = "Revisar";
+        await b.Vm.GuardarObservacionCommand.ExecuteAsync(null);
+        b.Vm.QuitarObservacionCommand.Execute(null);
+
+        Assert.False(b.Vm.HayObservacionPendiente);
+    }
+
+    [Fact]
+    public async Task Cancelar_la_observacion_deja_la_anterior_y_al_reabrir_se_ve_el_texto_guardado()
+    {
+        var b = new Banco();
+        b.Vaca("1001");
+        await b.LeerAsync("1001");
+        await b.Vm.AbrirObservacionCommand.ExecuteAsync(null);
+        b.Vm.TextoObservacion = "Primera";
+        await b.Vm.GuardarObservacionCommand.ExecuteAsync(null);
+
+        await b.Vm.AbrirObservacionCommand.ExecuteAsync(null);
+        Assert.Equal("Primera", b.Vm.TextoObservacion);
+        b.Vm.TextoObservacion = "Cambiada sin guardar";
+        await b.Vm.CerrarCuadroAgregarCommand.ExecuteAsync(null);
+
+        Assert.Equal("Primera", b.Vm.ObservacionPendiente);
+    }
+
+    [Fact]
+    public async Task La_observacion_pendiente_se_descarta_al_cerrar_la_ficha()
+    {
+        var b = new Banco();
+        b.Vaca("1001");
+        await b.LeerAsync("1001");
+        await b.Vm.AbrirObservacionCommand.ExecuteAsync(null);
+        b.Vm.TextoObservacion = "Algo";
+        await b.Vm.GuardarObservacionCommand.ExecuteAsync(null);
+
+        b.Vm.CerrarFichaCommand.Execute(null);
+
+        Assert.False(b.Vm.HayObservacionPendiente);
+    }
+
+    [Fact]
+    public async Task Un_tacto_rechazado_conserva_la_observacion_pendiente()
+    {
+        var b = new Banco();
+        b.Vaca("1001");
+        b.Campo.OnRegistrarTacto = _ => Resultado.Error<Guid>(CodigoError.EstadoDeBaja, "Ese estado está dado de baja.");
+        await b.LeerAsync("1001");
+        await b.Vm.AbrirObservacionCommand.ExecuteAsync(null);
+        b.Vm.TextoObservacion = "Cojera";
+        await b.Vm.GuardarObservacionCommand.ExecuteAsync(null);
+
+        await b.ElegirYEntrarAsync(Prenada);
+
+        Assert.Equal("Cojera", b.Vm.ObservacionPendiente);
+        Assert.NotNull(b.Vm.Ficha);
     }
 
     [Fact]
@@ -238,7 +869,7 @@ public class TrabajoViewModelTests
     {
         var b = new Banco();
 
-        await b.Vm.SeleccionarEstadoCommand.ExecuteAsync(Prenada);
+        await b.ElegirYEntrarAsync(Prenada);
 
         Assert.Empty(b.Campo.Tactos);
     }
@@ -401,10 +1032,10 @@ public class TrabajoViewModelTests
         Assert.Equal(CuadroTrabajo.Aviso, b.Vm.Cuadro);   // no pasó a la confirmación
     }
 
-    // ------------------------------------------------------------------ caravana no encontrada, alta y búsqueda manual
+    // ------------------------------------------------------------------ caravana no encontrada y búsqueda manual
 
     [Fact]
-    public async Task Una_caravana_inexistente_ofrece_alta_o_busqueda_sin_guardar_nada()
+    public async Task Una_caravana_inexistente_ofrece_buscar_a_mano_sin_guardar_nada()
     {
         var b = new Banco();
 
@@ -412,75 +1043,7 @@ public class TrabajoViewModelTests
 
         Assert.Equal(CuadroTrabajo.NoEncontrada, b.Vm.Cuadro);
         Assert.Equal("9999", b.Vm.CodigoNoEncontrado);
-        Assert.Empty(b.Campo.Altas);
         Assert.Empty(b.Campo.Tactos);
-    }
-
-    [Fact]
-    public async Task Dar_de_alta_precarga_el_codigo_leido_y_guarda_la_caravana_tipeada_con_el_codigo_leido()
-    {
-        var b = new Banco();
-        await b.LeerAsync("9999");
-
-        await b.Vm.DarDeAltaCommand.ExecuteAsync(null);
-        Assert.Equal(CuadroTrabajo.Alta, b.Vm.Cuadro);
-        Assert.Equal("9999", b.Vm.AltaCaravana);   // precarga editable
-
-        b.Vm.AltaCaravana = "1234";
-        await b.Vm.ConfirmarAltaCommand.ExecuteAsync(null);
-
-        var cmd = Assert.Single(b.Campo.Altas);
-        Assert.Equal("1234", cmd.NumeroCaravana);
-        Assert.Equal("9999", cmd.CodigoLeido);
-        Assert.Equal(Datos.Vet.Id, cmd.UsuarioId);
-        Assert.Equal("1234", b.Vm.Ficha!.Caravana);
-        Assert.Equal(CuadroTrabajo.Ninguno, b.Vm.Cuadro);
-        Assert.Equal(TipoDeshacer.Alta, b.Vm.AvisoDeshacer!.Tipo);
-        Assert.True(b.Vm.PuedeAnularAlta);
-    }
-
-    [Fact]
-    public async Task Un_alta_rechazada_muestra_el_motivo_y_se_puede_corregir_la_caravana()
-    {
-        var b = new Banco();
-        b.Campo.OnAlta = _ => Resultado.Error<ResultadoAltaDto>(CodigoError.CaravanaDuplicada, "Esa caravana ya existe en el rodeo.");
-        await b.LeerAsync("9999");
-        await b.Vm.DarDeAltaCommand.ExecuteAsync(null);
-
-        await b.Vm.ConfirmarAltaCommand.ExecuteAsync(null);
-
-        Assert.Equal(CuadroTrabajo.Alta, b.Vm.Cuadro);
-        Assert.Equal("Esa caravana ya existe en el rodeo.", b.Vm.MensajeCuadro);
-        Assert.Null(b.Vm.Ficha);
-        Assert.Null(b.Vm.AvisoDeshacer);
-    }
-
-    [Fact]
-    public async Task Un_alta_con_codigo_inutil_como_identificador_avisa_que_no_se_guardo()
-    {
-        var b = new Banco();
-        b.Campo.OnAlta = c => Resultado.Ok(Datos.ResultadoAlta(c.NumeroCaravana, idOmitido: true));
-        await b.LeerAsync("9999");
-        await b.Vm.DarDeAltaCommand.ExecuteAsync(null);
-        b.Vm.AltaCaravana = "1234";
-
-        await b.Vm.ConfirmarAltaCommand.ExecuteAsync(null);
-
-        Assert.Equal(TrabajoViewModel.MensajeIdOmitido, b.Vm.MensajeInfo);
-    }
-
-    [Fact]
-    public async Task El_alta_que_viene_de_buscar_a_mano_no_lleva_codigo_leido()
-    {
-        var b = new Banco();
-        await b.Vm.EncolarLecturaAsync("5555", esManual: true);
-        Assert.Equal(CuadroTrabajo.NoEncontrada, b.Vm.Cuadro);
-        await b.Vm.DarDeAltaCommand.ExecuteAsync(null);
-
-        await b.Vm.ConfirmarAltaCommand.ExecuteAsync(null);
-
-        Assert.Null(b.Campo.Altas.Single().CodigoLeido);
-        Assert.Equal("5555", b.Campo.Altas.Single().NumeroCaravana);
     }
 
     [Fact]
@@ -492,20 +1055,6 @@ public class TrabajoViewModelTests
         await b.Vm.BuscarAManoCommand.ExecuteAsync(null);
 
         Assert.Equal(CuadroTrabajo.Ninguno, b.Vm.Cuadro);
-        Assert.Empty(b.Campo.Altas);
-    }
-
-    [Fact]
-    public async Task Cancelar_el_alta_vuelve_a_no_encontrada()
-    {
-        var b = new Banco();
-        await b.LeerAsync("9999");
-        await b.Vm.DarDeAltaCommand.ExecuteAsync(null);
-
-        await b.Vm.CancelarAltaCommand.ExecuteAsync(null);
-
-        Assert.Equal(CuadroTrabajo.NoEncontrada, b.Vm.Cuadro);
-        Assert.Empty(b.Campo.Altas);
     }
 
     [Fact]
@@ -533,32 +1082,38 @@ public class TrabajoViewModelTests
         Assert.Empty(b.Campo.LecturasProcesadas);
     }
 
-    [Fact]
-    public async Task Anular_el_alta_desde_la_ficha_cierra_la_ficha_y_avisa_que_la_caravana_quedo_libre()
+    // ------------------------------------------------------------------ aviso de 5 segundos con "Deshacer"
+
+    // El aviso de deshacer de 5 segundos ya no sale al marcar una vaca (con o sin tacto); sale al guardar un tacto o al cerrar una manga.
+    // Estas pruebas usan el tacto como origen del aviso.
+
+    private static async Task<Guid> GuardarTactoAsync(Banco b, string caravana, Guid? tactoId = null)
     {
-        var b = new Banco();
-        b.Campo.OnAlta = c => Resultado.Ok(Datos.ResultadoAlta(c.NumeroCaravana, animalId: Guid.Parse("44444444-0000-0000-0000-000000000001")));
-        await b.LeerAsync("9999");
-        await b.Vm.DarDeAltaCommand.ExecuteAsync(null);
-        await b.Vm.ConfirmarAltaCommand.ExecuteAsync(null);
-
-        await b.Vm.AnularAltaCommand.ExecuteAsync(null);
-
-        var cmd = Assert.Single(b.Campo.Deshaceres);
-        Assert.Equal(TipoDeshacer.Alta, cmd.Tipo);
-        Assert.Equal(Guid.Parse("44444444-0000-0000-0000-000000000001"), cmd.Id);   // en un alta, el id es el del animal
-        Assert.Null(b.Vm.Ficha);
-        Assert.Contains("quedó libre", b.Vm.MensajeInfo);
+        var id = tactoId ?? Guid.NewGuid();
+        b.Campo.OnRegistrarTacto = _ => Resultado.Ok(id);
+        await b.LeerAsync(caravana);
+        await b.ElegirYEntrarAsync(Prenada);
+        return id;
     }
 
-    // ------------------------------------------------------------------ aviso de 5 segundos con "Deshacer"
+    [Fact]
+    public async Task Marcar_una_vaca_no_muestra_el_aviso_de_deshacer()
+    {
+        var b = new Banco();
+        b.Vaca("1001");
+
+        await b.LeerAsync("1001");
+
+        Assert.Null(b.Vm.AvisoDeshacer);
+        Assert.Equal(0, b.Temporizador.Pendientes(TrabajoViewModel.DuracionAvisoDeshacer));
+    }
 
     [Fact]
     public async Task El_aviso_de_deshacer_se_va_solo_a_los_5_segundos()
     {
         var b = new Banco();
         b.Vaca("1001");
-        await b.LeerAsync("1001");
+        await GuardarTactoAsync(b, "1001");
         Assert.NotNull(b.Vm.AvisoDeshacer);
         Assert.Equal(1, b.Temporizador.Pendientes(TrabajoViewModel.DuracionAvisoDeshacer));
 
@@ -568,21 +1123,20 @@ public class TrabajoViewModelTests
     }
 
     [Fact]
-    public async Task Deshacer_desde_el_aviso_desmarca_la_vaca_cierra_la_ficha_y_baja_el_contador()
+    public async Task Deshacer_desde_el_aviso_anula_el_tacto_y_quita_el_aviso()
     {
         var b = new Banco();
-        var (animal, marca) = b.Vaca("1001");
-        b.Campo.OnDeshacer = c => Resultado.Ok(new ResultadoDeshacerDto(c.Tipo, animal, null, 1, 0));
-        await b.LeerAsync("1001");
+        var (animal, _) = b.Vaca("1001");
+        b.Campo.OnDeshacer = c => Resultado.Ok(new ResultadoDeshacerDto(c.Tipo, animal, null, null, null));
+        var tacto = await GuardarTactoAsync(b, "1001");
 
         await b.Vm.DeshacerAvisoCommand.ExecuteAsync(null);
 
         var cmd = Assert.Single(b.Campo.Deshaceres);
-        Assert.Equal(TipoDeshacer.Marca, cmd.Tipo);
-        Assert.Equal(marca, cmd.Id);
-        Assert.Null(b.Vm.Ficha);                 // la vaca vuelve a pendiente: se cierra su ficha
-        Assert.Equal(0, b.Vm.Contador);
+        Assert.Equal(TipoDeshacer.Tacto, cmd.Tipo);
+        Assert.Equal(tacto, cmd.Id);
         Assert.Null(b.Vm.AvisoDeshacer);
+        Assert.Equal("Se deshizo el tacto.", b.Vm.UltimoGuardado);
     }
 
     [Fact]
@@ -591,7 +1145,7 @@ public class TrabajoViewModelTests
         var b = new Banco();
         b.Vaca("1001");
         b.Campo.Lecturas["2002"] = Datos.Repetido(Guid.NewGuid(), "2002");
-        await b.LeerAsync("1001");
+        await GuardarTactoAsync(b, "1001");
         var aviso = b.Vm.AvisoDeshacer;
 
         await b.LeerAsync("2002");
@@ -605,11 +1159,11 @@ public class TrabajoViewModelTests
     {
         var b = new Banco();
         b.Vaca("1001");
-        var (_, marcaB) = b.Vaca("1002", contador: 2);
-        await b.LeerAsync("1001");
-        await b.LeerAsync("1002");
+        b.Vaca("1002", contador: 2);
+        await GuardarTactoAsync(b, "1001");
+        var tactoB = await GuardarTactoAsync(b, "1002");
 
-        Assert.Equal(marcaB, b.Vm.AvisoDeshacer!.Id);
+        Assert.Equal(tactoB, b.Vm.AvisoDeshacer!.Id);
         Assert.Equal(1, b.Temporizador.Pendientes(TrabajoViewModel.DuracionAvisoDeshacer));   // el del primero se canceló
 
         b.Temporizador.Liberar(TrabajoViewModel.DuracionAvisoDeshacer);
@@ -621,13 +1175,13 @@ public class TrabajoViewModelTests
     {
         var b = new Banco();
         b.Vaca("1001");
+        await GuardarTactoAsync(b, "1001");
         b.Campo.OnDeshacer = _ => Resultado.Error<ResultadoDeshacerDto>(CodigoError.MarcaNoEsLaUltima, "Antes hay que deshacer lo posterior.");
-        await b.LeerAsync("1001");
 
         await b.Vm.DeshacerAvisoCommand.ExecuteAsync(null);
 
         Assert.Equal("Antes hay que deshacer lo posterior.", b.Vm.MensajeError);
-        Assert.NotNull(b.Vm.Ficha);   // nada cambió
+        Assert.Null(b.Vm.AvisoDeshacer);   // el aviso se quita al tocarlo; el motivo queda en el mensaje de error
     }
 
     // ------------------------------------------------------------------ Finalizar manga
@@ -878,20 +1432,585 @@ public class TrabajoViewModelTests
         Assert.Equal(ultima, b.Vm.Ficha!.AnimalId);
     }
 
+    // ------------------------------------------------------------------ cantidad de la manga: el contador "7/10"
+
+    private static async Task PonerCantidadAsync(Banco b, string texto)
+    {
+        await b.Vm.AbrirCantidadMangaCommand.ExecuteAsync(null);
+        b.Vm.TextoCantidadManga = texto;
+        await b.Vm.GuardarCantidadMangaCommand.ExecuteAsync(null);
+    }
+
     [Fact]
-    public async Task Una_lectura_con_el_formulario_de_alta_abierto_no_pierde_lo_que_se_estaba_cargando()
+    public void Sin_cantidad_el_contador_cuenta_solo_las_marcadas_como_siempre()
     {
         var b = new Banco();
-        b.Vaca("1001");
-        await b.LeerAsync("9999");
-        await b.Vm.DarDeAltaCommand.ExecuteAsync(null);
-        b.Vm.AltaCaravana = "1234";
+
+        Assert.False(b.Vm.HayMeta);
+        Assert.Null(b.Vm.MetaManga);
+        Assert.Equal("Manga 1 · 0", b.Vm.TextoManga);
+        Assert.False(b.Vm.MangaCompleta);
+        Assert.False(b.Vm.MangaExcedida);
+    }
+
+    [Fact]
+    public async Task Poner_la_cantidad_muestra_el_contador_contra_ese_numero_y_cierra_el_cuadro()
+    {
+        var b = new Banco();
+        await b.Vm.AbrirCantidadMangaCommand.ExecuteAsync(null);
+        Assert.Equal(CuadroTrabajo.CantidadManga, b.Vm.Cuadro);
+        Assert.True(b.Vm.HayCantidadManga);
+
+        b.Vm.TextoCantidadManga = " 10 ";
+        await b.Vm.GuardarCantidadMangaCommand.ExecuteAsync(null);
+
+        Assert.Equal(10, b.Vm.MetaManga);
+        Assert.True(b.Vm.HayMeta);
+        Assert.Equal("Manga 1 · 0/10", b.Vm.TextoManga);
+        Assert.Equal(CuadroTrabajo.Ninguno, b.Vm.Cuadro);
+    }
+
+    [Fact]
+    public async Task El_contador_sigue_a_las_marcas_y_avisa_cuando_la_manga_esta_completa_y_cuando_sobran()
+    {
+        var b = new Banco();
+        await PonerCantidadAsync(b, "10");
+
+        b.Vm.Contador = 7;
+        Assert.Equal("Manga 1 · 7/10", b.Vm.TextoManga);
+        Assert.False(b.Vm.MangaCompleta);
+        Assert.False(b.Vm.MangaExcedida);
+
+        b.Vm.Contador = 10;
+        Assert.True(b.Vm.MangaCompleta);
+        Assert.False(b.Vm.MangaExcedida);
+
+        b.Vm.Contador = 11;
+        Assert.False(b.Vm.MangaCompleta);
+        Assert.True(b.Vm.MangaExcedida);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData("abc")]
+    [InlineData("0")]
+    [InlineData("-3")]
+    [InlineData("2,5")]
+    [InlineData("1000")]
+    public async Task Una_cantidad_invalida_muestra_el_motivo_y_no_cierra_ni_cambia_nada(string texto)
+    {
+        var b = new Banco();
+        await PonerCantidadAsync(b, "12");
+        await b.Vm.AbrirCantidadMangaCommand.ExecuteAsync(null);
+        b.Vm.TextoCantidadManga = texto;
+
+        await b.Vm.GuardarCantidadMangaCommand.ExecuteAsync(null);
+
+        Assert.Equal("Escribí cuántas vacas entran en la manga (de 1 a 999).", b.Vm.MensajeCuadro);
+        Assert.Equal(CuadroTrabajo.CantidadManga, b.Vm.Cuadro);
+        Assert.Equal(12, b.Vm.MetaManga);
+    }
+
+    [Fact]
+    public async Task Al_reabrir_el_cuadro_trae_la_cantidad_puesta_y_cancelar_no_la_cambia()
+    {
+        var b = new Banco();
+        await PonerCantidadAsync(b, "15");
+
+        await b.Vm.AbrirCantidadMangaCommand.ExecuteAsync(null);
+        Assert.Equal("15", b.Vm.TextoCantidadManga);
+        b.Vm.TextoCantidadManga = "99";
+        await b.Vm.CerrarCantidadMangaCommand.ExecuteAsync(null);
+
+        Assert.Equal(15, b.Vm.MetaManga);
+        Assert.Equal(CuadroTrabajo.Ninguno, b.Vm.Cuadro);
+    }
+
+    [Fact]
+    public async Task Al_pasar_a_otra_manga_la_cantidad_se_borra_y_hay_que_ponerla_de_nuevo()
+    {
+        var b = new Banco();
+        await PonerCantidadAsync(b, "10");
+        b.Campo.Estado = Datos.EstadoTrabajo(manga: 2, abierta: false);
+
+        await b.Vm.RecalcularAsync();
+
+        Assert.Equal(2, b.Vm.NumeroManga);
+        Assert.False(b.Vm.HayMeta);
+        Assert.Equal("Manga 2 · 0", b.Vm.TextoManga);
+    }
+
+    [Fact]
+    public async Task Cerrar_la_manga_con_Coincide_deja_la_siguiente_sin_cantidad()
+    {
+        var b = new Banco();
+        await PonerCantidadAsync(b, "10");
+        b.Campo.Estado = Datos.EstadoTrabajo(manga: 2, abierta: false);
+        await b.Vm.FinalizarMangaCommand.ExecuteAsync(null);
+
+        await b.Vm.CoincideCommand.ExecuteAsync(null);
+
+        Assert.False(b.Vm.HayMeta);
+    }
+
+    [Fact]
+    public async Task No_se_abre_el_cuadro_de_cantidad_con_otro_cuadro_encima()
+    {
+        var b = new Banco();
+        b.Campo.OnResumen = () => Resultado.Ok(Datos.Resumen(1, "1", "2", "3"));
+        await b.Vm.FinalizarMangaCommand.ExecuteAsync(null);
+        Assert.Equal(CuadroTrabajo.Verificacion, b.Vm.Cuadro);
+
+        await b.Vm.AbrirCantidadMangaCommand.ExecuteAsync(null);
+
+        Assert.Equal(CuadroTrabajo.Verificacion, b.Vm.Cuadro);
+    }
+
+    [Fact]
+    public async Task La_verificacion_compara_lo_marcado_con_la_cantidad_puesta()
+    {
+        var b = new Banco();
+        await PonerCantidadAsync(b, "10");
+
+        // Faltan: 9 marcadas de 10.
+        b.Campo.OnResumen = () => Resultado.Ok(Datos.Resumen(1, "1", "2", "3", "4", "5", "6", "7", "8", "9"));
+        await b.Vm.FinalizarMangaCommand.ExecuteAsync(null);
+        Assert.True(b.Vm.HayMetaVerificacion);
+        Assert.Equal("Esperadas: 10 · Marcadas: 9 · falta 1", b.Vm.TextoMetaVerificacion);
+        await b.Vm.VolverACorregirCommand.ExecuteAsync(null);
+
+        // Sobran: 11 marcadas de 10.
+        b.Campo.OnResumen = () => Resultado.Ok(Datos.Resumen(1, "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11"));
+        await b.Vm.FinalizarMangaCommand.ExecuteAsync(null);
+        Assert.Equal("Esperadas: 10 · Marcadas: 11 · sobra 1", b.Vm.TextoMetaVerificacion);
+        await b.Vm.VolverACorregirCommand.ExecuteAsync(null);
+
+        // Justas.
+        b.Campo.OnResumen = () => Resultado.Ok(Datos.Resumen(1, "1", "2", "3", "4", "5", "6", "7", "8", "9", "10"));
+        await b.Vm.FinalizarMangaCommand.ExecuteAsync(null);
+        Assert.Equal("Esperadas: 10 · Marcadas: 10 · completa", b.Vm.TextoMetaVerificacion);
+    }
+
+    [Fact]
+    public async Task Sin_cantidad_la_verificacion_no_muestra_comparacion()
+    {
+        var b = new Banco();
+        await b.Vm.FinalizarMangaCommand.ExecuteAsync(null);
+
+        Assert.False(b.Vm.HayMetaVerificacion);
+        Assert.Equal("", b.Vm.TextoMetaVerificacion);
+    }
+
+    // ------------------------------------------------------------------ control por manga: se prende o se apaga (por establecimiento)
+
+    private static readonly VeterinarioDto OtroVet = new(Guid.Parse("33333333-0000-0000-0000-000000000009"), "Dr. Luis", null);
+
+    private static Guid Establecimiento(Banco b) => b.Sesion.Rodeo!.EstablecimientoId;
+
+    [Fact]
+    public async Task Sin_haberlo_elegido_nunca_el_control_por_manga_arranca_apagado()
+    {
+        var b = new Banco();
+        b.Preferencias.ControlPorMangaPorDefecto = null;   // en este establecimiento nunca se eligió
+
+        await b.Vm.IniciarAsync();
+
+        Assert.False(b.Vm.UsaMangas);
+        Assert.Equal(Aviss.Application.Puertos.IPreferenciasDispositivo.ControlPorMangaPorDefecto, b.Vm.UsaMangas);
+    }
+
+    [Fact]
+    public async Task El_control_por_manga_se_carga_de_la_preferencia_del_establecimiento_en_trabajo()
+    {
+        var b = new Banco();
+        b.Preferencias.ControlPorManga[Establecimiento(b)] = false;
+
+        await b.Vm.IniciarAsync();
+
+        Assert.False(b.Vm.UsaMangas);
+    }
+
+    [Fact]
+    public async Task Cambiar_el_interruptor_guarda_la_preferencia_solo_de_ese_establecimiento()
+    {
+        var b = new Banco();
+        await b.Vm.IniciarAsync();
+        Assert.True(b.Vm.UsaMangas);
+
+        b.Vm.UsaMangas = false;
+
+        Assert.Equal([(Establecimiento(b), false)], b.Preferencias.ControlGuardado);
+        Assert.Single(b.Preferencias.ControlPorManga);
+    }
+
+    [Fact]
+    public async Task Cargar_la_preferencia_no_la_vuelve_a_guardar()
+    {
+        var b = new Banco();
+        b.Preferencias.ControlPorManga[Establecimiento(b)] = false;
+
+        await b.Vm.IniciarAsync();
+
+        Assert.Empty(b.Preferencias.ControlGuardado);
+    }
+
+    [Fact]
+    public async Task Cada_establecimiento_tiene_su_propia_preferencia()
+    {
+        var b = new Banco();
+        var otroEstablecimiento = Guid.NewGuid();
+        b.Preferencias.ControlPorManga[Establecimiento(b)] = true;
+        b.Preferencias.ControlPorManga[otroEstablecimiento] = false;
+        await b.Vm.IniciarAsync();
+        Assert.True(b.Vm.UsaMangas);
+
+        b.Sesion.Empezar(Datos.Vet, Datos.Rodeo(establecimientoId: otroEstablecimiento));
+        await b.Vm.IniciarAsync();
+
+        Assert.False(b.Vm.UsaMangas);
+    }
+
+    [Fact]
+    public async Task Cambiar_de_veterinario_no_cambia_la_preferencia_porque_es_del_establecimiento()
+    {
+        var b = new Banco();
+        b.Preferencias.ControlPorManga[Establecimiento(b)] = true;
+        await b.Vm.IniciarAsync();
+
+        b.Vm.CambiarVeterinarioCommand.Execute(OtroVet);
+
+        Assert.True(b.Vm.UsaMangas);
+        Assert.Empty(b.Preferencias.ControlGuardado);   // cambiar de veterinario no escribe preferencias de mangas
+    }
+
+    [Fact]
+    public async Task Apagado_se_ocultan_el_conteo_la_cantidad_y_la_comparacion_aunque_hubiera_una_cantidad_puesta()
+    {
+        var b = new Banco();
+        await PonerCantidadAsync(b, "10");
+        b.Vm.Contador = 7;
+        Assert.Equal("Manga 1 · 7/10", b.Vm.TextoManga);
+
+        b.Vm.UsaMangas = false;
+
+        Assert.False(b.Vm.HayMeta);
+        Assert.Null(b.Vm.MetaManga);
+        Assert.False(b.Vm.MangaCompleta);
+        Assert.Equal("Manga 1 · 7", b.Vm.TextoManga);
+
+        b.Vm.UsaMangas = true;   // al prenderlo de nuevo vuelve la cantidad de esta manga
+        Assert.Equal("Manga 1 · 7/10", b.Vm.TextoManga);
+    }
+
+    [Fact]
+    public async Task Apagado_no_se_abre_el_cuadro_de_cantidad_ni_se_puede_finalizar_la_manga()
+    {
+        var b = new Banco();
+        b.Vm.UsaMangas = false;
+
+        await b.Vm.AbrirCantidadMangaCommand.ExecuteAsync(null);
+        await b.Vm.FinalizarMangaCommand.ExecuteAsync(null);
+
+        Assert.Equal(CuadroTrabajo.Ninguno, b.Vm.Cuadro);
+        Assert.Empty(b.Campo.Finalizados);
+    }
+
+    [Fact]
+    public async Task Apagado_la_manga_no_se_cierra_sola_al_llegar_a_la_cantidad()
+    {
+        var b = await BancoConMangaPorCompletarAsync(meta: 3, contadorAlMarcar: 3);
+        b.Vm.UsaMangas = false;
 
         await b.LeerAsync("1001");
 
-        Assert.Equal("1234", b.Vm.AltaCaravana);
-        Assert.Equal(CuadroTrabajo.Alta, b.Vm.Cuadro);
-        Assert.Single(b.Campo.LecturasProcesadas);   // solo la de "9999": la otra espera
+        Assert.Empty(b.Campo.Finalizados);
+        Assert.Equal(0, b.Avisos.MangasCompletas);
+    }
+
+    [Fact]
+    public async Task Apagado_Terminar_el_tacto_va_directo_a_la_confirmacion_sin_verificar_caravanas()
+    {
+        var b = new Banco();
+        b.Vm.UsaMangas = false;
+
+        await b.Vm.TerminarElTactoCommand.ExecuteAsync(null);
+
+        Assert.Equal(CuadroTrabajo.SegundaConfirmacion, b.Vm.Cuadro);
+        Assert.Equal("¿Estás seguro que querés terminar?", b.Vm.TextoSegundaConfirmacion);
+        Assert.False(b.Vm.HayAdvertenciaMangaAbierta);
+
+        await b.Vm.ConfirmarTerminarCommand.ExecuteAsync(null);
+
+        var cmd = Assert.Single(b.Campo.Terminados);
+        Assert.Null(cmd.CantidadReal);
+        Assert.Equal(EtapaTrabajo.Terminado, b.Vm.Etapa);
+    }
+
+    [Fact]
+    public async Task Prendido_Terminar_el_tacto_sigue_pidiendo_la_verificacion_de_la_manga_abierta()
+    {
+        var b = new Banco();
+
+        await b.Vm.TerminarElTactoCommand.ExecuteAsync(null);
+
+        Assert.Equal(CuadroTrabajo.Verificacion, b.Vm.Cuadro);
+        Assert.Equal("¿Estás seguro que querés terminar?", b.Vm.TextoSegundaConfirmacion);
+    }
+
+    [Fact]
+    public void Prendido_y_con_una_manga_abierta_Terminar_advierte_cual_es()
+    {
+        var b = new Banco();
+        b.Vm.MangaAbierta = true;
+        b.Vm.Contador = 7;
+
+        Assert.True(b.Vm.HayAdvertenciaMangaAbierta);
+        Assert.Equal("Hay una manga abierta (Manga 1 · 7). Al terminar se cierra y no se abre otra.", b.Vm.AdvertenciaMangaAbierta);
+    }
+
+    [Fact]
+    public async Task La_advertencia_muestra_la_cantidad_puesta_si_la_hay()
+    {
+        var b = new Banco();
+        await PonerCantidadAsync(b, "10");
+        b.Vm.MangaAbierta = true;
+        b.Vm.Contador = 7;
+
+        Assert.Equal("Hay una manga abierta (Manga 1 · 7/10). Al terminar se cierra y no se abre otra.", b.Vm.AdvertenciaMangaAbierta);
+    }
+
+    [Fact]
+    public void Prendido_pero_sin_manga_abierta_no_hay_advertencia()
+    {
+        var b = new Banco();
+        b.Vm.MangaAbierta = false;
+
+        Assert.False(b.Vm.HayAdvertenciaMangaAbierta);
+        Assert.Equal("", b.Vm.AdvertenciaMangaAbierta);
+    }
+
+    [Fact]
+    public void Apagado_no_hay_advertencia_de_manga_aunque_haya_una_abierta()
+    {
+        var b = new Banco();
+        b.Vm.MangaAbierta = true;
+        b.Vm.Contador = 7;
+        b.Vm.UsaMangas = false;
+
+        Assert.False(b.Vm.HayAdvertenciaMangaAbierta);
+    }
+
+    [Fact]
+    public async Task Con_una_manga_abierta_la_advertencia_se_ve_en_la_confirmacion_final_y_se_puede_terminar()
+    {
+        var b = new Banco();
+        b.Vaca("1001", contador: 3);
+        b.Campo.Estado = Datos.EstadoTrabajo(manga: 1, abierta: true, contador: 3);
+        await b.LeerAsync("1001");
+        b.Vm.CerrarFichaCommand.Execute(null);
+
+        await b.Vm.TerminarElTactoCommand.ExecuteAsync(null);   // verificación de la manga abierta
+        await b.Vm.CoincideCommand.ExecuteAsync(null);
+
+        Assert.Equal(CuadroTrabajo.SegundaConfirmacion, b.Vm.Cuadro);
+        Assert.True(b.Vm.HayAdvertenciaMangaAbierta);
+        Assert.Contains("Manga 1 · 3", b.Vm.AdvertenciaMangaAbierta);
+
+        await b.Vm.ConfirmarTerminarCommand.ExecuteAsync(null);
+        Assert.Single(b.Campo.Terminados);
+    }
+
+    [Fact]
+    public async Task El_engranaje_abre_y_cierra_la_configuracion_de_un_toque()
+    {
+        var b = new Banco();
+
+        await b.Vm.AbrirConfiguracionCommand.ExecuteAsync(null);
+        Assert.Equal(CuadroTrabajo.Configuracion, b.Vm.Cuadro);
+        Assert.True(b.Vm.HayConfiguracion);
+
+        await b.Vm.CerrarConfiguracionCommand.ExecuteAsync(null);
+        Assert.Equal(CuadroTrabajo.Ninguno, b.Vm.Cuadro);
+    }
+
+    [Fact]
+    public async Task La_configuracion_no_se_abre_con_otro_cuadro_encima()
+    {
+        var b = new Banco();
+        await b.Vm.FinalizarMangaCommand.ExecuteAsync(null);
+        Assert.Equal(CuadroTrabajo.Verificacion, b.Vm.Cuadro);
+
+        await b.Vm.AbrirConfiguracionCommand.ExecuteAsync(null);
+
+        Assert.Equal(CuadroTrabajo.Verificacion, b.Vm.Cuadro);
+    }
+
+    // ------------------------------------------------------------------ la manga se cierra sola al llegar a su cantidad
+
+    // Deja el banco con una cantidad puesta y la vaca "1001" lista para leer; el servicio devuelve ese contador al marcar.
+    private static async Task<Banco> BancoConMangaPorCompletarAsync(int meta, int contadorAlMarcar, bool cvetCero = false)
+    {
+        var b = new Banco();
+        await PonerCantidadAsync(b, meta.ToString());
+        if (cvetCero) b.Campo.Lecturas["1001"] = Datos.SinTacto(Guid.NewGuid(), "1001", contador: contadorAlMarcar);
+        else b.Vaca("1001", contador: contadorAlMarcar);
+        b.Campo.Estado = Datos.EstadoTrabajo(manga: 1, abierta: true, contador: contadorAlMarcar);
+        b.Campo.OnFinalizar = _ =>
+        {
+            b.Campo.Estado = Datos.EstadoTrabajo(manga: 2, abierta: false);   // la siguiente queda por empezar
+            return Resultado.Ok(Datos.ResultadoCierre(null, aviss: contadorAlMarcar));
+        };
+        return b;
+    }
+
+    [Fact]
+    public async Task Al_marcar_la_ultima_vaca_de_la_cantidad_la_manga_se_cierra_sola_y_avisa()
+    {
+        var b = await BancoConMangaPorCompletarAsync(meta: 10, contadorAlMarcar: 10);
+
+        await b.LeerAsync("1001");
+
+        var cierre = Assert.Single(b.Campo.Finalizados);
+        Assert.Null(cierre.CantidadReal);   // sin verificación: coincide con lo contado
+        Assert.Equal(1, b.Avisos.MangasCompletas);
+        Assert.Equal("Manga 1 terminada (10/10)", b.Vm.UltimoGuardado);
+        var aviso = b.Vm.AvisoDeshacer!;
+        Assert.Equal(TipoDeshacer.Cierre, aviso.Tipo);
+        Assert.Equal("Manga 1 terminada (10/10)", aviso.Texto);
+    }
+
+    [Fact]
+    public async Task La_manga_cerrada_sola_deja_la_siguiente_por_empezar_sin_cantidad_y_la_ficha_de_la_ultima_abierta()
+    {
+        var b = await BancoConMangaPorCompletarAsync(meta: 3, contadorAlMarcar: 3);
+
+        await b.LeerAsync("1001");
+
+        Assert.Equal(2, b.Vm.NumeroManga);
+        Assert.False(b.Vm.HayMeta);
+        Assert.Equal("Manga 2 · 0", b.Vm.TextoManga);
+        Assert.NotNull(b.Vm.Ficha);   // la vaca número 10 todavía se puede tactar
+        Assert.Equal(CuadroTrabajo.Ninguno, b.Vm.Cuadro);
+    }
+
+    [Fact]
+    public async Task Antes_de_llegar_a_la_cantidad_la_manga_no_se_cierra()
+    {
+        var b = await BancoConMangaPorCompletarAsync(meta: 10, contadorAlMarcar: 9);
+
+        await b.LeerAsync("1001");
+
+        Assert.Empty(b.Campo.Finalizados);
+        Assert.Equal(0, b.Avisos.MangasCompletas);
+        Assert.Equal(1, b.Vm.NumeroManga);
+    }
+
+    [Fact]
+    public async Task Sin_cantidad_puesta_la_manga_no_se_cierra_sola_por_mas_vacas_que_tenga()
+    {
+        var b = new Banco();
+        b.Vaca("1001", contador: 40);
+        b.Campo.Estado = Datos.EstadoTrabajo(manga: 1, abierta: true, contador: 40);
+
+        await b.LeerAsync("1001");
+
+        Assert.Empty(b.Campo.Finalizados);
+    }
+
+    [Fact]
+    public async Task Una_vaca_con_cvet_cero_que_completa_la_manga_tambien_la_cierra()
+    {
+        var b = await BancoConMangaPorCompletarAsync(meta: 5, contadorAlMarcar: 5, cvetCero: true);
+
+        await b.LeerAsync("1001");
+
+        Assert.Single(b.Campo.Finalizados);
+        Assert.Equal(1, b.Avisos.SinTactos);        // sonó la chicharra
+        Assert.Equal(1, b.Avisos.MangasCompletas);   // y se avisó que la manga terminó
+        Assert.Null(b.Vm.Ficha);
+    }
+
+    [Fact]
+    public async Task Si_el_cierre_automatico_falla_no_se_bloquea_el_trabajo_y_se_muestra_el_motivo()
+    {
+        var b = await BancoConMangaPorCompletarAsync(meta: 4, contadorAlMarcar: 4);
+        b.Campo.OnFinalizar = _ => Resultado.Error<ResultadoCierreDto>(CodigoError.NoHayMangaAbierta, "No hay una manga abierta.");
+
+        await b.LeerAsync("1001");
+
+        Assert.Equal("No hay una manga abierta.", b.Vm.MensajeInfo);
+        Assert.Equal(CuadroTrabajo.Ninguno, b.Vm.Cuadro);
+        Assert.NotNull(b.Vm.Ficha);
+        Assert.Equal(0, b.Avisos.MangasCompletas);
+    }
+
+    // ------------------------------------------------------------------ cabecera contraíble y horarios de la primera y última vaca
+
+    [Fact]
+    public void La_cabecera_arranca_abierta_y_la_flechita_la_contrae_y_la_abre()
+    {
+        var b = new Banco();
+        Assert.True(b.Vm.CabeceraAbierta);
+        Assert.Equal("▲", b.Vm.TextoFlecha);
+
+        b.Vm.AlternarCabeceraCommand.Execute(null);
+        Assert.False(b.Vm.CabeceraAbierta);
+        Assert.Equal("▼", b.Vm.TextoFlecha);
+
+        b.Vm.AlternarCabeceraCommand.Execute(null);
+        Assert.True(b.Vm.CabeceraAbierta);
+    }
+
+    [Fact]
+    public async Task La_barra_de_arriba_muestra_el_rodeo_y_con_una_ficha_el_id_y_el_cvet()
+    {
+        var b = new Banco();
+        var animal = Guid.NewGuid();
+        b.Campo.Lecturas["1014"] = Datos.Marcada(animal, "1014") with { Ficha = Datos.Ficha(animal, "1014", cvet: "PRE") };
+        Assert.Equal(b.Vm.NombreRodeo, b.Vm.TituloBarra);   // sin ficha: el nombre del rodeo
+
+        await b.LeerAsync("1014");
+        Assert.Equal("ID 1014 · CVET PRE", b.Vm.TituloBarra);
+
+        b.Vm.CerrarFichaCommand.Execute(null);
+        Assert.Equal(b.Vm.NombreRodeo, b.Vm.TituloBarra);
+    }
+
+    [Fact]
+    public async Task Los_horarios_muestran_la_primera_y_la_ultima_vaca()
+    {
+        var b = new Banco();
+        var primera = new DateTime(2026, 11, 17, 12, 5, 0, DateTimeKind.Utc);
+        var ultima = new DateTime(2026, 11, 17, 14, 40, 0, DateTimeKind.Utc);
+        b.Campo.Estado = Datos.EstadoTrabajo(avance: Datos.Avance(primera: primera, fin: ultima));
+
+        await b.Vm.IniciarAsync();
+
+        Assert.Equal($"Primera vaca: {primera.ToLocalTime():HH:mm} · Última vaca: {ultima.ToLocalTime():HH:mm}", b.Vm.TextoHorarios);
+    }
+
+    [Fact]
+    public async Task Al_terminar_el_tacto_el_horario_final_dice_Termino()
+    {
+        var b = new Banco();
+        var primera = new DateTime(2026, 11, 17, 12, 5, 0, DateTimeKind.Utc);
+        var fin = new DateTime(2026, 11, 17, 15, 0, 0, DateTimeKind.Utc);
+        b.Campo.Estado = Datos.EstadoTrabajo(avance: Datos.Avance(primera: primera, fin: fin, terminado: true));
+
+        await b.Vm.IniciarAsync();
+
+        Assert.Equal($"Primera vaca: {primera.ToLocalTime():HH:mm} · Terminó: {fin.ToLocalTime():HH:mm}", b.Vm.TextoHorarios);
+    }
+
+    [Fact]
+    public async Task Sin_vacas_hoy_los_horarios_lo_dicen()
+    {
+        var b = new Banco();
+
+        await b.Vm.IniciarAsync();
+
+        Assert.Equal("Todavía no hay vacas hoy", b.Vm.TextoHorarios);
     }
 
     // ------------------------------------------------------------------ refresco (RF-30)

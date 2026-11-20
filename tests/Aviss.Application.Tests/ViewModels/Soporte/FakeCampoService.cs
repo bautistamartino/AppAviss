@@ -24,7 +24,6 @@ public class FakeCampoService : ICampoService
 
     public Func<ProcesarLecturaCommand, Resultado<ResultadoLecturaDto>>? OnProcesarLectura { get; set; }
     public Func<RegistrarTactoCommand, Resultado<Guid>> OnRegistrarTacto { get; set; } = _ => Resultado.Ok(Guid.NewGuid());
-    public Func<AltaConMarcaCommand, Resultado<ResultadoAltaDto>>? OnAlta { get; set; }
     public Func<DeshacerCommand, Resultado<ResultadoDeshacerDto>>? OnDeshacer { get; set; }
     public Func<Resultado<ResumenMangaDto>> OnResumen { get; set; } = () => Resultado.Ok(Datos.Resumen());
     public Func<FinalizarMangaCommand, Resultado<ResultadoCierreDto>>? OnFinalizar { get; set; }
@@ -36,7 +35,6 @@ public class FakeCampoService : ICampoService
     public List<(Guid RodeoId, Guid UsuarioId)> IniciosDeTrabajo { get; } = [];
     public List<ProcesarLecturaCommand> LecturasProcesadas { get; } = [];
     public List<RegistrarTactoCommand> Tactos { get; } = [];
-    public List<AltaConMarcaCommand> Altas { get; } = [];
     public List<DeshacerCommand> Deshaceres { get; } = [];
     public List<FinalizarMangaCommand> Finalizados { get; } = [];
     public List<TerminarElTactoCommand> Terminados { get; } = [];
@@ -49,6 +47,18 @@ public class FakeCampoService : ICampoService
     public Task<IReadOnlyList<RodeoParaTrabajarDto>> ListarRodeosParaTrabajarAsync(CancellationToken ct = default) => Task.FromResult(Rodeos);
     public virtual Task<IReadOnlyList<VeterinarioDto>> ListarVeterinariosActivosAsync(CancellationToken ct = default) => Task.FromResult(Veterinarios);
     public Task<IReadOnlyList<EstadoActivoDto>> ListarEstadosActivosAsync(CancellationToken ct = default) => Task.FromResult(Estados);
+
+    public List<(string Nombre, string CodigoDairyComp)> EstadosCreados { get; } = [];
+    public Func<string, Resultado<Guid>>? OnCrearEstado { get; set; }
+
+    public Task<Resultado<Guid>> CrearEstadoAsync(string nombre, string codigoDairyComp, CancellationToken ct = default)
+    {
+        EstadosCreados.Add((nombre, codigoDairyComp));
+        if (OnCrearEstado is not null) return Task.FromResult(OnCrearEstado(nombre));
+        var id = Guid.NewGuid();
+        Estados = [.. Estados, new EstadoActivoDto(id, nombre.ToUpperInvariant())];
+        return Task.FromResult(Resultado.Ok(id));
+    }
 
     public Task<Resultado<Guid>> CrearVeterinarioAsync(string nombre, string? matricula, CancellationToken ct = default)
     {
@@ -107,17 +117,29 @@ public class FakeCampoService : ICampoService
         return Task.FromResult(OnRegistrarTacto(comando));
     }
 
-    public Task<Resultado<ResultadoAltaDto>> AltaEnCampoConMarcaAsync(AltaConMarcaCommand comando, CancellationToken ct = default)
-    {
-        Altas.Add(comando);
-        return Task.FromResult(OnAlta?.Invoke(comando) ?? Resultado.Ok(Datos.ResultadoAlta(comando.NumeroCaravana)));
-    }
-
     public Task<Resultado<ResultadoDeshacerDto>> DeshacerAsync(DeshacerCommand comando, CancellationToken ct = default)
     {
         Deshaceres.Add(comando);
         return Task.FromResult(OnDeshacer?.Invoke(comando)
-            ?? Resultado.Ok(new ResultadoDeshacerDto(comando.Tipo, comando.Tipo == TipoDeshacer.Alta ? comando.Id : null, null, 1, 0)));
+            ?? Resultado.Ok(new ResultadoDeshacerDto(comando.Tipo, null, null, 1, 0)));
+    }
+
+    public List<Aviss.Application.Comandos.CorregirTactoCommand> Correcciones { get; } = [];
+    public Func<Aviss.Application.Comandos.CorregirTactoCommand, Resultado<Guid>>? OnCorregir { get; set; }
+
+    public Task<Resultado<Guid>> CorregirTactoAsync(Aviss.Application.Comandos.CorregirTactoCommand comando, CancellationToken ct = default)
+    {
+        Correcciones.Add(comando);
+        return Task.FromResult(OnCorregir?.Invoke(comando) ?? Resultado.Ok(Guid.NewGuid()));
+    }
+
+    public List<Guid> Reseteados { get; } = [];
+    public Func<Guid, Resultado<Guid>>? OnResetear { get; set; }
+
+    public Task<Resultado<Guid>> ResetearRodeoAsync(Guid rodeoId, CancellationToken ct = default)
+    {
+        Reseteados.Add(rodeoId);
+        return Task.FromResult(OnResetear?.Invoke(rodeoId) ?? Resultado.Ok(Guid.NewGuid()));
     }
 
     public virtual Task<IReadOnlyList<MovimientoDto>> ListarMovimientosAsync(Guid rodeoId, CancellationToken ct = default)
@@ -135,20 +157,24 @@ public static class Datos
     public static readonly Guid RodeoId = Guid.Parse("11111111-0000-0000-0000-000000000001");
     public static readonly VeterinarioDto Vet = new(Guid.Parse("22222222-0000-0000-0000-000000000001"), "Dra. Ana", "M-1");
 
-    public static AvanceRodeoDto Avance(int total = 100, int procesadas = 0)
-        => new(new DateOnly(2026, 11, 17), total, procesadas, total - procesadas, total == 0 ? 0 : procesadas * 100 / total);
+    public static AvanceRodeoDto Avance(int total = 100, int procesadas = 0, DateTime? primera = null, DateTime? fin = null, bool terminado = false)
+        => new(new DateOnly(2026, 11, 17), total, procesadas, total - procesadas, total == 0 ? 0 : procesadas * 100 / total, primera, fin, terminado);
 
-    public static EstadoTrabajoDto EstadoTrabajo(int manga = 1, bool abierta = false, int contador = 0, int procesadas = 0)
-        => new(RodeoId, manga, abierta, abierta ? Guid.NewGuid() : null, contador, Avance(procesadas: procesadas));
+    public static EstadoTrabajoDto EstadoTrabajo(int manga = 1, bool abierta = false, int contador = 0, int procesadas = 0, AvanceRodeoDto? avance = null)
+        => new(RodeoId, manga, abierta, abierta ? Guid.NewGuid() : null, contador, avance ?? Avance(procesadas: procesadas));
 
     public static RodeoParaTrabajarDto Rodeo(string establecimiento = "Tambo Norte", string rodeo = "Rodeo 1", Guid? establecimientoId = null, Guid? rodeoId = null)
         => new(establecimientoId ?? Guid.NewGuid(), establecimiento, rodeoId ?? RodeoId, rodeo, new DateTime(2026, 11, 1, 0, 0, 0, DateTimeKind.Utc), EstadoRodeo.Abierto, Avance());
 
-    public static FichaAnimalDto Ficha(Guid? animalId = null, string caravana = "1001", bool altaEnCampo = false, bool puedeAnularAlta = false, string? idElectronico = null)
-        => new(animalId ?? Guid.NewGuid(), caravana, idElectronico, null, null, null, altaEnCampo, puedeAnularAlta, [], "", "", []);
+    public static FichaAnimalDto Ficha(Guid? animalId = null, string caravana = "1001", string? idElectronico = null, string cvet = "", bool entraEnTacto = true)
+        => new(animalId ?? Guid.NewGuid(), caravana, idElectronico, null, null, null, [], "", "", [], cvet, entraEnTacto);
 
     public static ResultadoLecturaDto Marcada(Guid animalId, string caravana, Guid? marcaId = null, int manga = 1, int contador = 1)
         => new(TipoResultadoLectura.Marcada, caravana, animalId, caravana, Ficha(animalId, caravana), marcaId ?? Guid.NewGuid(), manga, contador, null, null, false);
+
+    /// <summary>Una vaca con CVET 0: queda marcada y suma al conteo, pero sin ficha.</summary>
+    public static ResultadoLecturaDto SinTacto(Guid animalId, string caravana, Guid? marcaId = null, int manga = 1, int contador = 1)
+        => new(TipoResultadoLectura.SinTacto, caravana, animalId, caravana, null, marcaId ?? Guid.NewGuid(), manga, contador, null, null, false);
 
     public static UltimoRegistroDto Ultimo(TipoRegistroCampo tipo = TipoRegistroCampo.Marca, string? estado = null, int? manga = 1)
         => new(tipo, Guid.NewGuid(), new DateTime(2026, 11, 17, 13, 0, 0, DateTimeKind.Utc), estado, "Dra. Ana", manga);
@@ -162,11 +188,6 @@ public static class Datos
     public static ResultadoLecturaDto NoEncontrada(string codigo)
         => new(TipoResultadoLectura.NoEncontrada, codigo, null, null, null, null, null, null, null, null, false);
 
-    public static ResultadoAltaDto ResultadoAlta(string caravana, bool idOmitido = false, Guid? animalId = null)
-    {
-        var id = animalId ?? Guid.NewGuid();
-        return new(id, Ficha(id, caravana, altaEnCampo: true, puedeAnularAlta: true), Guid.NewGuid(), 1, 1, idOmitido);
-    }
 
     public static ResumenMangaDto Resumen(int manga = 1, params string[] caravanas)
         => new(Guid.NewGuid(), manga, caravanas.Length == 0 ? 3 : caravanas.Length, caravanas.Length == 0 ? ["1", "2", "3"] : caravanas);
@@ -176,8 +197,9 @@ public static class Datos
             aviss, confirmada ?? aviss, (confirmada ?? aviss) - aviss, aviss), Avance(procesadas: aviss));
 
     public static MovimientoDto Movimiento(TipoMovimiento tipo, bool puedeDeshacer = true, bool anulado = false,
-        int? cantidadAviss = null, int? cantidadConfirmada = null, int? contadorActual = null, string? caravana = "1001")
-        => new(tipo, Guid.NewGuid(), tipo == TipoMovimiento.Cierre ? null : Guid.NewGuid(), caravana, 1, null,
+        int? cantidadAviss = null, int? cantidadConfirmada = null, int? contadorActual = null, string? caravana = "1001",
+        string? detalle = null, string? cvet = null, string? observaciones = null)
+        => new(tipo, Guid.NewGuid(), tipo == TipoMovimiento.Cierre ? null : Guid.NewGuid(), caravana, 1, detalle,
             new DateTime(2026, 11, 17, 13, 0, 0, DateTimeKind.Utc), "Dra. Ana", anulado, puedeDeshacer,
-            cantidadAviss, cantidadConfirmada, contadorActual);
+            cantidadAviss, cantidadConfirmada, contadorActual, cvet, observaciones);
 }

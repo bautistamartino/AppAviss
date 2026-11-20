@@ -17,7 +17,7 @@ internal sealed class CampoService : ICampoService
     private readonly IServiceScopeFactory _scopes;
 
     // SQLite admite un solo escritor: las operaciones que escriben van de a una, para no chocar con "base ocupada".
-    // El ViewModel ya serializa las lecturas (RF-19); esto protege además del alta, deshacer y cierres que se disparen a la par.
+    // El ViewModel ya serializa las lecturas (RF-19); esto protege además del deshacer y los cierres que se disparen a la par.
     private readonly SemaphoreSlim _escritura = new(1, 1);
 
     public CampoService(IServiceScopeFactory scopes) => _scopes = scopes;
@@ -53,6 +53,14 @@ internal sealed class CampoService : ICampoService
     public Task<IReadOnlyList<EstadoActivoDto>> ListarEstadosActivosAsync(CancellationToken ct = default)
         => LeerAsync(p => p.GetRequiredService<ConsultaCampoService>().ListarEstadosActivosAsync(ct));
 
+    public Task<Resultado<Guid>> CrearEstadoAsync(string nombre, string codigoDairyComp, CancellationToken ct = default)
+    {
+        var codigo = Aviss.Domain.Reglas.CodigoEstado.DesdeNombre(nombre);
+        if (codigo.Length == 0)
+            return Task.FromResult(Resultado.Error<Guid>(CodigoError.DatosInvalidos, "Escribí un nombre con letras o números."));
+        return EscribirAsync(p => p.GetRequiredService<ICatalogoEstadosService>().CrearAsync(codigo, nombre, codigoDairyComp, ct), ct);
+    }
+
     // ---- Mangas ----
 
     public Task<Resultado<EstadoTrabajoDto>> IniciarTrabajoAsync(Guid rodeoId, Guid usuarioId, CancellationToken ct = default)
@@ -81,10 +89,15 @@ internal sealed class CampoService : ICampoService
     public Task<Resultado<Guid>> RegistrarTactoAsync(RegistrarTactoCommand comando, CancellationToken ct = default)
         => EscribirAsync(p => p.GetRequiredService<ITrabajoCampoService>().RegistrarTactoAsync(comando, ct), ct);
 
-    public Task<Resultado<ResultadoAltaDto>> AltaEnCampoConMarcaAsync(AltaConMarcaCommand comando, CancellationToken ct = default)
-        => EscribirAsync(p => p.GetRequiredService<AltaCampoService>().AltaConMarcaAsync(comando, ct), ct);
+    // ---- Resetear un rodeo (para pruebas) ----
 
-    // ---- Deshacer y movimientos ----
+    public Task<Resultado<Guid>> ResetearRodeoAsync(Guid rodeoId, CancellationToken ct = default)
+        => LeerAsync(p => p.GetRequiredService<IImportacionService>().ResetearRodeoAsync(rodeoId, ct));
+
+    // ---- Deshacer, corregir y movimientos ----
+
+    public Task<Resultado<Guid>> CorregirTactoAsync(CorregirTactoCommand comando, CancellationToken ct = default)
+        => EscribirAsync(p => p.GetRequiredService<ITrabajoCampoService>().CorregirTactoAsync(comando, ct), ct);
 
     public Task<Resultado<ResultadoDeshacerDto>> DeshacerAsync(DeshacerCommand comando, CancellationToken ct = default)
         => EscribirAsync(p => DeshacerEnScopeAsync(p, comando, ct), ct);
@@ -97,8 +110,6 @@ internal sealed class CampoService : ICampoService
                 return await p.GetRequiredService<MarcaPasadaService>().DeshacerAsync(c.Id, c.UsuarioId, ct);
             case TipoDeshacer.Cierre:
                 return await p.GetRequiredService<MangaService>().ReabrirAsync(c.Id, c.UsuarioId, ct);
-            case TipoDeshacer.Alta:
-                return await p.GetRequiredService<AltaCampoService>().AnularAltaAsync(c.Id, c.UsuarioId, ct);
             case TipoDeshacer.Tacto:
             {
                 // La anulación de un tacto ya la resuelve el servicio de tactos (spec 001); acá se agrega el animal al resultado

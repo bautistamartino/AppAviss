@@ -1,5 +1,7 @@
 # Tareas — 003 Flujo de tacto (núcleo)
 
+> **Nota (2026-11-21):** este documento es el diseño y el plan **originales** (2026-11-16/17). Después de probar en una tablet real la spec cambió (se retiró el alta en campo; la ficha pasó a "elegir evento y Entrar"; CVET; mangas opcionales; movimientos con Editar; interfaz en vertical). **Lo vigente está en `spec.md`, sección "Ajustes tras las pruebas en la tablet" (RF-39 a RF-52).** Si algo de acá contradice esa sección, manda la spec.
+
 Tests primero en cada tarea de lógica. Ninguna tarea se da por terminada con `dotnet build` o `dotnet test` en rojo (cada una deja la solución en verde por sí sola). Una rama: `spec/003-flujo-de-tacto` (ya creada). Detalle de diseño en [plan.md](plan.md). La spec 004 (borrador, depende de esta) **no** se toca. La pantalla la verifica el usuario en el emulador `Tablet_Aviss`.
 
 - [x] **T1** — Dominio y base: entidades, reglas puras y migración `Mangas`.

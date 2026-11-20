@@ -18,9 +18,6 @@ public partial class TrabajoPage : ContentPage
 		InitializeComponent();
 		BindingContext = _vm = viewModel;
 
-#if DEBUG
-		ConstruirPanelSimulador();
-#endif
 	}
 
 	protected override async void OnAppearing()
@@ -95,35 +92,19 @@ public partial class TrabajoPage : ContentPage
 
 	private void OnCerrarVeterinariosClicked(object? sender, EventArgs e) => CapaVeterinarios.IsVisible = false;
 
-#if DEBUG
-	// ---- Panel del simulador: SOLO en la compilación de desarrollo (RF-31) ----
-	// Está armado desde código, dentro de #if DEBUG, para que en la versión que se distribuye ni siquiera exista.
-	private void ConstruirPanelSimulador()
+	// Al buscar (botón "Buscar" o Enter en el teclado) el teclado se baja solo: si no, queda tapando la ficha que acaba de aparecer.
+	// Es solo de pantalla: la búsqueda en sí la hace el ViewModel con su comando.
+	private async void OnBuscarTerminado(object? sender, EventArgs e)
 	{
-		if (!_vm.HaySimulador) return;
-
-		PanelSimulador.Children.Add(new Label
+		try
 		{
-			Text = "Simulador (solo Debug):",
-			TextColor = Colors.Black,
-			FontAttributes = FontAttributes.Bold,
-			FontSize = 20,
-			VerticalOptions = LayoutOptions.Center
-		});
-		PanelSimulador.Children.Add(BotonSimulador("Leer vaca existente", _vm.SimularExistenteCommand));
-		PanelSimulador.Children.Add(BotonSimulador("Leer vaca ya leída", _vm.SimularYaLeidaCommand));
-		PanelSimulador.Children.Add(BotonSimulador("Leer caravana inexistente", _vm.SimularInexistenteCommand));
-		PanelSimulador.IsVisible = true;
+			CampoBusqueda.Unfocus();
+			await CampoBusqueda.HideSoftInputAsync(CancellationToken.None);
+		}
+		catch (Exception)
+		{
+			// Si el teclado no se puede bajar, no pasa nada: la búsqueda ya se hizo.
+		}
 	}
 
-	private static Button BotonSimulador(string texto, System.Windows.Input.ICommand comando) => new()
-	{
-		Text = texto,
-		Command = comando,
-		FontSize = 20,
-		HeightRequest = 56,
-		BackgroundColor = Color.FromArgb("#455A64"),
-		TextColor = Colors.White
-	};
-#endif
 }

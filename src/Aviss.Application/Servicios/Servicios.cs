@@ -64,6 +64,13 @@ public interface IImportacionService
 
     /// <summary>Descarta la vista previa sin guardar nada (RF-22).</summary>
     void Descartar(Guid vistaPreviaId);
+
+    /// <summary>
+    /// Resetear un rodeo (para pruebas): lo vuelve a importar desde el Excel original que guardó, como un rodeo nuevo con el mismo nombre y
+    /// establecimiento, y da de baja el viejo. Lo hecho en el viejo (marcas, tactos, historial) no se borra: queda guardado y oculto.
+    /// Devuelve el Id del rodeo nuevo.
+    /// </summary>
+    Task<Resultado<Guid>> ResetearRodeoAsync(Guid rodeoId, CancellationToken ct = default);
 }
 
 public interface ITrabajoCampoService
@@ -73,6 +80,12 @@ public interface ITrabajoCampoService
 
     /// <summary>Anula el último tacto vigente de un animal con otro registro (RF-13, RF-14). Devuelve el Id del tacto de anulación.</summary>
     Task<Resultado<Guid>> AnularTactoAsync(AnularTactoCommand comando, CancellationToken ct = default);
+
+    /// <summary>
+    /// Corrige un tacto ("Editar" un movimiento): anula el tacto y registra uno nuevo con el evento y la observación elegidos, en UNA sola
+    /// transacción (si algo falla no queda nada a medias). Solo vale para el último registro vigente del animal. Devuelve el Id del tacto nuevo.
+    /// </summary>
+    Task<Resultado<Guid>> CorregirTactoAsync(CorregirTactoCommand comando, CancellationToken ct = default);
 }
 
 /// <summary>
@@ -88,6 +101,8 @@ public interface ICampoService
     Task<IReadOnlyList<VeterinarioDto>> ListarVeterinariosActivosAsync(CancellationToken ct = default);
     Task<Resultado<Guid>> CrearVeterinarioAsync(string nombre, string? matricula, CancellationToken ct = default);
     Task<IReadOnlyList<EstadoActivoDto>> ListarEstadosActivosAsync(CancellationToken ct = default);
+    /// <summary>Crea un estado nuevo en el catálogo desde el campo ("Agregar evento"). El código interno sale del nombre.</summary>
+    Task<Resultado<Guid>> CrearEstadoAsync(string nombre, string codigoDairyComp, CancellationToken ct = default);
 
     // ---- Mangas (RF-4 a RF-10) ----
     /// <summary>Empieza a trabajar un rodeo: cierra como automática la manga abierta de un día anterior y devuelve el estado.</summary>
@@ -99,14 +114,19 @@ public interface ICampoService
     Task<Resultado<ResultadoCierreDto>> FinalizarMangaAsync(FinalizarMangaCommand comando, CancellationToken ct = default);
     Task<Resultado<ResultadoCierreDto>> TerminarElTactoAsync(TerminarElTactoCommand comando, CancellationToken ct = default);
 
-    // ---- Lectura, ficha y tacto (RF-11 a RF-19, RF-22 a RF-25) ----
+    // ---- Lectura, ficha y tacto (RF-11 a RF-19, RF-22 a RF-24) ----
     Task<Resultado<ResultadoLecturaDto>> ProcesarLecturaAsync(ProcesarLecturaCommand comando, CancellationToken ct = default);
     Task<Resultado<FichaAnimalDto>> ObtenerFichaAsync(Guid animalId, CancellationToken ct = default);
     Task<Resultado<Guid>> RegistrarTactoAsync(RegistrarTactoCommand comando, CancellationToken ct = default);
-    Task<Resultado<ResultadoAltaDto>> AltaEnCampoConMarcaAsync(AltaConMarcaCommand comando, CancellationToken ct = default);
 
-    // ---- Deshacer y movimientos (RF-26 a RF-29) ----
+    // ---- Deshacer y movimientos (RF-26 a RF-28) ----
     Task<Resultado<ResultadoDeshacerDto>> DeshacerAsync(DeshacerCommand comando, CancellationToken ct = default);
+
+    /// <summary>"Editar" un movimiento de tacto: lo anula y registra uno nuevo con el evento y la observación elegidos (una sola transacción).</summary>
+    Task<Resultado<Guid>> CorregirTactoAsync(CorregirTactoCommand comando, CancellationToken ct = default);
+
+    /// <summary>Resetear un rodeo (para pruebas): lo reimporta desde su Excel original como rodeo nuevo y da de baja el viejo. Devuelve el Id del nuevo.</summary>
+    Task<Resultado<Guid>> ResetearRodeoAsync(Guid rodeoId, CancellationToken ct = default);
     Task<IReadOnlyList<MovimientoDto>> ListarMovimientosAsync(Guid rodeoId, CancellationToken ct = default);
 
     /// <summary>Una caravana real del rodeo para el panel del simulador (solo desarrollo). Nulo si no hay.</summary>

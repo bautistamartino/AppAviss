@@ -57,8 +57,17 @@ Abrir una sesión en la carpeta del repo y pedir: **"leé CLAUDE.md, MEMORY.md, 
 
 Pendientes al retomar:
 
-1. Probar en el emulador las pantallas de T5: `EleccionTrabajoPage`, "Finalizar manga", "Terminar el tacto" y `MovimientosPage` (lista de "Qué mirar" en `specs/003-flujo-de-tacto/tasks.md`).
-2. Mejorar la interfaz (el usuario todavía tiene que decir qué cambiar).
-3. Pasar el revisor y mergear `spec/003-flujo-de-tacto` a `main`.
-4. La spec 004 (tratamientos, rechazo, estados nuevos) está en borrador sin aprobar.
-5. Sigue pendiente la prueba 0.2 de reimportación en Dairy Comp.
+1. Pasar el revisor sobre la spec 003 y mergear `spec/003-flujo-de-tacto` a `main` (la rama ya está subida a GitHub).
+2. Probar en la tablet lo que quedó sin verificar (chicharra del CVET 0, aviso de manga completa, cierre automático, "+ Nuevo evento", engranaje): lista en la spec 003, "Criterios de aceptación de esta sección".
+3. Confirmar con el usuario las decisiones abiertas: si hace falta registrar al veterinario, dos veterinarios por tacto, dos mangas a la vez y varios lotes (spec 003, "Preguntas abiertas").
+4. La spec 004 (tratamientos, tres renglones de evento, rechazo y "En Espera") está en borrador sin aprobar.
+5. Sacar el botón "↺ A 0" (resetear rodeo) cuando se termine de probar (spec 003, RF-50).
+6. Sigue pendiente la prueba 0.2 de reimportación en Dairy Comp.
+
+## 7. Probar en una tablet real
+
+1. En la tablet: Ajustes > Acerca del dispositivo > tocar 7 veces "Número de compilación"; después Opciones de desarrollador > **Depuración USB**. Conectar por cable de **datos** (uno de solo carga no sirve) y aceptar el cartel "¿Permitir depuración USB?".
+2. Comprobar que se ve: `& "$env:LOCALAPPDATA\Android\Sdk\platform-tools\adb.exe" devices -l` (tiene que decir `device`, no `unauthorized`). Si no aparece, mirar en el Administrador de dispositivos si Windows ve la "ADB Interface".
+3. Instalar y abrir: `dotnet build src/Aviss.App -f net10.0-android -t:Run` (con más de un dispositivo, el emulador o la tablet se elige desconectando el otro).
+4. Llevarle un Excel: `adb push archivo.xls /sdcard/Download/` (en Git Bash, con `MSYS_NO_PATHCONV=1` delante). El Excel real de un tambo nunca se commitea.
+5. Probar mirando la pantalla con capturas: `adb exec-out screencap -p > captura.png` y tocar con `adb shell input tap X Y` (la tablet de prueba mide 800x1340 y se usa en **vertical**).

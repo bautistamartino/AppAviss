@@ -222,6 +222,168 @@ public class EleccionTrabajoViewModelTests
         Assert.Equal(EleccionTrabajoViewModel.MensajeFalla, vm.MensajeError);
     }
 
+    // ------------------------------------------------------------------ pantalla más clara (formulario y "qué falta")
+
+    [Fact]
+    public async Task Sin_veterinarios_el_formulario_de_alta_se_muestra_solo()
+    {
+        var b = new Banco();
+        b.Campo.Veterinarios = [];
+
+        await b.Vm.CargarAsync();
+
+        Assert.False(b.Vm.HayVeterinarios);
+        Assert.True(b.Vm.MostrarFormularioNuevo);
+    }
+
+    [Fact]
+    public async Task Con_veterinarios_el_formulario_queda_oculto_hasta_pedirlo()
+    {
+        var b = new Banco();
+        await b.Vm.CargarAsync();
+
+        Assert.True(b.Vm.HayVeterinarios);
+        Assert.False(b.Vm.MostrarFormularioNuevo);
+
+        b.Vm.MostrarCrearVeterinarioCommand.Execute(null);
+
+        Assert.True(b.Vm.MostrarFormularioNuevo);
+    }
+
+    [Fact]
+    public async Task Crear_un_veterinario_cierra_el_formulario()
+    {
+        var b = new Banco();
+        await b.Vm.CargarAsync();
+        b.Vm.MostrarCrearVeterinarioCommand.Execute(null);
+        b.Vm.NuevoNombre = "Dra. Marta";
+
+        await b.Vm.CrearVeterinarioCommand.ExecuteAsync(null);
+
+        Assert.False(b.Vm.MostrarFormularioNuevo);
+        Assert.True(b.Vm.HayVeterinarios);
+    }
+
+    [Fact]
+    public async Task Que_falta_dice_que_hay_que_elegir_veterinario_y_rodeo()
+    {
+        var b = new Banco();
+        b.Campo.Rodeos = [Datos.Rodeo(), Datos.Rodeo()];   // dos rodeos del mismo establecimiento: no se elige solo
+        await b.Vm.CargarAsync();
+
+        Assert.True(b.Vm.FaltaAlgo);
+        Assert.Contains("veterinario", b.Vm.QueFalta);
+        Assert.Contains("rodeo", b.Vm.QueFalta);
+    }
+
+    [Fact]
+    public async Task Que_falta_se_vacia_cuando_esta_todo_elegido()
+    {
+        var b = new Banco();
+        b.Campo.Rodeos = [Datos.Rodeo()];
+        b.Preferencias.Recordado = Ana.Id;
+
+        await b.Vm.CargarAsync();
+
+        Assert.False(b.Vm.FaltaAlgo);
+        Assert.Equal("", b.Vm.QueFalta);
+    }
+
+    // ------------------------------------------------------------------ resetear un rodeo (para pruebas), con doble verificación
+
+    private static async Task<(Banco Banco, RodeoParaTrabajarDto Rodeo)> BancoConUnRodeoAsync()
+    {
+        var b = new Banco();
+        var rodeo = Datos.Rodeo(rodeo: "Rodeo Mayo");
+        b.Campo.Rodeos = [rodeo];
+        await b.Vm.CargarAsync();
+        return (b, rodeo);
+    }
+
+    [Fact]
+    public async Task Pedir_el_reseteo_abre_la_primera_pregunta_y_no_resetea_nada()
+    {
+        var (b, rodeo) = await BancoConUnRodeoAsync();
+
+        b.Vm.PedirReseteoCommand.Execute(rodeo);
+
+        Assert.True(b.Vm.EsPrimerPasoReseteo);
+        Assert.False(b.Vm.EsSegundoPasoReseteo);
+        Assert.Equal("Rodeo Mayo", b.Vm.NombreRodeoAResetear);
+        Assert.Empty(b.Campo.Reseteados);
+    }
+
+    [Fact]
+    public async Task La_primera_confirmacion_pasa_a_la_segunda_y_tampoco_resetea()
+    {
+        var (b, rodeo) = await BancoConUnRodeoAsync();
+        b.Vm.PedirReseteoCommand.Execute(rodeo);
+
+        b.Vm.ConfirmarPrimerPasoReseteoCommand.Execute(null);
+
+        Assert.True(b.Vm.EsSegundoPasoReseteo);
+        Assert.Empty(b.Campo.Reseteados);
+    }
+
+    [Fact]
+    public async Task Solo_la_segunda_confirmacion_resetea_el_rodeo_y_vuelve_a_leer_la_lista()
+    {
+        var (b, rodeo) = await BancoConUnRodeoAsync();
+        var nuevo = Datos.Rodeo(rodeo: "Rodeo Mayo");
+        b.Campo.OnResetear = _ => { b.Campo.Rodeos = [nuevo]; return Resultado.Ok(Guid.NewGuid()); };
+        b.Vm.PedirReseteoCommand.Execute(rodeo);
+        b.Vm.ConfirmarPrimerPasoReseteoCommand.Execute(null);
+
+        await b.Vm.ConfirmarReseteoCommand.ExecuteAsync(null);
+
+        Assert.Equal([rodeo.RodeoId], b.Campo.Reseteados);
+        Assert.False(b.Vm.HayReseteo);
+        Assert.Equal(0, b.Vm.PasoReseteo);
+        Assert.Single(b.Vm.Rodeos.Where(r => r.RodeoId == nuevo.RodeoId));
+        Assert.Contains("Rodeo Mayo", b.Vm.MensajeInfo);
+    }
+
+    [Fact]
+    public async Task Confirmar_en_la_primera_pregunta_no_resetea_nada()
+    {
+        var (b, rodeo) = await BancoConUnRodeoAsync();
+        b.Vm.PedirReseteoCommand.Execute(rodeo);
+
+        await b.Vm.ConfirmarReseteoCommand.ExecuteAsync(null);   // se saltea la primera confirmación
+
+        Assert.Empty(b.Campo.Reseteados);
+        Assert.True(b.Vm.EsPrimerPasoReseteo);
+    }
+
+    [Fact]
+    public async Task Cancelar_en_cualquier_pregunta_cierra_todo_sin_resetear()
+    {
+        var (b, rodeo) = await BancoConUnRodeoAsync();
+        b.Vm.PedirReseteoCommand.Execute(rodeo);
+        b.Vm.ConfirmarPrimerPasoReseteoCommand.Execute(null);
+
+        b.Vm.CancelarReseteoCommand.Execute(null);
+
+        Assert.False(b.Vm.HayReseteo);
+        Assert.Equal(0, b.Vm.PasoReseteo);
+        Assert.Empty(b.Campo.Reseteados);
+    }
+
+    [Fact]
+    public async Task Si_el_reseteo_falla_se_muestra_el_motivo_y_se_cierra_la_pregunta()
+    {
+        var (b, rodeo) = await BancoConUnRodeoAsync();
+        b.Campo.OnResetear = _ => Resultado.Error<Guid>(CodigoError.NoEncontrado, "El rodeo no existe.");
+        b.Vm.PedirReseteoCommand.Execute(rodeo);
+        b.Vm.ConfirmarPrimerPasoReseteoCommand.Execute(null);
+
+        await b.Vm.ConfirmarReseteoCommand.ExecuteAsync(null);
+
+        Assert.Equal("El rodeo no existe.", b.Vm.MensajeError);
+        Assert.False(b.Vm.HayReseteo);
+        Assert.False(b.Vm.HayMensajeInfo);
+    }
+
     // La fachada que siempre falla (disco, base): el ViewModel no debe caerse.
     private sealed class FalloCampo : FakeCampoService
     {

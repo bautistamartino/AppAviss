@@ -29,11 +29,33 @@
                 </VisualStateGroupList>
             </Setter>
         </Style>
+
+        <!-- Número del paso (1, 2, 3) en un círculo oscuro. -->
+        <Style x:Key="InsigniaPaso" TargetType="Border">
+            <Setter Property="BackgroundColor" Value="{StaticResource CampoPanel}" />
+            <Setter Property="StrokeThickness" Value="0" />
+            <Setter Property="WidthRequest" Value="44" />
+            <Setter Property="HeightRequest" Value="44" />
+            <Setter Property="StrokeShape" Value="RoundRectangle 22" />
+        </Style>
+        <Style x:Key="NumeroPaso" TargetType="Label">
+            <Setter Property="TextColor" Value="White" />
+            <Setter Property="FontSize" Value="26" />
+            <Setter Property="FontAttributes" Value="Bold" />
+            <Setter Property="HorizontalOptions" Value="Center" />
+            <Setter Property="VerticalOptions" Value="Center" />
+        </Style>
+        <Style x:Key="ElegidoPaso" TargetType="Label" BasedOn="{StaticResource TextoCampo}">
+            <Setter Property="FontSize" Value="20" />
+            <Setter Property="FontAttributes" Value="Bold" />
+            <Setter Property="TextColor" Value="{StaticResource CampoExito}" />
+        </Style>
     </ContentPage.Resources>
 
     <!--
         Elegir con qué trabajar (spec 003, RF-1 y RF-2): veterinario (el recordado viene marcado), establecimiento y rodeo
-        con su avance de hoy. Sin lógica acá: todo está en EleccionTrabajoViewModel.
+        con su avance de hoy. Tres pasos en una sola columna, para que se lea igual en vertical y en horizontal.
+        Sin lógica acá: todo está en EleccionTrabajoViewModel.
     -->
     <Grid RowDefinitions="Auto,Auto,*,Auto" Padding="24,16" RowSpacing="12">
 
@@ -45,6 +67,9 @@
             <Border IsVisible="{Binding HayMensajeError}" BackgroundColor="{StaticResource CampoPeligro}" StrokeThickness="0" Padding="16,10">
                 <Label Text="{Binding MensajeError}" TextColor="White" FontSize="22" FontAttributes="Bold"
                        SemanticProperties.Description="Mensaje de error" />
+            </Border>
+            <Border IsVisible="{Binding HayMensajeInfo}" BackgroundColor="{StaticResource CampoAlerta}" StrokeThickness="0" Padding="16,10">
+                <Label Text="{Binding MensajeInfo}" TextColor="Black" FontSize="20" FontAttributes="Bold" />
             </Border>
             <Border IsVisible="{Binding RecordadoNoDisponible}" BackgroundColor="{StaticResource CampoAlerta}" StrokeThickness="0" Padding="16,10">
                 <Label Text="El último veterinario ya no está activo. Elegí otro o creá uno." TextColor="Black" FontSize="22" FontAttributes="Bold" />
@@ -59,85 +84,152 @@
             <Button Text="Importar rodeo" Style="{StaticResource BotonCampo}" Command="{Binding IrAImportarCommand}" />
         </VerticalStackLayout>
 
-        <!-- Tres columnas: veterinario | establecimiento | rodeo -->
-        <Grid Grid.Row="2" ColumnDefinitions="*,*,*" ColumnSpacing="16" IsVisible="{Binding NoHayRodeos, Converter={StaticResource Invertir}}">
+        <!-- Tres pasos, uno debajo del otro -->
+        <ScrollView Grid.Row="2" IsVisible="{Binding NoHayRodeos, Converter={StaticResource Invertir}}">
+            <VerticalStackLayout Spacing="28">
 
-            <!-- 1. Veterinario -->
-            <Grid Grid.Column="0" RowDefinitions="Auto,*,Auto" RowSpacing="8">
-                <Label Text="1. Veterinario" Style="{StaticResource TituloCuadro}" FontSize="28" />
-                <CollectionView Grid.Row="1" ItemsSource="{Binding Veterinarios}" SelectionMode="Single"
-                                SelectedItem="{Binding VeterinarioSeleccionado, Mode=TwoWay}">
-                    <CollectionView.EmptyView>
-                        <Label Text="Todavía no hay veterinarios: creá el primero abajo." Style="{StaticResource TextoCampo}" />
-                    </CollectionView.EmptyView>
-                    <CollectionView.ItemTemplate>
-                        <DataTemplate x:DataType="dto:VeterinarioDto">
-                            <Grid Style="{StaticResource FilaElegible}" Margin="0,0,0,8" MinimumHeightRequest="72">
-                                <VerticalStackLayout VerticalOptions="Center">
-                                    <Label Text="{Binding Nombre}" Style="{StaticResource TextoCampo}" FontSize="26" FontAttributes="Bold" />
-                                    <Label Text="{Binding Matricula, StringFormat='Matrícula: {0}'}" Style="{StaticResource TextoCampo}"
-                                           FontSize="18" TextColor="{StaticResource Gray600}" />
-                                </VerticalStackLayout>
-                            </Grid>
-                        </DataTemplate>
-                    </CollectionView.ItemTemplate>
-                </CollectionView>
+                <!-- 1. Veterinario -->
+                <VerticalStackLayout Spacing="10">
+                    <HorizontalStackLayout Spacing="12">
+                        <Border Style="{StaticResource InsigniaPaso}">
+                            <Label Text="1" Style="{StaticResource NumeroPaso}" />
+                        </Border>
+                        <Label Text="¿Quién trabaja?" Style="{StaticResource TituloCuadro}" FontSize="28" VerticalOptions="Center" />
+                    </HorizontalStackLayout>
+                    <Label Text="{Binding TextoVeterinarioElegido}" Style="{StaticResource ElegidoPaso}" />
 
-                <!-- Crear veterinario: nombre obligatorio, matrícula opcional. -->
-                <Border Grid.Row="2" BackgroundColor="{StaticResource CampoClaro}" StrokeThickness="0" Padding="12">
-                    <VerticalStackLayout Spacing="8">
-                        <Label Text="Crear veterinario" Style="{StaticResource TextoCampo}" FontAttributes="Bold" />
-                        <Entry Style="{StaticResource EntradaCampo}" Placeholder="Nombre" Text="{Binding NuevoNombre}" MaxLength="60" />
-                        <Entry Style="{StaticResource EntradaCampo}" Placeholder="Matrícula (opcional)" Text="{Binding NuevaMatricula}" MaxLength="30" />
-                        <Button Text="Crear" Style="{StaticResource BotonCampoSecundario}" Command="{Binding CrearVeterinarioCommand}" />
-                    </VerticalStackLayout>
-                </Border>
-            </Grid>
+                    <CollectionView ItemsSource="{Binding Veterinarios}" SelectionMode="Single"
+                                    SelectedItem="{Binding VeterinarioSeleccionado, Mode=TwoWay}"
+                                    IsVisible="{Binding HayVeterinarios}">
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate x:DataType="dto:VeterinarioDto">
+                                <Grid Style="{StaticResource FilaElegible}" Margin="0,0,0,8" MinimumHeightRequest="72">
+                                    <VerticalStackLayout VerticalOptions="Center">
+                                        <Label Text="{Binding Nombre}" Style="{StaticResource TextoCampo}" FontSize="26" FontAttributes="Bold" />
+                                        <Label Text="{Binding Matricula, StringFormat='Matrícula: {0}'}" Style="{StaticResource TextoCampo}"
+                                               FontSize="18" TextColor="{StaticResource Gray600}" />
+                                    </VerticalStackLayout>
+                                </Grid>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                    </CollectionView>
 
-            <!-- 2. Establecimiento -->
-            <Grid Grid.Column="1" RowDefinitions="Auto,*" RowSpacing="8">
-                <Label Text="2. Establecimiento" Style="{StaticResource TituloCuadro}" FontSize="28" />
-                <CollectionView Grid.Row="1" ItemsSource="{Binding Establecimientos}" SelectionMode="Single"
-                                SelectedItem="{Binding EstablecimientoSeleccionado, Mode=TwoWay}">
-                    <CollectionView.ItemTemplate>
-                        <DataTemplate x:DataType="vm:EstablecimientoParaTrabajar">
-                            <Grid Style="{StaticResource FilaElegible}" Margin="0,0,0,8" MinimumHeightRequest="72">
-                                <Label Text="{Binding Nombre}" Style="{StaticResource TextoCampo}" FontSize="26" FontAttributes="Bold"
-                                       VerticalOptions="Center" />
-                            </Grid>
-                        </DataTemplate>
-                    </CollectionView.ItemTemplate>
-                </CollectionView>
-            </Grid>
+                    <Label Text="Todavía no hay veterinarios. Cargá el primero:" Style="{StaticResource TextoCampo}"
+                           IsVisible="{Binding HayVeterinarios, Converter={StaticResource Invertir}}" />
 
-            <!-- 3. Rodeo, con el avance de hoy -->
-            <Grid Grid.Column="2" RowDefinitions="Auto,*" RowSpacing="8">
-                <Label Text="3. Rodeo" Style="{StaticResource TituloCuadro}" FontSize="28" />
-                <CollectionView Grid.Row="1" ItemsSource="{Binding Rodeos}" SelectionMode="Single"
-                                SelectedItem="{Binding RodeoSeleccionado, Mode=TwoWay}">
-                    <CollectionView.ItemTemplate>
-                        <DataTemplate x:DataType="dto:RodeoParaTrabajarDto">
-                            <Grid Style="{StaticResource FilaElegible}" Margin="0,0,0,8" MinimumHeightRequest="72">
-                                <VerticalStackLayout VerticalOptions="Center">
-                                    <Label Text="{Binding RodeoNombre}" Style="{StaticResource TextoCampo}" FontSize="26" FontAttributes="Bold" />
-                                    <Label Text="{Binding Avance.Porcentaje, StringFormat='Hoy: {0} % procesado'}" Style="{StaticResource TextoCampo}"
-                                           FontSize="20" />
-                                    <Label Text="{Binding Avance.Pendientes, StringFormat='Faltan {0} vacas'}" Style="{StaticResource TextoCampo}"
-                                           FontSize="18" TextColor="{StaticResource Gray600}" />
-                                </VerticalStackLayout>
-                            </Grid>
-                        </DataTemplate>
-                    </CollectionView.ItemTemplate>
-                </CollectionView>
-            </Grid>
-        </Grid>
+                    <Button Text="+ Nuevo veterinario" Style="{StaticResource BotonCampoSecundario}"
+                            Command="{Binding MostrarCrearVeterinarioCommand}" IsVisible="{Binding PuedePedirFormulario}" />
 
-        <!-- Abajo: volver y empezar -->
-        <Grid Grid.Row="3" ColumnDefinitions="Auto,*" ColumnSpacing="16">
-            <Button Grid.Column="0" Text="Volver" Style="{StaticResource BotonCampoSecundario}" Command="{Binding VolverAlInicioCommand}" />
-            <Button Grid.Column="1" Text="Empezar a trabajar" Style="{StaticResource BotonCampo}" BackgroundColor="{StaticResource CampoExito}"
+                    <!-- Crear veterinario: nombre obligatorio, matrícula opcional. -->
+                    <Border BackgroundColor="{StaticResource CampoClaro}" StrokeThickness="0" Padding="16" IsVisible="{Binding MostrarFormularioNuevo}">
+                        <VerticalStackLayout Spacing="10">
+                            <Label Text="Nuevo veterinario" Style="{StaticResource TextoCampo}" FontAttributes="Bold" />
+                            <Entry Style="{StaticResource EntradaCampo}" Placeholder="Nombre" Text="{Binding NuevoNombre}" MaxLength="60" />
+                            <Entry Style="{StaticResource EntradaCampo}" Placeholder="Matrícula (opcional)" Text="{Binding NuevaMatricula}" MaxLength="30" />
+                            <Button Text="Guardar veterinario" Style="{StaticResource BotonCampoSecundario}" Command="{Binding CrearVeterinarioCommand}" />
+                        </VerticalStackLayout>
+                    </Border>
+                </VerticalStackLayout>
+
+                <!-- 2. Establecimiento -->
+                <VerticalStackLayout Spacing="10">
+                    <HorizontalStackLayout Spacing="12">
+                        <Border Style="{StaticResource InsigniaPaso}">
+                            <Label Text="2" Style="{StaticResource NumeroPaso}" />
+                        </Border>
+                        <Label Text="¿En qué establecimiento?" Style="{StaticResource TituloCuadro}" FontSize="28" VerticalOptions="Center" />
+                    </HorizontalStackLayout>
+                    <Label Text="{Binding TextoEstablecimientoElegido}" Style="{StaticResource ElegidoPaso}" />
+                    <CollectionView ItemsSource="{Binding Establecimientos}" SelectionMode="Single"
+                                    SelectedItem="{Binding EstablecimientoSeleccionado, Mode=TwoWay}">
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate x:DataType="vm:EstablecimientoParaTrabajar">
+                                <Grid Style="{StaticResource FilaElegible}" Margin="0,0,0,8" MinimumHeightRequest="72">
+                                    <Label Text="{Binding Nombre}" Style="{StaticResource TextoCampo}" FontSize="26" FontAttributes="Bold"
+                                           VerticalOptions="Center" />
+                                </Grid>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                    </CollectionView>
+                </VerticalStackLayout>
+
+                <!-- 3. Rodeo, con el avance de hoy -->
+                <VerticalStackLayout Spacing="10">
+                    <HorizontalStackLayout Spacing="12">
+                        <Border Style="{StaticResource InsigniaPaso}">
+                            <Label Text="3" Style="{StaticResource NumeroPaso}" />
+                        </Border>
+                        <Label Text="¿Qué rodeo?" Style="{StaticResource TituloCuadro}" FontSize="28" VerticalOptions="Center" />
+                    </HorizontalStackLayout>
+                    <Label Text="{Binding TextoRodeoElegido}" Style="{StaticResource ElegidoPaso}" />
+                    <Label Text="Elegí primero el establecimiento." Style="{StaticResource TextoCampo}" TextColor="{StaticResource Gray600}"
+                           IsVisible="{Binding FaltaEstablecimiento}" />
+                    <CollectionView ItemsSource="{Binding Rodeos}" SelectionMode="Single"
+                                    SelectedItem="{Binding RodeoSeleccionado, Mode=TwoWay}">
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate x:DataType="dto:RodeoParaTrabajarDto">
+                                <Grid Style="{StaticResource FilaElegible}" ColumnDefinitions="*,Auto" ColumnSpacing="8" Margin="0,0,0,8" MinimumHeightRequest="72">
+                                    <VerticalStackLayout Grid.Column="0" VerticalOptions="Center">
+                                        <Label Text="{Binding RodeoNombre}" Style="{StaticResource TextoCampo}" FontSize="26" FontAttributes="Bold" />
+                                        <Label Text="{Binding Avance.Porcentaje, StringFormat='Hoy: {0} % procesado'}" Style="{StaticResource TextoCampo}"
+                                               FontSize="20" />
+                                        <Label Text="{Binding Avance.Pendientes, StringFormat='Faltan {0} vacas'}" Style="{StaticResource TextoCampo}"
+                                               FontSize="18" TextColor="{StaticResource Gray600}" />
+                                    </VerticalStackLayout>
+                                    <!-- Botón chico para resetear el rodeo a 0 (solo para pruebas): pide dos confirmaciones. -->
+                                    <Button Grid.Column="1" Text="↺ A 0" FontSize="14" HeightRequest="36" MinimumWidthRequest="0" Padding="10,0"
+                                            BackgroundColor="#B00020" TextColor="White" CornerRadius="8" VerticalOptions="Start"
+                                            Command="{Binding Source={RelativeSource AncestorType={x:Type vm:EleccionTrabajoViewModel}}, Path=PedirReseteoCommand, x:DataType=vm:EleccionTrabajoViewModel}"
+                                            CommandParameter="{Binding .}"
+                                            SemanticProperties.Description="Resetear este rodeo a como se subió el Excel" />
+                                </Grid>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                    </CollectionView>
+                </VerticalStackLayout>
+            </VerticalStackLayout>
+        </ScrollView>
+
+        <!-- Abajo: qué falta, volver y empezar -->
+        <Grid Grid.Row="3" ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto" ColumnSpacing="16" RowSpacing="8">
+            <Label Grid.Row="0" Grid.ColumnSpan="2" Text="{Binding QueFalta}" IsVisible="{Binding FaltaAlgo}"
+                   Style="{StaticResource TextoCampo}" FontSize="22" FontAttributes="Bold" TextColor="{StaticResource CampoPeligro}"
+                   HorizontalTextAlignment="Center" />
+            <Button Grid.Row="1" Grid.Column="0" Text="Volver" Style="{StaticResource BotonCampoSecundario}" Command="{Binding VolverAlInicioCommand}" />
+            <Button Grid.Row="1" Grid.Column="1" Text="Empezar a trabajar" Style="{StaticResource BotonCampo}" BackgroundColor="{StaticResource CampoExito}"
                     Command="{Binding EmpezarCommand}"
                     SemanticProperties.Hint="Abre la pantalla de trabajo con el veterinario y el rodeo elegidos" />
+        </Grid>
+
+        <!-- Resetear un rodeo: dos preguntas seguidas. Solo la segunda hace el cambio. -->
+        <Grid Grid.RowSpan="4" Margin="-24,-16" IsVisible="{Binding HayReseteo}" BackgroundColor="{StaticResource CampoVelo}" Padding="16">
+            <Grid.GestureRecognizers><TapGestureRecognizer /></Grid.GestureRecognizers>
+            <Border BackgroundColor="White" StrokeThickness="0" Padding="18,16" HorizontalOptions="Fill" VerticalOptions="Center">
+                <VerticalStackLayout Spacing="14">
+                    <!-- Primera pregunta -->
+                    <VerticalStackLayout Spacing="12" IsVisible="{Binding EsPrimerPasoReseteo}">
+                        <Label Text="¿Resetear el rodeo?" Style="{StaticResource TituloCuadro}" FontSize="26" />
+                        <Label Text="{Binding NombreRodeoAResetear}" Style="{StaticResource TextoCampo}" FontSize="22" FontAttributes="Bold" />
+                        <Label Text="Vuelve a quedar como cuando subiste el Excel: el avance y lo cargado de este rodeo (marcas, tactos, mangas) dejan de verse. Lo anterior queda guardado, pero oculto."
+                               Style="{StaticResource TextoCampo}" FontSize="18" />
+                        <Button Text="Sí, seguir" Style="{StaticResource BotonCampoPeligro}" HeightRequest="56" FontSize="20"
+                                Command="{Binding ConfirmarPrimerPasoReseteoCommand}" />
+                        <Button Text="Cancelar" Style="{StaticResource BotonCampoSecundario}" HeightRequest="52" FontSize="20"
+                                Command="{Binding CancelarReseteoCommand}" />
+                    </VerticalStackLayout>
+                    <!-- Segunda pregunta -->
+                    <VerticalStackLayout Spacing="12" IsVisible="{Binding EsSegundoPasoReseteo}">
+                        <Label Text="¿Estás seguro?" Style="{StaticResource TituloCuadro}" FontSize="26" TextColor="{StaticResource CampoPeligro}" />
+                        <Label Text="{Binding NombreRodeoAResetear, StringFormat='Se resetea «{0}». No se puede volver atrás desde la app.'}"
+                               Style="{StaticResource TextoCampo}" FontSize="20" FontAttributes="Bold" />
+                        <Button Text="Sí, resetear" Style="{StaticResource BotonCampoPeligro}" HeightRequest="56" FontSize="20"
+                                IsEnabled="{Binding EstaReseteando, Converter={StaticResource Invertir}}"
+                                Command="{Binding ConfirmarReseteoCommand}" />
+                        <Button Text="No, cancelar" Style="{StaticResource BotonCampoSecundario}" HeightRequest="52" FontSize="20"
+                                Command="{Binding CancelarReseteoCommand}" />
+                    </VerticalStackLayout>
+                </VerticalStackLayout>
+            </Border>
         </Grid>
     </Grid>
 </ContentPage>

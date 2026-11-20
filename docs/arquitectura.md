@@ -122,12 +122,17 @@ Archivo de muestra (Dairy Comp, `.xls`): una hoja, 226 vacas, columnas `ID, CVET
 
 ## 10. Flujo de trabajo y UX
 
-Lectura → ficha → un toque en el estado → guardado automático → vuelve a esperar. Meta: 1 toque por vaca.
+Lectura → marca automática → ficha → elegir el evento (y, si se quiere, una observación) → **Entrar** guarda → vuelve a esperar. La tablet se usa **en vertical**.
 
 - Botones grandes, alto contraste, legibles al sol, pensados para una mano.
-- Deshacer con snackbar de 5 s (genera un tacto de anulación).
-- Vibración y sonido al leer; pantalla siempre encendida durante el trabajo.
-- No encontrado: botón "Dar de alta en campo" con el ID cargado.
+- **CVET** de Dairy Comp: 0 = no entra en tacto (chicharra, queda marcada y suma, sin ficha); otro valor = motivo del tacto, se muestra en el título.
+- Barra de arriba siempre visible (engranaje, flechita para contraer, título, veterinario); contraída o abierta, con avance, horarios, contador de manga (opcional) y "Terminar el tacto".
+- **Mangas opcionales por establecimiento** (engranaje): cantidad a mano, contador N/M y cierre automático al completarse.
+- Deshacer con aviso de 5 s al guardar un tacto o cerrar una manga; en "Últimos movimientos", **Deshacer** y **Editar** (editar = anular y registrar uno nuevo, en una transacción).
+- Vibración y sonido (pitido de repetido, chicharra de CVET 0, tono de manga completa); pantalla siempre encendida durante el trabajo.
+- No encontrado: aviso con el ID cargado y botones "Buscar a mano" y "Cerrar" (no hay alta en campo desde el 2026-11-19: los números se corrigen en el bastón).
+- **Teclado y márgenes (Android):** el teclado se baja al buscar y `MainActivity` aplica los márgenes del sistema (barras y teclado), porque desde Android 15 la app se dibuja bajo las barras.
+- **ViewModels grandes:** `TrabajoViewModel` está partido en archivos `partial` por tema (núcleo, `.Ficha`, `.Mangas`, `.Avisos`).
 
 ## 11. Multi-tablet y multi-veterinario
 

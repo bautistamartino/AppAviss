@@ -45,7 +45,7 @@ Dairy Comp **usa el `ID`** para cruzar con la vaca y **crea eventos con historia
 
 - **Importación**: leer el Excel, validar estructura y datos, mostrar vista previa con errores por fila y confirmar. Ignorar la fila `Total`. Guardar el original.
 - **Rodeos y tambos**: varios tambos por tablet; cada importación es un rodeo con nombre, fecha, cantidad de animales y archivo de origen.
-- **Trabajo de campo**: leer la caravana con el bastón, buscar la vaca automáticamente, mostrar la ficha, elegir el nuevo estado con un toque y guardar al instante. Búsqueda manual como respaldo. Alta en campo de un animal no encontrado.
+- **Trabajo de campo**: leer la caravana con el bastón, buscar la vaca automáticamente, mostrar la ficha, elegir el evento (y una observación opcional) y guardar con "Entrar". Búsqueda manual como respaldo. Alta en campo de un animal no encontrado.
   - **Mangas** (spec 003): el trabajo se organiza en mangas numeradas por rodeo; cada vaca leída queda **marcada automáticamente** en la manga actual (contador de vacas distintas), con aviso si ya pasó ese día. Se cierran con "Finalizar manga" (verificando el contador contra la cantidad real) o "Terminar el tacto" (doble confirmación); un cierre se puede deshacer reabriendo la manga mientras sea el último del día.
   - **Registros y catálogos de campo** (spec 004, borrador): tratamientos, nota y días de preñez del tacto, rechazo y estados nuevos creados en el campo.
 - **Historial**: registrar fecha, animal, estado anterior y nuevo, veterinario y hora de cada cambio. Nunca borrar ni sobrescribir. Deshacer mediante anulación.
