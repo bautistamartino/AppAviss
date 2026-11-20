@@ -57,7 +57,17 @@ public sealed class PerfilDairyComp : IExcelProfile
 
         // El formato se detecta por el CONTENIDO, no por la extensión: un .xlsx renombrado a .xls empieza con "PK" (zip).
         if (!EmpiezaConFirmaOle2(contenido))
-            return ResultadoLectura.Rechazado(MotivoRechazoArchivo.FormatoNoSoportado);
+        {
+            // Ni .xls ni .xlsx (un zip empieza con "PK"): puede ser el listado guardado como CSV o TXT. Se arma una hoja en
+            // memoria y se aplican las mismas reglas que al .xls. Si no parece un listado con columna ID, no se soporta.
+            if (contenido.Length >= 2 && contenido[0] == (byte)'P' && contenido[1] == (byte)'K')
+                return ResultadoLectura.Rechazado(MotivoRechazoArchivo.FormatoNoSoportado);
+
+            var hojaTexto = LectorCsv.ComoHoja(contenido);
+            return hojaTexto is null
+                ? ResultadoLectura.Rechazado(MotivoRechazoArchivo.FormatoNoSoportado)
+                : LeerHoja(hojaTexto, maxFilas);
+        }
 
         contenido = CompletarUltimoSector(contenido, out bool cabeceraInvalida);
         if (cabeceraInvalida)

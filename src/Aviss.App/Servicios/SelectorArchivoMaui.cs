@@ -9,13 +9,17 @@ namespace Aviss.App.Servicios;
 public sealed class SelectorArchivoMaui : ISelectorArchivo
 {
     // Android filtra por tipo MIME, no por extensión. Se aceptan el MIME de .xls, el de .xlsx (para poder mostrar el
-    // mensaje claro de "todavía no se importa") y octet-stream, que es como algunos exploradores marcan un .xls.
+    // mensaje claro de "todavía no se importa"), los de .csv y .txt, y octet-stream, que es como algunos exploradores
+    // marcan un .xls o un .csv.
     private static readonly FilePickerFileType TiposExcel = new(new Dictionary<DevicePlatform, IEnumerable<string>>
     {
         [DevicePlatform.Android] = new[]
         {
             "application/vnd.ms-excel",
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            "text/csv",
+            "text/comma-separated-values",
+            "text/plain",
             "application/octet-stream"
         }
     });
@@ -25,7 +29,7 @@ public sealed class SelectorArchivoMaui : ISelectorArchivo
         // PickAsync devuelve nulo si el veterinario cancela. Debe correr en el hilo de la interfaz.
         var resultado = await MainThread.InvokeOnMainThreadAsync(() => FilePicker.Default.PickAsync(new PickOptions
         {
-            PickerTitle = "Elegí el Excel de Dairy Comp (.xls)",
+            PickerTitle = "Elegí el listado de Dairy Comp (.xls o .csv)",
             FileTypes = TiposExcel
         }));
         if (resultado is null) return null;
