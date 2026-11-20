@@ -92,4 +92,19 @@ public partial class TrabajoPage : ContentPage
 
 	private void OnCerrarVeterinariosClicked(object? sender, EventArgs e) => CapaVeterinarios.IsVisible = false;
 
+	// Al buscar (botón "Buscar" o Enter en el teclado) el teclado se baja solo: si no, queda tapando la ficha que acaba de aparecer.
+	// Es solo de pantalla: la búsqueda en sí la hace el ViewModel con su comando.
+	private async void OnBuscarTerminado(object? sender, EventArgs e)
+	{
+		try
+		{
+			CampoBusqueda.Unfocus();
+			await CampoBusqueda.HideSoftInputAsync(CancellationToken.None);
+		}
+		catch (Exception)
+		{
+			// Si el teclado no se puede bajar, no pasa nada: la búsqueda ya se hizo.
+		}
+	}
+
 }
