@@ -29,3 +29,6 @@ Cada ítem es una spec o un paso chico. Se marca con `[x]` cuando está terminad
 
 ## Etapa 6 — Producto
 - [ ] 6.1 Varios veterinarios y tambos pulidos, backups, empaquetado, firma y distribución a las tablets.
+  - Distribución: APK firmado por sideload para las primeras tablets (keystore fuera del repo y con backup); Google Play con pista privada cuando haya clientes externos.
+  - Actualizaciones: subir `ApplicationVersion` (siempre creciente) y firmar con el mismo keystore; instalar encima con `adb install -r`, nunca desinstalar (borra la base). Script de PowerShell que compile, firme e instale en todas las tablets conectadas.
+  - Datos: backup automático de la base antes de aplicar una migración de EF Core; probar la migración con una base de la versión anterior; actualizar fuera de un tacto en curso. Decidir si se permite exportar o importar la base entre tablets.
