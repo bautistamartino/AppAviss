@@ -10,6 +10,8 @@ Fecha: 2026-11-16 (reescrita: 2026-11-21)
 
 **Rechazo.** El veterinario marca una vaca como **rechazo** (que no sirve para el servicio) con una observación libre; las más usadas son "pata" o "ubre", pero es personalizada. En la ficha actual (Evento + Observación + Entrar) encaja como **un evento más de la lista**, con la observación como motivo.
 
+**Para qué sirve (palabras del usuario):** una vaca en espera dura solo hasta que el veterinario termina de tactarla, **unos 5 minutos como mucho**. La comodidad es que mientras se tacta un animal se puede **seguir marcando a los otros y ver si van a tacto o no** (el CVET y la chicharra), y así saber si el siguiente va a tacto o si directamente ya se **libera a los animales de esa manga**. Agiliza el trabajo. Por eso casi nunca habrá más de 2 o 3 vacas en espera a la vez.
+
 Todo debe seguir siendo muy rápido y pensado para una mano, en vertical.
 
 ## Alcance
@@ -36,11 +38,11 @@ Todo debe seguir siendo muy rápido y pensado para una mano, en vertical.
 
 ### En Espera
 - **RF-1** — Cuando hay una ficha abierta de una vaca que entra en tacto, el sistema deberá ofrecer en la barra de abajo, junto a "Saltar" y "Entrar", el botón **"En espera"**. Al tocarlo deberá guardar la espera de esa vaca en el rodeo en trabajo (con el veterinario, la fecha y hora del reloj y el dispositivo, en una única operación indivisible, con su registro de historial), **cerrar la ficha sin guardar ningún tacto** y dejar la pantalla lista para la siguiente lectura casi de inmediato. Si la vaca ya estaba en espera, no deberá crear otra. El evento y la observación que se habían elegido **no se guardan**: al volver se empieza de cero. Una vaca con CVET 0 no puede ponerse en espera (no tiene botón).
-- **RF-2** — El sistema deberá mostrar siempre, en la barra de arriba de la pantalla de trabajo, un acceso **"En espera: N"** con la cantidad de vacas pendientes del rodeo en trabajo (oculto o apagado en 0), que abre la **lista de espera**. La lista muestra, de la más antigua a la más reciente, la caravana, el CVET, la hora en que se puso en espera y hace cuánto espera, con un botón para abrir cada una. Debe seguir siendo usable con 20 o más vacas pendientes.
+- **RF-2** — El sistema deberá mostrar, en la pantalla de trabajo y sin cambiar de pantalla, **una botonera chica con la caravana de cada vaca en espera** del rodeo en trabajo (por ejemplo "7712 · 3 min"), de la más antigua a la más reciente, para abrir cualquiera con **un toque**. Como se espera que haya 2 o 3 a la vez (cada una dura unos 5 minutos), la botonera debe alcanzar para unas 4 vacas; con más, deberá mostrar las primeras y un botón **"+N"** que abre la **lista de espera** completa (caravana, CVET, hora en que se puso en espera y hace cuánto espera, con un botón para abrir cada una). Sin vacas en espera, la botonera no aparece y no ocupa lugar.
 - **RF-3** — Cuando el veterinario abre una vaca desde la lista de espera, el sistema deberá mostrar su ficha normal (con Evento, Observación, Datos, Historial, Saltar y Entrar) **sin volver a marcarla ni sumarla al conteo** y marcada como "en espera" (un cartel visible). Al guardar con **Entrar** un tacto (spec 003 RF-39) o un rechazo (RF-6), la espera deberá quedar **resuelta** en la misma operación indivisible que guarda el registro (si el registro se rechaza, la espera sigue pendiente). **Saltar** cierra la ficha y la espera sigue pendiente.
 - **RF-4** — Cuando el veterinario quiera descartar una espera sin cargar nada (por ejemplo, la vaca no necesitaba tacto), el sistema deberá ofrecer en la lista de espera el botón **"Sacar de la espera"** con una confirmación, que marca la espera como **sacada** (quién y cuándo) sin guardar ningún registro de campo.
 - **RF-5** — Cuando se lee (o se busca a mano) una vaca que está **en espera**, el sistema deberá **abrir directamente su ficha** como en RF-3 (con el cartel "en espera"), sin el aviso de "Animal repetido" ni "Ya pasó" y sin marcarla otra vez. Una vaca que ya fue resuelta o sacada vuelve a comportarse como cualquier vaca ya procesada (spec 003 RF-22).
-- **RF-9** — Cuando se empieza a trabajar un rodeo, el sistema deberá dejar como **vencidas** las esperas pendientes de un día local anterior (red de seguridad, como el cierre automático de una manga abierta, spec 003 RF-10): no se muestran más en la lista ni cuentan en "En espera: N". No hay corte automático a medianoche con la app abierta. *(Criterio técnico revisable: la alternativa es que sigan pendientes hasta resolverlas.)*
+- **RF-9** — Cuando se empieza a trabajar un rodeo, el sistema deberá dejar como **vencidas** las esperas pendientes de un día local anterior (red de seguridad, como el cierre automático de una manga abierta, spec 003 RF-10): no se muestran más. Como una espera dura solo unos minutos (hasta que el veterinario termina de tactar), **no se necesita ningún otro vencimiento**; no hay corte automático a medianoche con la app abierta.
 - **RF-10** — Cuando el veterinario toca "Terminar el tacto" y hay esperas pendientes, el sistema deberá avisarlo en la pregunta final ("Hay N vacas en espera") junto a la advertencia de manga abierta de la 003 RF-46, sin impedir terminar. Al terminar, las esperas pendientes quedan **vencidas**.
 
 ### Rechazo
@@ -73,7 +75,7 @@ Todo debe seguir siendo muy rápido y pensado para una mano, en vertical.
 
 ## Criterios de aceptación
 - [ ] Desde una ficha con CVET distinto de 0, "En espera" guarda la espera, cierra la ficha sin tacto y deja leer la siguiente enseguida; el acceso "En espera: N" sube; con CVET 0 no hay botón (RF-1, RF-2).
-- [ ] La lista de espera muestra caravana, CVET, hora y tiempo esperando; abrir una vaca de la lista muestra su ficha con el cartel "en espera" sin sumar al conteo (RF-2, RF-3).
+- [ ] La botonera muestra la caravana de cada vaca en espera (hasta 4, con "+N" para el resto) y un toque abre su ficha con el cartel "en espera" sin sumar al conteo; la lista completa muestra caravana, CVET, hora y tiempo esperando (RF-2, RF-3).
 - [ ] Guardar con Entrar un tacto o un rechazo desde una espera la deja **resuelta** en la misma operación; si el registro se rechaza, sigue pendiente; "Saltar" no la cambia (RF-3).
 - [ ] "Sacar de la espera" (con confirmación) la deja **sacada** sin guardar registros de campo (RF-4).
 - [ ] Leer o buscar una vaca en espera abre su ficha directo, sin "Animal repetido" (RF-5).
@@ -96,23 +98,24 @@ Todo debe seguir siendo muy rápido y pensado para una mano, en vertical.
 **Cerradas con criterio técnico (revisables):**
 5. **La espera no es un registro de campo:** no entra en el "último vigente" ni en el orden compartido, para no bloquear el deshacer de la marca ni de otros registros; es una tabla aparte con su historial.
 6. **Una sola espera pendiente por vaca y rodeo,** garantizada también en la base (índice único parcial).
-7. **Vencen al cambiar el día** (al empezar a trabajar o al terminar el tacto), como la red de seguridad de las mangas; la alternativa es dejarlas pendientes hasta resolverlas (RF-9).
+7. **Vencen al cambiar el día** (al empezar a trabajar o al terminar el tacto), solo como red de seguridad, porque las esperas duran minutos (RF-9). **Confirmado por el usuario el 2026-11-21.**
+8b. **Botonera de acceso directo** con la caravana de cada vaca en espera (2 o 3 a la vez), y lista completa solo como respaldo (RF-2).
 8. **El rechazo es otro tipo de registro de campo** (no un estado del catálogo ni un "tacto" con estado especial) para no cambiar el estado de la vaca ni generar un evento de estado hacia Dairy Comp.
 9. **Editar** un movimiento puede cambiar entre tacto y rechazo, porque se anula y se guarda uno nuevo (RF-8).
 
 ## Supuestos y riesgos
 - **Exportación a Dairy Comp:** no se sabe cómo debe expresarse el rechazo (¿evento, campo, observación?); lo define la spec de exportación tras la prueba 0.2. Esta spec solo lo guarda.
 - **Cambio de base:** dos tablas nuevas (espera y rechazo) con triggers de inmutabilidad y un índice único parcial; el orden de guardado compartido incluye al rechazo. Constitución §3 y §7. Se define en el plan.
-- **Esperas de varios días:** si el tambo trabaja en varios días seguidos con la misma vaca esperando, el vencimiento diario puede ser molesto (RF-9, criterio revisable).
+- **Esperas de varios días:** no es un problema: una espera dura minutos (el usuario, 2026-11-21); el vencimiento diario es solo una red de seguridad.
 - **Una vaca en espera cuya marca se desmarca:** la regla de "sacar la espera" se confirma en el plan (casos límite).
 - **Tamaño (constitución §10, máximo 5 tareas):** entra. Orden previsto: (1) entidades, migración y reglas (espera, rechazo, orden compartido); (2) servicios (poner en espera, resolver, sacar, vencer; guardar y editar rechazo; movimientos); (3) ViewModels y lector (abrir directo una vaca en espera); (4) pantalla de trabajo (botón, acceso y lista de espera, evento Rechazo con atajos); (5) movimientos, historial y cierre documental.
 - **Pantalla sin verificar en navegador:** la interfaz se prueba en la tablet (hoy no hay tablet); la lógica y los ViewModels, con tests.
 
 ## Preguntas abiertas
-- ¿Las esperas vencen al cambiar el día o siguen pendientes hasta resolverlas? (RF-9)
-- Al **desmarcar** una vaca en espera, ¿se saca la espera sola? (propuesto: sí)
-- ¿El atajo del rechazo debe tener más motivos fijos además de "Patas" y "Ubre"?
-- ¿Cuántas vacas en espera suele haber a la vez? (define el diseño de la lista)
+- ~~¿Las esperas vencen al cambiar el día?~~ **Resuelta (2026-11-21):** duran minutos; vencen al cambiar el día solo como red de seguridad.
+- ~~¿Cuántas vacas suele haber en espera a la vez?~~ **Resuelta:** 2 o 3, no más de 5 minutos cada una.
+- Al **desmarcar** una vaca en espera, ¿se saca la espera sola? (propuesto: sí; el usuario todavía no contestó)
+- ¿El atajo del rechazo necesita más motivos fijos además de "Patas" y "Ubre"? (el usuario todavía no contestó)
 
 ## Diferido a una spec posterior de tratamientos
 Estaba en el borrador original (ver el historial de Git, commit `f09f9d0`): catálogo de tratamientos con **Prostal** y **DIB** de ejemplo; panel opcional "Detalle" con tratamientos, nota y días de preñez (0 a 300); **solo tratamiento** (registro sin tacto ni cambio de estado); los **tres renglones de evento + observación** por vaca del Daily; desactivar estados y tratamientos; deshacer un estado o tratamiento recién creado. Se retoma cuando el usuario lo pida; hoy "+ Nuevo evento" (spec 003 RF-39) ya cubre crear un estado desde la lista.
