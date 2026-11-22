@@ -43,8 +43,8 @@
                 <Label Text="Importar rodeo" Style="{StaticResource Titulo}" FontSize="34"
                        SemanticProperties.HeadingLevel="Level1" />
                 <Label Style="{StaticResource Texto}"
-                       Text="Elegí el archivo .xls que exportaste de Dairy Comp. Antes de guardar nada vas a ver una vista previa." />
-                <Button Text="Elegir archivo .xls"
+                       Text="Elegí el listado que exportaste de Dairy Comp (.xls, .csv o .txt). Antes de guardar nada vas a ver una vista previa." />
+                <Button Text="Elegir archivo"
                         Style="{StaticResource BotonGrande}"
                         Command="{Binding ElegirArchivoCommand}" />
                 <HorizontalStackLayout Spacing="12" IsVisible="{Binding EstaOcupado}">
