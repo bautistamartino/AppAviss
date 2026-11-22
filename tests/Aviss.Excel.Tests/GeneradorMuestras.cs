@@ -41,7 +41,55 @@ public static class GeneradorMuestras
         ["encabezado-duplicado.xls"] = EncabezadoDuplicado(),
         ["solo-encabezados.xls"] = SoloEncabezados(),
         ["texto-plano.xls"] = System.Text.Encoding.UTF8.GetBytes("esto no es un excel\n"),
+        ["dairy-comp-282-vacas.csv"] = Csv282Vacas(),
     };
+
+    /// <summary>
+    /// Imita un listado de Dairy Comp guardado como CSV (formato visto en un archivo real, con todos los datos inventados):
+    /// separador ";", encabezados entre comillas, campos con espacios de relleno, un ";" de más al final de cada fila,
+    /// Windows-1252 (la Ñ de PREÑADA es un solo byte), "-" en las fechas vacías, CVET con códigos de texto o "0" y la fila
+    /// final "Total:;282" con el número en la celda de al lado.
+    /// </summary>
+    public static byte[] Csv282Vacas()
+    {
+        const int cantidad = 282;
+        string[] toros = ["TOROUNO", "TORODOS", "TOROTRES", "TOROCUATRO", "TOROCINCO"];
+        var azar = new Random(20261122); // semilla fija
+        var sb = new System.Text.StringBuilder();
+        sb.Append("\"ID\";\"CVET\";\"LACT\";\"DEL\";\"FPART\";\"FCELO\";\"UTORO\";\"DDUC\";\"DCC\";\"RPRO\";\"FAPAR\";\"LECHE\";\n");
+
+        string Fecha(int dias) => new DateTime(2026, 11, 22).AddDays(-dias).ToString("dd/MM/yy");
+
+        for (int i = 0; i < cantidad; i++)
+        {
+            int id = 20001 + i * 7;                      // únicos e inventados, distintos de los reales
+            int lactancia = azar.Next(1, 7);
+            int del = azar.Next(3, 600);
+            string estado = azar.Next(10) switch
+            {
+                < 4 => "PREÑADA", < 6 => "INSEMIN", 6 => "FRESCA", 7 => "SECA", 8 => "VACIA", _ => "NOINSEM",
+            };
+            string cvet = estado switch
+            {
+                "INSEMIN" => azar.Next(3) == 0 ? "0" : "PRE",
+                "FRESCA" => "FRES",
+                "VACIA" => "DLSC",
+                "PREÑADA" => azar.Next(30) == 0 ? "ASEC" : "0",
+                _ => "0",
+            };
+            bool sinCelo = estado is "FRESCA" or "VACIA";
+            bool prenada = estado is "PREÑADA" or "SECA";
+            int ddu = sinCelo ? 0 : azar.Next(5, 280);
+            string celo = sinCelo ? "-" : Fecha(azar.Next(1, 200));
+            string toro = sinCelo ? "-" : toros[azar.Next(toros.Length)];
+            string fapar = prenada ? Fecha(-azar.Next(30, 280)) : "-";
+            int leche = lactancia > 1 && azar.Next(4) == 0 ? azar.Next(20, 60) : 0;
+
+            sb.Append($" {id,4} ;{cvet,-5};{lactancia,4} ;{del,4} ;{Fecha(del)};{celo,8};{toro,-10};{ddu,4} ;{(prenada ? ddu : 0),4} ;{estado,-8};{fapar,8};{leche,6} ;\n");
+        }
+        sb.Append($"Total:;{cantidad};;;;;;;;;;;\n");
+        return System.Text.Encoding.Latin1.GetBytes(sb.ToString()); // Windows-1252: la Ñ es 0xD1
+    }
 
     /// <summary>226 vacas inventadas (ID únicos), estados repartidos y la fila final Total:226.</summary>
     public static byte[] Muestra226Vacas()

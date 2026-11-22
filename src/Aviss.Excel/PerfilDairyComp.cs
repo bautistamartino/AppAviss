@@ -153,6 +153,7 @@ public sealed class PerfilDairyComp : IExcelProfile
 
             var celdas = new Dictionary<string, CeldaLeida>(StringComparer.Ordinal);
             CeldaLeida? primeraConContenido = null;
+            CeldaLeida? segundaConContenido = null;
             bool hayContenido = false;
 
             for (int c = Math.Max(0, (int)fila.FirstCellNum); c < fila.LastCellNum; c++)
@@ -163,7 +164,8 @@ public sealed class PerfilDairyComp : IExcelProfile
                 if (!celda.EsVacia)
                 {
                     hayContenido = true;
-                    primeraConContenido ??= celda;
+                    if (primeraConContenido is null) primeraConContenido = celda;
+                    else segundaConContenido ??= celda;
                 }
                 if (columnaPorIndice.TryGetValue(c, out var nombre))
                     celdas[nombre] = celda;
@@ -171,7 +173,7 @@ public sealed class PerfilDairyComp : IExcelProfile
 
             if (!hayContenido) continue; // fila totalmente vacía
 
-            if (primeraConContenido is { Tipo: TipoCelda.Texto } primera && EsFilaTotal(primera.Texto, out int total))
+            if (primeraConContenido is { Tipo: TipoCelda.Texto } primera && EsFilaTotal(primera.Texto, segundaConContenido, out int total))
             {
                 totalDeclarado = total; // si hay varias, queda la última
                 continue;
@@ -242,11 +244,27 @@ public sealed class PerfilDairyComp : IExcelProfile
 
     private static bool Igual(string a, string b) => string.Equals(a, b, StringComparison.OrdinalIgnoreCase);
 
-    private static bool EsFilaTotal(string texto, out int total)
+    // "Total:" solo, con el número en la celda siguiente (así lo guarda Dairy Comp en un CSV: "Total:;282").
+    private static readonly Regex PatronTotalSinNumero = new(@"^\s*total\s*:\s*$",
+        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+
+    private static bool EsFilaTotal(string texto, CeldaLeida? siguiente, out int total)
     {
         total = 0;
         var m = PatronTotal.Match(texto);
-        return m.Success && int.TryParse(m.Groups[1].Value, NumberStyles.None, CultureInfo.InvariantCulture, out total);
+        if (m.Success)
+            return int.TryParse(m.Groups[1].Value, NumberStyles.None, CultureInfo.InvariantCulture, out total);
+
+        if (!PatronTotalSinNumero.IsMatch(texto) || siguiente is null) return false;
+        if (siguiente.Tipo == TipoCelda.Numerica)
+        {
+            double n = siguiente.Numero ?? -1;
+            if (n < 0 || n != Math.Floor(n) || n > int.MaxValue) return false;
+            total = (int)n;
+            return true;
+        }
+        return siguiente.Tipo == TipoCelda.Texto
+            && int.TryParse(siguiente.Texto.Trim(), NumberStyles.None, CultureInfo.InvariantCulture, out total);
     }
 
     private static bool TieneContenido(IRow fila)

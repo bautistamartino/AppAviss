@@ -76,6 +76,22 @@ public class MuestrasTests
     }
 
     [Fact]
+    public void La_muestra_csv_de_282_vacas_se_lee_con_el_perfil()
+    {
+        var bytes = File.ReadAllBytes(Path.Combine(CarpetaMuestras(), "dairy-comp-282-vacas.csv"));
+
+        var r = new PerfilDairyComp().Leer(bytes, LimitesImportacion.MaxFilas);
+
+        Assert.True(r.EsCorrecto, $"{r.Rechazo} {r.Mensaje}");
+        var lectura = r.Lectura!;
+        Assert.Equal(282, lectura.Filas.Count);          // la fila "Total:;282" no cuenta como vaca
+        Assert.Equal(282, lectura.TotalDeclarado);
+        Assert.Equal("RPRO", lectura.NombreColumnaEstado);
+        Assert.Contains(lectura.Filas, f => f.Celdas["RPRO"].Texto.Trim() == "PREÑADA"); // la Ñ de Windows-1252
+        Assert.Equal(TipoCelda.Numerica, lectura.Filas[0].Celdas["ID"].Tipo);           // " 20001 " sin espacios
+    }
+
+    [Fact]
     public void El_README_existe()
         => Assert.True(File.Exists(Path.Combine(CarpetaMuestras(), "README.md")));
 }

@@ -1,6 +1,6 @@
 # Muestras de prueba
 
-Archivos `.xls` para probar la importación de Dairy Comp. **Todos son inventados**: IDs, estados y fechas salen de un generador con semilla fija. Nunca se guarda aquí un Excel real de un tambo (constitución, principio 6); el `.gitignore` excluye cualquier `.xls`/`.xlsx` fuera de esta carpeta.
+Archivos `.xls` (y un `.csv`) para probar la importación de Dairy Comp. **Todos son inventados**: IDs, estados y fechas salen de un generador con semilla fija. Nunca se guarda aquí un Excel real de un tambo (constitución, principio 6); el `.gitignore` excluye cualquier `.xls`/`.xlsx` fuera de esta carpeta.
 
 Los genera `tests/Aviss.Excel.Tests/GeneradorMuestras.cs`. Un test (`MuestrasTests`) comprueba que lo que está acá coincide byte a byte con lo que genera el código, y otro que no haya archivos que el generador no conozca.
 
@@ -10,6 +10,7 @@ Los genera `tests/Aviss.Excel.Tests/GeneradorMuestras.cs`. Un test (`MuestrasTes
 |---|---|---|
 | `dairy-comp-226-vacas.xls` | 226 vacas, columnas de Dairy Comp (`ID, CVET, FPART, LACT, DEL, FCELO, VINS, UTORO, COM, RPRO, FAPAR`), fechas como texto con espacios, fila final `Total:226` | Se lee: 226 filas de datos (`VINS` es un número de 0 a 6; las fechas, texto con espacios) |
 | `filas-con-problemas.xls` | `ID` vacío, repetido, `ñ1`/`Ñ1`, de 21 caracteres, con espacio en el medio, decimal, estado desconocido y `Total:12` | Filas excluidas con su motivo; el resto entra |
+| `dairy-comp-282-vacas.csv` | 282 vacas inventadas con el formato de un CSV real de Dairy Comp: separador `;`, encabezados entre comillas, campos con espacios de relleno, Windows-1252 (la `Ñ` de PREÑADA), `-` en fechas vacías, CVET con códigos de texto o `0`, columnas `ID, CVET, LACT, DEL, FPART, FCELO, UTORO, DDUC, DCC, RPRO, FAPAR, LECHE` y fila final `Total:;282` | Se lee: 282 filas de datos; la fila `Total` no cuenta como vaca |
 | `vacio.xls` | 0 bytes | Rechazo: archivo vacío |
 | `corrupto.xls` | Cabecera de Excel viejo seguida de basura | Rechazo: archivo dañado |
 | `xlsx-renombrado.xls` | Un `.xlsx` de verdad con extensión `.xls` | Rechazo: formato no soportado |

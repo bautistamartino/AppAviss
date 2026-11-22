@@ -27,6 +27,28 @@ public class PerfilDairyCompCsvTests
         "1000,2,241,24/ 3/26 ,16/10/26 ,FULHAN    ,4,35,INSEMIN ,0,,0\n" +
         "1003,2,7,13/11/26 ,,,0,0,FRESCA  ,0,,0\n";
 
+    [Theory]
+    [InlineData("Total:;2;;;\n", 2)]            // "Total:" en la columna ID y el número en la celda de al lado
+    [InlineData("Total: ;2;;;\n", 2)]
+    [InlineData("TOTAL:;0002;;;\n", 2)]
+    [InlineData("Total:2;;;;\n", 2)]            // la forma de siempre: todo en una celda
+    public void La_fila_Total_con_el_numero_en_otra_celda_no_cuenta_como_vaca(string total, int esperado)
+    {
+        var lectura = LeerOk(Utf8("ID;RPRO;LACT;\n1000;INSEMIN;2;\n1003;FRESCA;2;\n" + total));
+
+        Assert.Equal(2, lectura.Filas.Count);
+        Assert.Equal(esperado, lectura.TotalDeclarado);
+    }
+
+    [Fact]
+    public void Una_fila_que_empieza_con_Total_pero_sin_numero_sigue_siendo_una_fila()
+    {
+        var lectura = LeerOk(Utf8("ID;RPRO;LACT;\n1000;INSEMIN;2;\nTotal:;abc;;\n"));
+
+        Assert.Equal(2, lectura.Filas.Count);   // no es una fila de totales: el importador la va a excluir como ID inválido
+        Assert.Null(lectura.TotalDeclarado);
+    }
+
     [Fact]
     public void Csv_con_comas_se_lee_como_el_xls()
     {
