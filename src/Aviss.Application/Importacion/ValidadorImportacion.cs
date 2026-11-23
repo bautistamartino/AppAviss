@@ -1,6 +1,7 @@
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using Aviss.Domain.Entidades;
+using Aviss.Domain.Enums;
 using Aviss.Domain.Reglas;
 
 namespace Aviss.Application.Importacion;
@@ -94,11 +95,13 @@ public static class ValidadorImportacion
     /// <summary>
     /// Código de Dairy Comp (sin distinguir mayúsculas, sin normalizar acentos) → estado ACTIVO. Los dados de baja
     /// no entran, así que sus códigos cuentan como desconocidos (RF-11). Ante dos activos iguales gana el primero.
+    /// Spec 005: los eventos de tipo SoloEvento (OK, Aborto, Revisar Nuevamente) tampoco entran: no son un estado
+    /// reproductivo, así que un RPRO igual a su código entra sin estado y con advertencia, como un código desconocido.
     /// </summary>
     private static Dictionary<string, Guid> IndexarEstadosActivos(IReadOnlyList<EstadoReproductivo> estados)
     {
         var mapa = new Dictionary<string, Guid>();
-        foreach (var e in estados.Where(e => e.Activo))
+        foreach (var e in estados.Where(e => e.Activo && e.Tipo == TipoEvento.Estado))
             mapa.TryAdd(Caravana.CalcularClave(e.CodigoDairyComp.Trim()), e.Id);
         return mapa;
     }

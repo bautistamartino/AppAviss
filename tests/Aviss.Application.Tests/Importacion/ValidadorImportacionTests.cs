@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Aviss.Application.Importacion;
+using Aviss.Domain.Catalogo;
 using Aviss.Domain.Entidades;
 
 namespace Aviss.Application.Tests.Importacion;
@@ -181,6 +182,30 @@ public class ValidadorImportacionTests
         var r = ValidadorImportacion.Validar(Lectura([Fila(2, "1", "VACIA")]), [Baja("VACIA", "VACIA"), Seca]);
         Assert.Null(r.Validas[0].EstadoId);
         Assert.Single(r.Advertencias);
+    }
+
+    [Theory]
+    [InlineData("ABORTO")]
+    [InlineData("aborto")]
+    [InlineData(" Aborto ")]
+    public void RPRO_igual_al_codigo_de_un_solo_evento_entra_sin_estado_y_con_advertencia(string rpro)
+    {
+        // Spec 005: OK, Aborto y Revisar Nuevamente no cambian el estado, así que no son un estado inicial válido.
+        var aborto = EstadoReproductivo.CrearEstandar(EstadosIniciales.Todos.Single(x => x.Codigo == "ABORTO"), Ahora);
+        var r = ValidadorImportacion.Validar(Lectura([Fila(2, "1", rpro)]), [Prenada, aborto]);
+
+        Assert.Null(r.Validas[0].EstadoId);
+        var adv = Assert.Single(r.Advertencias);
+        Assert.Equal(TipoAdvertencia.EstadoDesconocido, adv.Tipo);
+    }
+
+    [Fact]
+    public void RPRO_de_un_estado_sigue_resolviendose_aunque_haya_solo_eventos_en_el_catalogo()
+    {
+        var aborto = EstadoReproductivo.CrearEstandar(EstadosIniciales.Todos.Single(x => x.Codigo == "ABORTO"), Ahora);
+        var r = ValidadorImportacion.Validar(Lectura([Fila(2, "1", "PREÑADA")]), [aborto, Prenada]);
+        Assert.Equal(Prenada.Id, r.Validas[0].EstadoId);
+        Assert.Empty(r.Advertencias);
     }
 
     [Theory]

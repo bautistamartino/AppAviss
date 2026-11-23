@@ -91,6 +91,21 @@ internal sealed class EstadoReproductivoConfig : IEntityTypeConfiguration<Estado
         b.HasIndex(e => e.CodigoDairyComp).IsUnique().HasFilter("Activo = 1");
 
         b.HasCheckConstraint("CK_Estado_Codigo", "length(Codigo) > 0 AND Codigo NOT GLOB '*[^A-Z0-9_]*'");
+
+        // Spec 005 (migración "EventosDelCatalogo", escrita a mano): tipo, principal, orden e identidad estándar.
+        // Todas con valor por defecto en la base, así las filas viejas quedan válidas.
+        b.Property(e => e.Tipo).HasConversion<string>().IsRequired().HasDefaultValue(TipoEvento.Estado);
+        b.Property(e => e.EsPrincipal).HasDefaultValue(false);
+        b.Property(e => e.Orden).HasDefaultValue(0);
+        b.Property(e => e.ClaveEstandar);
+        // Un evento estándar no se puede duplicar: la clave es única entre los que la tienen (los creados a mano no).
+        b.HasIndex(e => e.ClaveEstandar).IsUnique().HasFilter("ClaveEstandar IS NOT NULL");
+
+        b.HasCheckConstraint("CK_Estado_Tipo", "Tipo IN ('Estado','SoloEvento')");
+        b.HasCheckConstraint("CK_Estado_EsPrincipal", "EsPrincipal IN (0,1)");
+        b.HasCheckConstraint("CK_Estado_Orden", "\"Orden\" >= 0");
+        b.HasCheckConstraint("CK_Estado_ClaveEstandar",
+            "ClaveEstandar IS NULL OR (length(ClaveEstandar) > 0 AND ClaveEstandar NOT GLOB '*[^A-Z0-9_]*')");
     }
 }
 
@@ -290,6 +305,10 @@ internal sealed class RechazoConfig : IEntityTypeConfiguration<Rechazo>
         b.HasOne<Animal>().WithMany().HasForeignKey(e => e.AnimalId).OnDelete(DeleteBehavior.Restrict);
         b.HasOne<Usuario>().WithMany().HasForeignKey(e => e.UsuarioId).OnDelete(DeleteBehavior.Restrict);
         b.HasOne<Usuario>().WithMany().HasForeignKey(e => e.AnuladoPorUsuarioId).OnDelete(DeleteBehavior.Restrict);
+        // Spec 005: el evento del catálogo (solo evento) que guarda este registro; nulo = el Rechazo fijo.
+        // Los triggers que exigen Tipo = 'SoloEvento' y la inmutabilidad de EventoId van a mano en "EventosDelCatalogo".
+        b.HasOne<EstadoReproductivo>().WithMany().HasForeignKey(e => e.EventoId).OnDelete(DeleteBehavior.Restrict);
+        b.HasIndex(e => e.EventoId);
 
         // Orden de guardado único (compartido con tactos y marcas; entre tablas lo garantiza el cálculo en la transacción).
         b.HasIndex(e => e.OrdenInsercion).IsUnique();

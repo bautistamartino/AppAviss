@@ -87,17 +87,20 @@ public class EstadoReproductivoTests
     }
 
     [Fact]
-    public void Estados_iniciales_son_los_seis_de_dairy_comp_con_codigo_igual_al_nombre()
+    public void Estados_iniciales_son_los_nueve_con_codigo_igual_al_nombre_sin_distinguir_mayusculas()
     {
-        Assert.Equal(6, EstadosIniciales.Todos.Count);
+        Assert.Equal(9, EstadosIniciales.Todos.Count);
         Assert.Contains(EstadosIniciales.Todos, x => x.Codigo == "PRENADA" && x.Nombre == "PREÑADA");
         foreach (var inicial in EstadosIniciales.Todos)
         {
-            Assert.Equal(inicial.Nombre, inicial.CodigoDairyComp);
+            // Los de OK, Aborto y Revisar Nuevamente son provisorios: el nombre en mayúsculas.
+            Assert.Equal(inicial.Nombre, inicial.CodigoDairyComp, ignoreCase: true);
             // todos deben poder crearse con las reglas del catálogo
             EstadoReproductivo.Crear(inicial.Codigo, inicial.Nombre, inicial.CodigoDairyComp, Ahora);
         }
         var codigos = EstadosIniciales.Todos.Select(x => x.Codigo).ToList();
-        Assert.Equal(new[] { "FRESCA", "INSEMIN", "NOINSEM", "PRENADA", "SECA", "VACIA" }, codigos.Order(StringComparer.Ordinal));
+        Assert.Equal(
+            new[] { "ABORTO", "FRESCA", "INSEMIN", "NOINSEM", "OK", "PRENADA", "REVISAR_NUEVAMENTE", "SECA", "VACIA" },
+            codigos.Order(StringComparer.Ordinal));
     }
 }

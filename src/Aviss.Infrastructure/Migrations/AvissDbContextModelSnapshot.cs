@@ -255,6 +255,9 @@ namespace Aviss.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("ClaveEstandar")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("Codigo")
                         .IsRequired()
                         .HasColumnType("TEXT");
@@ -267,6 +270,11 @@ namespace Aviss.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
+                    b.Property<bool>("EsPrincipal")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(false);
+
                     b.Property<string>("Nombre")
                         .IsRequired()
                         .HasColumnType("TEXT");
@@ -277,7 +285,22 @@ namespace Aviss.Infrastructure.Migrations
                         .HasColumnName("NombreClave")
                         .HasComputedColumnSql("replace(replace(replace(replace(replace(replace(replace(upper(Nombre),'ñ','Ñ'),'á','Á'),'é','É'),'í','Í'),'ó','Ó'),'ú','Ú'),'ü','Ü')", true);
 
+                    b.Property<int>("Orden")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(0);
+
+                    b.Property<string>("Tipo")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT")
+                        .HasDefaultValue("Estado");
+
                     b.HasKey("Id");
+
+                    b.HasIndex("ClaveEstandar")
+                        .IsUnique()
+                        .HasFilter("ClaveEstandar IS NOT NULL");
 
                     b.HasIndex("Codigo")
                         .IsUnique();
@@ -291,7 +314,15 @@ namespace Aviss.Infrastructure.Migrations
 
                     b.ToTable("EstadoReproductivo", null, t =>
                         {
+                            t.HasCheckConstraint("CK_Estado_ClaveEstandar", "ClaveEstandar IS NULL OR (length(ClaveEstandar) > 0 AND ClaveEstandar NOT GLOB '*[^A-Z0-9_]*')");
+
                             t.HasCheckConstraint("CK_Estado_Codigo", "length(Codigo) > 0 AND Codigo NOT GLOB '*[^A-Z0-9_]*'");
+
+                            t.HasCheckConstraint("CK_Estado_EsPrincipal", "EsPrincipal IN (0,1)");
+
+                            t.HasCheckConstraint("CK_Estado_Orden", "\"Orden\" >= 0");
+
+                            t.HasCheckConstraint("CK_Estado_Tipo", "Tipo IN ('Estado','SoloEvento')");
                         });
                 });
 
@@ -462,6 +493,9 @@ namespace Aviss.Infrastructure.Migrations
                     b.Property<Guid>("DispositivoId")
                         .HasColumnType("TEXT");
 
+                    b.Property<Guid?>("EventoId")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("FechaHoraUtc")
                         .IsRequired()
                         .HasColumnType("TEXT");
@@ -478,6 +512,8 @@ namespace Aviss.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("AnuladoPorUsuarioId");
+
+                    b.HasIndex("EventoId");
 
                     b.HasIndex("OrdenInsercion")
                         .IsUnique();
@@ -779,6 +815,11 @@ namespace Aviss.Infrastructure.Migrations
                     b.HasOne("Aviss.Domain.Entidades.Usuario", null)
                         .WithMany()
                         .HasForeignKey("AnuladoPorUsuarioId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Aviss.Domain.Entidades.EstadoReproductivo", null)
+                        .WithMany()
+                        .HasForeignKey("EventoId")
                         .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("Aviss.Domain.Entidades.Usuario", null)

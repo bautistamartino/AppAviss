@@ -105,12 +105,44 @@ public sealed class BaseDeDatosDePrueba : IDisposable
         return uid;
     }
 
-    public Guid Estado(string codigo, string nombre, string codigoDairyComp, bool activo = true)
+    /// <summary>
+    /// Un estado del catálogo. Con solo los argumentos de siempre usa las columnas viejas, así sirve también sobre una base
+    /// anterior a "EventosDelCatalogo" (sin Tipo, EsPrincipal, Orden ni ClaveEstandar). Con <c>tipo</c>, <c>clave</c>,
+    /// <c>principal</c> u <c>orden</c> (spec 005) exige la base nueva.
+    /// </summary>
+    public Guid Estado(string codigo, string nombre, string codigoDairyComp, bool activo = true,
+        string? tipo = null, string? clave = null, bool principal = false, int orden = 0, DateTime? creadoEnUtc = null)
     {
         var id = Guid.NewGuid();
-        Ejecutar("INSERT INTO EstadoReproductivo (Id, Codigo, Nombre, CodigoDairyComp, Activo, CreadoEnUtc, ActualizadoEnUtc) VALUES ($id, $c, $n, $d, $a, $f, $f)",
-            ("$id", id), ("$c", codigo), ("$n", nombre), ("$d", codigoDairyComp), ("$a", activo ? 1 : 0), ("$f", Fecha(Reloj.UtcAhora)));
+        var creado = Fecha(creadoEnUtc ?? Reloj.UtcAhora);
+        if (tipo is null && clave is null && !principal && orden == 0)
+        {
+            Ejecutar("INSERT INTO EstadoReproductivo (Id, Codigo, Nombre, CodigoDairyComp, Activo, CreadoEnUtc, ActualizadoEnUtc) VALUES ($id, $c, $n, $d, $a, $f, $f)",
+                ("$id", id), ("$c", codigo), ("$n", nombre), ("$d", codigoDairyComp), ("$a", activo ? 1 : 0), ("$f", creado));
+            return id;
+        }
+        Ejecutar(@"INSERT INTO EstadoReproductivo (Id, Codigo, Nombre, CodigoDairyComp, Activo, Tipo, ClaveEstandar, EsPrincipal, Orden, CreadoEnUtc, ActualizadoEnUtc)
+                   VALUES ($id, $c, $n, $d, $a, $t, $k, $p, $o, $f, $f)",
+            ("$id", id), ("$c", codigo), ("$n", nombre), ("$d", codigoDairyComp), ("$a", activo ? 1 : 0),
+            ("$t", tipo ?? "Estado"), ("$k", clave), ("$p", principal ? 1 : 0), ("$o", orden), ("$f", creado));
         return id;
+    }
+
+    /// <summary>
+    /// Migra la base hasta la migración indicada (por ejemplo "EsperaYRechazo", la versión anterior a la spec 005) o hasta la
+    /// última si es nulo. Sirve para armar una base de una versión vieja, cargarle datos a mano y después actualizarla.
+    /// </summary>
+    public void MigrarHasta(string? destino)
+    {
+        using (var ctx = NuevoContexto())
+        {
+            var migrador = Microsoft.EntityFrameworkCore.Infrastructure.AccessorExtensions.GetService<Microsoft.EntityFrameworkCore.Migrations.IMigrator>(ctx);
+            if (destino is null) migrador.Migrate(); else migrador.Migrate(destino);
+        }
+        // Una conexión cruda abierta antes de migrar puede quedar con el esquema viejo cacheado: se cierra.
+        _cruda?.Dispose();
+        _cruda = null;
+        SqliteConnection.ClearAllPools();
     }
 
     public Guid Animal(Guid rodeoId, string caravana, string origen = "AltaEnCampo", string? idElectronico = null,
@@ -200,16 +232,24 @@ public sealed class BaseDeDatosDePrueba : IDisposable
     }
 
     public Guid Rechazo(Guid animalId, Guid usuarioId, string? observaciones = null, DateTime? fechaHora = null,
-        long? orden = null, bool anulado = false)
+        long? orden = null, bool anulado = false, Guid? eventoId = null)
     {
         var id = Guid.NewGuid();
-        Ejecutar(@"INSERT INTO Rechazo (Id, AnimalId, FechaHoraUtc, OrdenInsercion, Observaciones, UsuarioId, DispositivoId,
-                       Anulado, AnuladoEnUtc, AnuladoPorUsuarioId, CreadoEnUtc, ActualizadoEnUtc)
-                   VALUES ($id, $a, $fh, $o, $ob, $u, $d, $an, $ae, $ap, $f, $f)",
+        var columnaEvento = eventoId is null ? "" : ", EventoId";
+        var valorEvento = eventoId is null ? "" : ", $ev";
+        var parametros = new List<(string, object?)>
+        {
             ("$id", id), ("$a", animalId), ("$fh", Fecha(fechaHora ?? Reloj.UtcAhora)), ("$o", orden ?? ++_orden),
             ("$ob", observaciones), ("$u", usuarioId), ("$d", Guid.NewGuid()), ("$an", anulado ? 1 : 0),
             ("$ae", anulado ? Fecha(Reloj.UtcAhora) : null), ("$ap", anulado ? usuarioId : null),
-            ("$f", Fecha(Reloj.UtcAhora)));
+            ("$f", Fecha(Reloj.UtcAhora)), ("$ev", eventoId)
+        };
+        // $ev se manda siempre (un parámetro sin usar no molesta a SQLite); la columna solo se nombra si hay evento, así
+        // el helper sigue sirviendo sobre una base anterior a "EventosDelCatalogo".
+        Ejecutar($@"INSERT INTO Rechazo (Id, AnimalId, FechaHoraUtc, OrdenInsercion, Observaciones, UsuarioId, DispositivoId,
+                       Anulado, AnuladoEnUtc, AnuladoPorUsuarioId, CreadoEnUtc, ActualizadoEnUtc{columnaEvento})
+                   VALUES ($id, $a, $fh, $o, $ob, $u, $d, $an, $ae, $ap, $f, $f{valorEvento})",
+            parametros.ToArray());
         return id;
     }
 

@@ -18,28 +18,56 @@ public sealed class SembradorInicial
     public SembradorInicial(IRelojService reloj) => _reloj = reloj;
 
     /// <summary>
-    /// Agrega los estados iniciales que falten, buscando por <c>Codigo</c>. No modifica ni reactiva los existentes.
-    /// Si el nombre o el código de Dairy Comp de uno inicial ya lo usa otro estado (por ejemplo uno que creó el
-    /// veterinario), ese estado inicial se omite: el arranque no puede fallar por una unicidad.
+    /// Agrega los eventos estándar que falten o adopta uno ya existente (spec 005, RF-19 y RF-20). Para cada estándar:
+    /// <list type="number">
+    /// <item>si algún estado ya tiene su <c>ClaveEstandar</c>, está listo (no se toca);</item>
+    /// <item>si no, se busca un estado SIN clave con el mismo <c>Codigo</c>, o con el mismo nombre, o con el mismo código
+    /// de Dairy Comp (sin distinguir mayúsculas, activos o no; si hay varios, el más antiguo) y se lo ADOPTA: recibe
+    /// clave, tipo, principal y orden, pero conserva nombre, códigos y si está activo (no se reactiva);</item>
+    /// <item>si no hay candidato se crea; y si crear chocara con una unicidad (nombre o código ya tomado por otro), se
+    /// omite ese estándar. El arranque no puede fallar por esto.</item>
+    /// </list>
+    /// Un mismo estado no se adopta para dos estándares. Todo va en un solo <c>SaveChanges</c> (una transacción): están
+    /// todos o ninguno, y es idempotente, así que si la app se corta el próximo arranque termina el trabajo.
     /// </summary>
     public async Task SembrarEstadosAsync(AvissDbContext ctx, CancellationToken ct = default)
     {
-        var existentes = await ctx.Estados.AsNoTracking().ToListAsync(ct);
+        // Con seguimiento de cambios: adoptar modifica filas existentes.
+        var existentes = await ctx.Estados.ToListAsync(ct);
         var codigos = existentes.Select(e => e.Codigo).ToHashSet(StringComparer.Ordinal);
         var nombres = existentes.Select(e => Caravana.CalcularClave(e.Nombre)).ToHashSet(StringComparer.Ordinal);
-        var codigosDairyActivos = existentes.Where(e => e.Activo).Select(e => e.CodigoDairyComp).ToHashSet(StringComparer.Ordinal);
+        var codigosDairyActivos = existentes.Where(e => e.Activo).Select(e => Caravana.CalcularClave(e.CodigoDairyComp.Trim()))
+            .ToHashSet(StringComparer.Ordinal);
 
         var ahora = _reloj.UtcAhora;
         foreach (var inicial in EstadosIniciales.Todos)
         {
-            if (codigos.Contains(inicial.Codigo)) continue;
-            if (nombres.Contains(Caravana.CalcularClave(inicial.Nombre))) continue;
-            if (codigosDairyActivos.Contains(inicial.CodigoDairyComp)) continue;
+            if (existentes.Any(e => e.ClaveEstandar == inicial.Codigo)) continue;
 
-            ctx.Estados.Add(EstadoReproductivo.Crear(inicial.Codigo, inicial.Nombre, inicial.CodigoDairyComp, ahora));
+            var nombreClave = Caravana.CalcularClave(inicial.Nombre);
+            var dairyClave = Caravana.CalcularClave(inicial.CodigoDairyComp.Trim());
+            var sinClave = existentes.Where(e => e.ClaveEstandar is null).OrderBy(e => e.CreadoEnUtc).ToList();
+            var candidato =
+                sinClave.FirstOrDefault(e => e.Codigo == inicial.Codigo)
+                ?? sinClave.FirstOrDefault(e => Caravana.CalcularClave(e.Nombre) == nombreClave)
+                ?? sinClave.FirstOrDefault(e => Caravana.CalcularClave(e.CodigoDairyComp.Trim()) == dairyClave);
+
+            if (candidato is not null)
+            {
+                candidato.AdoptarComoEstandar(inicial, ahora);
+                continue;
+            }
+
+            if (codigos.Contains(inicial.Codigo)) continue;
+            if (nombres.Contains(nombreClave)) continue;
+            if (codigosDairyActivos.Contains(dairyClave)) continue;
+
+            var nuevo = EstadoReproductivo.CrearEstandar(inicial, ahora);
+            ctx.Estados.Add(nuevo);
+            existentes.Add(nuevo);
             codigos.Add(inicial.Codigo);
-            nombres.Add(Caravana.CalcularClave(inicial.Nombre));
-            codigosDairyActivos.Add(inicial.CodigoDairyComp);
+            nombres.Add(nombreClave);
+            codigosDairyActivos.Add(dairyClave);
         }
         await ctx.SaveChangesAsync(ct);
     }

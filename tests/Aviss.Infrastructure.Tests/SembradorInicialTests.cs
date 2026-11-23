@@ -19,14 +19,14 @@ public sealed class SembradorInicialTests : IDisposable
     }
 
     [Fact]
-    public async Task Siembra_los_seis_estados_con_codigo_de_dairy_comp_igual_al_nombre()
+    public async Task Siembra_los_nueve_estados_con_codigo_de_dairy_comp_igual_al_nombre()
     {
         await SembrarEstadosAsync();
 
-        Assert.Equal(6, _base.Contar("SELECT COUNT(*) FROM EstadoReproductivo"));
+        Assert.Equal(9, _base.Contar("SELECT COUNT(*) FROM EstadoReproductivo"));
         Assert.Equal("PREÑADA", _base.Escalar("SELECT Nombre FROM EstadoReproductivo WHERE Codigo = 'PRENADA'"));
         Assert.Equal("PREÑADA", _base.Escalar("SELECT CodigoDairyComp FROM EstadoReproductivo WHERE Codigo = 'PRENADA'"));
-        Assert.Equal(6, _base.Contar("SELECT COUNT(*) FROM EstadoReproductivo WHERE Nombre = CodigoDairyComp AND Activo = 1"));
+        Assert.Equal(9, _base.Contar("SELECT COUNT(*) FROM EstadoReproductivo WHERE UPPER(Nombre) = CodigoDairyComp AND Activo = 1")); // OK, Aborto y Revisar Nuevamente: código provisorio = nombre en mayúsculas
     }
 
     [Fact]
@@ -35,7 +35,7 @@ public sealed class SembradorInicialTests : IDisposable
         await SembrarEstadosAsync();
         await SembrarEstadosAsync();
 
-        Assert.Equal(6, _base.Contar("SELECT COUNT(*) FROM EstadoReproductivo"));
+        Assert.Equal(9, _base.Contar("SELECT COUNT(*) FROM EstadoReproductivo"));
     }
 
     [Fact]
@@ -47,7 +47,7 @@ public sealed class SembradorInicialTests : IDisposable
 
         await SembrarEstadosAsync();
 
-        Assert.Equal(6, _base.Contar("SELECT COUNT(*) FROM EstadoReproductivo"));
+        Assert.Equal(9, _base.Contar("SELECT COUNT(*) FROM EstadoReproductivo"));
         Assert.Equal("Seca larga", _base.Escalar("SELECT Nombre FROM EstadoReproductivo WHERE Codigo = 'SECA'"));
         Assert.Equal("SECA2", _base.Escalar("SELECT CodigoDairyComp FROM EstadoReproductivo WHERE Codigo = 'SECA'"));
         Assert.Equal(0, _base.Contar("SELECT Activo FROM EstadoReproductivo WHERE Codigo = 'VACIA'"));
@@ -60,20 +60,21 @@ public sealed class SembradorInicialTests : IDisposable
 
         await SembrarEstadosAsync();
 
-        Assert.Equal(6, _base.Contar("SELECT COUNT(*) FROM EstadoReproductivo"));
+        Assert.Equal(9, _base.Contar("SELECT COUNT(*) FROM EstadoReproductivo"));
         Assert.Equal(1, _base.Contar("SELECT COUNT(*) FROM EstadoReproductivo WHERE Codigo = 'SECA'"));
     }
 
     [Fact]
     public async Task Un_nombre_ya_usado_por_otro_estado_no_frena_el_arranque()
     {
-        // Un estado propio con el nombre "Insemin" no debe romper la siembra de "INSEMIN" por la unicidad del nombre.
-        _base.Estado("PROPIO", "Insemin", "PROPIO");
+        // Un estándar ya identificado (SECA) que se llama "Insemin" no debe romper la siembra de "INSEMIN" por la
+        // unicidad del nombre: INSEMIN se omite. (Un estado SIN clave con ese nombre se adopta; lo prueba SembradorEventosTests.)
+        _base.Estado("SECA", "Insemin", "SECA", clave: "SECA");
 
         await SembrarEstadosAsync();
 
         Assert.Equal(0, _base.Contar("SELECT COUNT(*) FROM EstadoReproductivo WHERE Codigo = 'INSEMIN'"));
-        Assert.Equal(5, _base.Contar("SELECT COUNT(*) FROM EstadoReproductivo WHERE Codigo <> 'PROPIO'"));
+        Assert.Equal(7, _base.Contar("SELECT COUNT(*) FROM EstadoReproductivo WHERE Codigo <> 'SECA'"));
     }
 
     [Fact]

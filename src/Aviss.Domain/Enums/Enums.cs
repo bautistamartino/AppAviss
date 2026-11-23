@@ -21,6 +21,13 @@ public enum AccionHistorial
     EsperaCreada, EsperaResuelta, EsperaSalteada, RechazoCreado, RechazoAnulado
 }
 
+/// <summary>
+/// Qué hace un evento del catálogo al guardarse (spec 005, RF-1): <c>Estado</c> cambia el estado reproductivo de la vaca
+/// (PREÑADA, VACIA, ...); <c>SoloEvento</c> queda registrado pero NO cambia el estado ni el último tacto (OK, Aborto,
+/// Revisar Nuevamente). En la base es texto con un CHECK.
+/// </summary>
+public enum TipoEvento { Estado, SoloEvento }
+
 /// <summary>En qué quedó una espera (spec 004, RF-13): pendiente, o resuelta (con un tacto o rechazo) o salteada.</summary>
 public enum EstadoEspera { Pendiente, Resuelta, Salteada }
 

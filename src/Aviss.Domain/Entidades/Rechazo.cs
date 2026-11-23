@@ -19,6 +19,12 @@ public sealed class Rechazo : EntidadEditable
     /// <summary>Orden de guardado compartido con tactos y marcas (desempata registros con igual fecha y hora).</summary>
     public long OrdenInsercion { get; private set; }
 
+    /// <summary>
+    /// Spec 005: el evento del catálogo (de tipo SoloEvento: OK, Aborto, Revisar Nuevamente) que guarda este registro.
+    /// Nulo = el Rechazo fijo de la aplicación. Nunca cambia una vez guardado.
+    /// </summary>
+    public Guid? EventoId { get; private set; }
+
     public string? Observaciones { get; private set; }
     public Guid UsuarioId { get; private set; }
     public Guid DispositivoId { get; private set; }
@@ -31,7 +37,7 @@ public sealed class Rechazo : EntidadEditable
 
     public static Rechazo Registrar(
         Guid animalId, DateTime fechaHoraUtc, long ordenInsercion, string? observaciones,
-        Guid usuarioId, Guid dispositivoId, DateTime ahoraUtc)
+        Guid usuarioId, Guid dispositivoId, DateTime ahoraUtc, Guid? eventoId = null)
     {
         var obs = Validar.TextoOpcional(observaciones);
         if (obs is not null && obs.Length > MaximoObservaciones)
@@ -41,6 +47,7 @@ public sealed class Rechazo : EntidadEditable
             AnimalId = Validar.IdObligatorio(animalId, "El animal"),
             FechaHoraUtc = Validar.Utc(fechaHoraUtc, nameof(fechaHoraUtc)),
             OrdenInsercion = ordenInsercion,
+            EventoId = eventoId,
             Observaciones = obs,
             UsuarioId = Validar.IdObligatorio(usuarioId, "El usuario"),
             DispositivoId = Validar.IdObligatorio(dispositivoId, "El dispositivo")

@@ -2,7 +2,7 @@
 
 Tests primero en cada tarea de lógica. Ninguna tarea se da por terminada con `dotnet build` o `dotnet test` en rojo (`dotnet test --filter "Categoria!=Rendimiento"` en las intermedias; la suite completa en T5). Una rama: `spec/005-eventos-del-catalogo`. Diseño en [plan.md](plan.md). **Máximo 5 tareas** (constitución §10). **Precondición cumplida:** la 004 está mergeada. **No tocar `UsuarioId`** (la spec 006 lo quita en otra rama; los conflictos se resuelven al mergear). Nombres reales: `EventoRechazo` en `TrabajoViewModel.Espera.cs`, `Eventos`/`Estados`/`EstadosParaEditar`, `RegistrarRechazoNucleoAsync`.
 
-- [ ] **T1** — Dominio, base y siembra: tipo, principal, orden, identidad estándar, migración `EventosDelCatalogo` y adopción.
+- [x] **T1** — Dominio, base y siembra: tipo, principal, orden, identidad estándar, migración `EventosDelCatalogo` y adopción.
   - Qué se hace (tests primero):
     - `TipoEvento`; `EstadoReproductivo` con `Tipo`, `EsPrincipal`, `Orden`, `ClaveEstandar` (`CrearEstandar`, `AdoptarComoEstandar`; `Modificar` no toca la identidad); `EstadosIniciales` con los 9 y sus códigos provisorios; `OrdenAlfabetico` (sin tildes, Ñ entre N y O).
     - Configuración de EF y migración `EventosDelCatalogo` con el `Up` escrito **a mano** (`ALTER TABLE ... ADD COLUMN`, sin reconstruir tablas): columnas con CHECK, índice único parcial de `ClaveEstandar`, relleno de los 6 iniciales (clave, principal y orden), `Rechazo.EventoId` con FK e índice, triggers de inserción (`Rechazo` solo con evento `SoloEvento`; `Tacto` Normal no puede apuntar a un `SoloEvento`) y recreación del trigger de inmutabilidad de `Rechazo` si enumera columnas.

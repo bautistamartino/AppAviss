@@ -108,7 +108,7 @@ public sealed class ArranqueServiceTests : IDisposable
         Assert.Empty(Backups());
 
         Assert.Equal(1, Contar(_rutas.BaseDeDatos, "SELECT COUNT(*) FROM Usuario WHERE Nombre = 'Sin asignar'"));
-        Assert.Equal(6, Contar(_rutas.BaseDeDatos, "SELECT COUNT(*) FROM EstadoReproductivo"));
+        Assert.Equal(9, Contar(_rutas.BaseDeDatos, "SELECT COUNT(*) FROM EstadoReproductivo"));
         Assert.Equal("ok", Escalar(_rutas.BaseDeDatos, "PRAGMA integrity_check"));
     }
 
@@ -125,7 +125,7 @@ public sealed class ArranqueServiceTests : IDisposable
         Assert.False(File.Exists(_rutas.BaseDeDatosCreando));
         Assert.False(File.Exists(_rutas.BaseDeDatosCreando + "-wal"));
         Assert.False(File.Exists(_rutas.BaseDeDatosCreando + "-shm"));
-        Assert.Equal(6, Contar(_rutas.BaseDeDatos, "SELECT COUNT(*) FROM EstadoReproductivo"));
+        Assert.Equal(9, Contar(_rutas.BaseDeDatos, "SELECT COUNT(*) FROM EstadoReproductivo"));
     }
 
     [Fact]
@@ -177,7 +177,7 @@ public sealed class ArranqueServiceTests : IDisposable
         await Servicio().IniciarAsync();
 
         Assert.Equal("Seca larga", Escalar(_rutas.BaseDeDatos, "SELECT Nombre FROM EstadoReproductivo WHERE Codigo = 'SECA'"));
-        Assert.Equal(6, Contar(_rutas.BaseDeDatos, "SELECT COUNT(*) FROM EstadoReproductivo"));
+        Assert.Equal(9, Contar(_rutas.BaseDeDatos, "SELECT COUNT(*) FROM EstadoReproductivo"));
     }
 
     // ---------- Actualización con backup (RF-19, RF-22) ----------
