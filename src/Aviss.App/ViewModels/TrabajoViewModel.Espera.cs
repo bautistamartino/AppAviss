@@ -37,6 +37,14 @@ public sealed class EsperaItem
     /// <summary>Lo que dice el botón de la botonera: "7712 · 3 min".</summary>
     public string TextoBotonera => $"{Caravana} · {Tiempo}";
 
+    /// <summary>
+    /// Lo que dice cada fila de la lista completa (RF-2): dos líneas, "7712 · CVET 3" y "desde 10:42 · hace 3 min".
+    /// Si la vaca no tiene CVET se omite ese dato.
+    /// </summary>
+    public string TextoLista =>
+        (string.IsNullOrWhiteSpace(Cvet) ? Caravana : $"{Caravana} · CVET {Cvet}")
+        + $"\ndesde {Hora} · hace {Tiempo}";
+
     private static string DescribirTiempo(TimeSpan t)
     {
         if (t.TotalMinutes < 1) return "<1 min";

@@ -533,7 +533,8 @@
                         <VerticalStackLayout BindableLayout.ItemsSource="{Binding Esperas}" Spacing="8">
                             <BindableLayout.ItemTemplate>
                                 <DataTemplate x:DataType="vm:EsperaItem">
-                                    <Button Text="{Binding TextoBotonera}" Style="{StaticResource BotonCampoAlerta}" HeightRequest="56" FontSize="22"
+                                    <!-- Caravana + CVET en la primera línea; hora y tiempo esperando en la segunda. Mínimo 56 dp de alto. -->
+                                    <Button Text="{Binding TextoLista}" Style="{StaticResource BotonCampoAlerta}" MinimumHeightRequest="56" FontSize="20"
                                             Command="{Binding Source={RelativeSource AncestorType={x:Type vm:TrabajoViewModel}}, Path=AbrirEsperaCommand, x:DataType=vm:TrabajoViewModel}"
                                             CommandParameter="{Binding .}" />
                                 </DataTemplate>

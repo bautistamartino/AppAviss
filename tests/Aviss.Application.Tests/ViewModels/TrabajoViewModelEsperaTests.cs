@@ -167,6 +167,21 @@ public class TrabajoViewModelEsperaTests
     }
 
     [Fact]
+    public async Task La_lista_completa_muestra_caravana_cvet_hora_y_tiempo_esperando()
+    {
+        var b = new Banco();
+        b.VacaEnEspera("7712", Ahora.AddMinutes(-3));
+        await b.Vm.IniciarAsync();
+
+        var item = b.Vm.Esperas[0];
+        var texto = item.TextoLista;
+        Assert.Contains("7712", texto);
+        if (!string.IsNullOrWhiteSpace(item.Cvet)) Assert.Contains($"CVET {item.Cvet}", texto);
+        Assert.Contains($"desde {item.Hora}", texto);
+        Assert.Contains("hace 3 min", texto);
+    }
+
+    [Fact]
     public async Task Con_4_o_menos_no_hay_boton_mas_N()
     {
         var b = new Banco();
