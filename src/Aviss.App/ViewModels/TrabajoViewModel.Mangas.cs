@@ -216,6 +216,7 @@ public sealed partial class TrabajoViewModel
             MensajeInfo = null;
             MensajeCuadro = null;
             _proposito = proposito;
+            if (proposito == PropositoCierre.Terminar) await CargarEsperasAsync();   // el aviso "Hay N vacas en espera" (RF-10)
             _cantidadRealConfirmada = null;
             CantidadRealTexto = "";
 

@@ -231,6 +231,7 @@ public sealed partial class TrabajoViewModel
         Estados.Clear();
         foreach (var e in estados) Estados.Add(e);
         OnPropertyChanged(nameof(HayEstadosActivos));
+        ReconstruirEventos();   // la lista de eventos de la ficha suma el "Rechazo" fijo
     }
 
 
@@ -306,11 +307,17 @@ public sealed partial class TrabajoViewModel
         {
             MensajeError = null;
             var observacion = HayObservacionPendiente ? ObservacionPendiente : null;
-            var resultado = await EnCampoAsync(() => _campo.RegistrarTactoAsync(
-                new RegistrarTactoCommand(ficha.AnimalId, estado.Id, null, observacion, vet.Id)));
+            // El evento elegido decide qué se guarda: "Rechazo" es otro tipo de registro (el motivo va en la observación); un estado
+            // del catálogo es un tacto. Si la vaca estaba en espera, el servicio la resuelve en la misma transacción.
+            var esRechazo = estado.Id == EventosCampo.Rechazo;
+            var resultado = esRechazo
+                ? await EnCampoAsync(() => _campo.RegistrarRechazoAsync(new RegistrarRechazoCommand(ficha.AnimalId, observacion, vet.Id)))
+                : await EnCampoAsync(() => _campo.RegistrarTactoAsync(
+                    new RegistrarTactoCommand(ficha.AnimalId, estado.Id, null, observacion, vet.Id)));
             if (!resultado.EsCorrecto)
             {
-                // Rechazo: motivo en español, nada cambia (el evento y la observación siguen elegidos) y la ficha queda abierta (RF-18).
+                // Rechazo: motivo en español, nada cambia (el evento y la observación siguen elegidos), la ficha queda abierta
+                // (RF-18) y, si venía de una espera, esta sigue pendiente.
                 MensajeError = resultado.Mensaje;
                 return;
             }
@@ -319,8 +326,9 @@ public sealed partial class TrabajoViewModel
             _avisos.Confirmacion();
             CerrarFichaInterno();   // también descarta el evento elegido y la observación
             UltimoGuardado = $"{ficha.Caravana}: {estado.Nombre}";
-            PublicarAvisoDeshacer(new AvisoDeshacerDto(TipoDeshacer.Tacto, resultado.Valor, $"{ficha.Caravana}: {estado.Nombre}"));
+            PublicarAvisoDeshacer(new AvisoDeshacerDto(esRechazo ? TipoDeshacer.Rechazo : TipoDeshacer.Tacto, resultado.Valor, $"{ficha.Caravana}: {estado.Nombre}"));
             await RecalcularAsync();
+            if (ficha.EnEspera) await CargarEsperasAsync();   // la espera quedó resuelta: sale de la botonera
         }
         catch (Exception)
         {

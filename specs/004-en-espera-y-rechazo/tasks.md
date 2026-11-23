@@ -25,7 +25,7 @@ Tests primero en cada tarea de lógica. Ninguna tarea se da por terminada con `d
   - Hecho cuando: poner en espera rechaza CVET 0 y duplicadas; resolver con tacto y con rechazo deja la espera resuelta **en la misma transacción** y, si el registro se rechaza, queda pendiente; saltear no guarda registros; nada más cierra una espera (ni tiempo, ni día, ni terminar el tacto); el rechazo no cambia el estado ni el último tacto, respeta el orden compartido y la validación de reloj, se deshace y aparece en movimientos y en el aviso de repetido; editar cambia entre tacto y rechazo sin dejar nada a medias; las esperas sobreviven a reabrir la base; el rendimiento de RF-37 se mantiene.
   - Qué mirar en el emulador: nada (sin pantallas).
 
-- [ ] **T3** — ViewModels: En Espera, Rechazo y movimientos.
+- [x] **T3** — ViewModels: En Espera, Rechazo y movimientos.
   - Qué se hace:
     - `TrabajoViewModel.Espera.cs`: colección de esperas, "En espera", abrir una espera (botonera, "+N", lectura de una vaca en espera), Saltar que distingue ficha de espera, aviso en "Terminar el tacto".
     - `EntrarAsync` ramifica por evento (estado o `EventoRechazo`); el item fijo "Rechazo" en la lista de eventos; las lecturas con la lista de espera abierta siguen la regla de la cola.

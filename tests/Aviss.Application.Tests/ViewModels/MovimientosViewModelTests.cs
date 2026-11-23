@@ -219,7 +219,7 @@ public class MovimientosViewModelTests
         await b.Vm.EditarCommand.ExecuteAsync(tacto);
 
         Assert.True(b.Vm.HayEdicion);
-        Assert.Equal([Prenada, Vacia], b.Vm.EstadosParaEditar);
+        Assert.Equal([Prenada, Vacia, TrabajoViewModel.EventoRechazo], b.Vm.EstadosParaEditar);   // el Rechazo siempre está al final
         Assert.Equal(Prenada, b.Vm.EventoEditado);
         Assert.Equal("Cojera", b.Vm.ObservacionEditada);
         Assert.Equal("Editar el tacto de 1014", b.Vm.TituloEdicion);
@@ -247,10 +247,10 @@ public class MovimientosViewModelTests
 
         await b.Vm.GuardarEdicionCommand.ExecuteAsync(null);
 
-        var cmd = Assert.Single(b.Campo.Correcciones);
-        Assert.Equal((tacto.Dto.RegistroId, Vacia.Id, "Se secó", Datos.Vet.Id), (cmd.TactoId, cmd.EstadoNuevoId, cmd.Observaciones, cmd.UsuarioId));
+        var cmd = Assert.Single(b.Campo.RegistrosCorregidos);
+        Assert.Equal((tacto.Dto.RegistroId, Vacia.Id, "Se secó", Datos.Vet.Id), (cmd.RegistroId, cmd.Evento, cmd.Observaciones, cmd.UsuarioId));
         Assert.False(b.Vm.HayEdicion);
-        Assert.Equal("Se corrigió el tacto.", b.Vm.MensajeInfo);
+        Assert.Equal("Se corrigió el registro.", b.Vm.MensajeInfo);
         Assert.Equal(consultas + 1, b.Campo.ConsultasDeMovimientos);
     }
 
@@ -263,14 +263,14 @@ public class MovimientosViewModelTests
 
         await b.Vm.GuardarEdicionCommand.ExecuteAsync(null);
 
-        Assert.Null(Assert.Single(b.Campo.Correcciones).Observaciones);
+        Assert.Null(Assert.Single(b.Campo.RegistrosCorregidos).Observaciones);
     }
 
     [Fact]
     public async Task Si_la_correccion_se_rechaza_la_edicion_sigue_abierta_con_el_motivo()
     {
         var (b, tacto) = await BancoConUnTactoAsync();
-        b.Campo.OnCorregir = _ => Resultado.Error<Guid>(CodigoError.TactoNoEsElUltimo, "Solo se puede anular el último registro vigente del animal.");
+        b.Campo.OnCorregirRegistro = _ => Resultado.Error<Guid>(CodigoError.TactoNoEsElUltimo, "Solo se puede anular el último registro vigente del animal.");
         await b.Vm.EditarCommand.ExecuteAsync(tacto);
 
         await b.Vm.GuardarEdicionCommand.ExecuteAsync(null);
@@ -289,7 +289,7 @@ public class MovimientosViewModelTests
         b.Vm.CancelarEdicionCommand.Execute(null);
 
         Assert.False(b.Vm.HayEdicion);
-        Assert.Empty(b.Campo.Correcciones);
+        Assert.Empty(b.Campo.RegistrosCorregidos);
     }
 
     [Fact]
@@ -302,8 +302,80 @@ public class MovimientosViewModelTests
 
         await b.Vm.GuardarEdicionCommand.ExecuteAsync(null);
 
-        Assert.Empty(b.Campo.Correcciones);
+        Assert.Empty(b.Campo.RegistrosCorregidos);
         Assert.True(b.Vm.HayEdicion);
+    }
+
+    // ------------------------------------------------------------------ rechazo en la lista y en "Editar" (spec 004, RF-7, RF-8)
+
+    private static MovimientoItem Rechazo(string? motivo = "Pata", bool puedeDeshacer = true, bool anulado = false)
+        => new(Datos.Movimiento(TipoMovimiento.Rechazo, puedeDeshacer: puedeDeshacer, anulado: anulado, caravana: "1014", detalle: "Rechazo", cvet: "PRE", observaciones: motivo));
+
+    [Fact]
+    public void Un_rechazo_muestra_Rechazo_y_el_motivo_en_el_segundo_renglon_sin_repetirlo()
+    {
+        var item = Rechazo("Pata");
+
+        Assert.Equal("Rechazo", item.Tipo);
+        Assert.Equal("Rechazo · Pata", item.TextoTipoDetalle);
+        Assert.False(item.HayObservacion);
+        Assert.Equal("CVET PRE", item.TextoCvet);
+        Assert.Equal("Rechazo", Rechazo(null).TextoTipoDetalle);
+    }
+
+    [Fact]
+    public void Un_rechazo_se_puede_editar_si_se_puede_deshacer_y_no_esta_anulado()
+    {
+        Assert.True(Rechazo().PuedeEditar);
+        Assert.False(Rechazo(puedeDeshacer: false).PuedeEditar);
+        Assert.False(Rechazo(anulado: true).PuedeEditar);
+    }
+
+    [Fact]
+    public async Task Deshacer_un_rechazo_manda_el_tipo_Rechazo()
+    {
+        var b = new Banco();
+        b.Campo.Movimientos = [Datos.Movimiento(TipoMovimiento.Rechazo)];
+        await b.Vm.CargarAsync();
+
+        await b.Vm.DeshacerCommand.ExecuteAsync(b.Vm.Movimientos[0]);
+
+        Assert.Equal(TipoDeshacer.Rechazo, Assert.Single(b.Campo.Deshaceres).Tipo);
+    }
+
+    [Fact]
+    public async Task Editar_un_rechazo_abre_la_edicion_con_Rechazo_elegido_y_el_motivo()
+    {
+        var b = new Banco();
+        b.Campo.Estados = [Prenada, Vacia];
+        b.Campo.Movimientos = [Datos.Movimiento(TipoMovimiento.Rechazo, caravana: "1014", detalle: "Rechazo", observaciones: "Pata")];
+        await b.Vm.CargarAsync();
+
+        await b.Vm.EditarCommand.ExecuteAsync(b.Vm.Movimientos[0]);
+
+        Assert.Equal(TrabajoViewModel.EventoRechazo, b.Vm.EventoEditado);
+        Assert.Equal("Pata", b.Vm.ObservacionEditada);
+        Assert.Equal("Editar el rechazo de 1014", b.Vm.TituloEdicion);
+    }
+
+    [Fact]
+    public async Task Cambiar_un_tacto_por_un_rechazo_y_un_rechazo_por_un_tacto_manda_el_evento_elegido()
+    {
+        var (b, tacto) = await BancoConUnTactoAsync();
+        await b.Vm.EditarCommand.ExecuteAsync(tacto);
+        b.Vm.ElegirEventoEditadoCommand.Execute(TrabajoViewModel.EventoRechazo);
+        b.Vm.ObservacionEditada = "Ubre";
+        await b.Vm.GuardarEdicionCommand.ExecuteAsync(null);
+        var aRechazo = Assert.Single(b.Campo.RegistrosCorregidos);
+        Assert.Equal((EventosCampo.Rechazo, "Ubre"), (aRechazo.Evento, aRechazo.Observaciones));
+
+        // y al revés: un rechazo que pasa a ser un tacto
+        b.Campo.Movimientos = [Datos.Movimiento(TipoMovimiento.Rechazo, caravana: "1014", detalle: "Rechazo", observaciones: "Ubre")];
+        await b.Vm.CargarAsync();
+        await b.Vm.EditarCommand.ExecuteAsync(b.Vm.Movimientos[0]);
+        b.Vm.ElegirEventoEditadoCommand.Execute(Vacia);
+        await b.Vm.GuardarEdicionCommand.ExecuteAsync(null);
+        Assert.Equal(Vacia.Id, b.Campo.RegistrosCorregidos[1].Evento);
     }
 
     private sealed class Fallo : FakeCampoService

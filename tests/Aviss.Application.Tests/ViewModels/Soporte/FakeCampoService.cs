@@ -208,8 +208,16 @@ public static class Datos
     public static RodeoParaTrabajarDto Rodeo(string establecimiento = "Tambo Norte", string rodeo = "Rodeo 1", Guid? establecimientoId = null, Guid? rodeoId = null)
         => new(establecimientoId ?? Guid.NewGuid(), establecimiento, rodeoId ?? RodeoId, rodeo, new DateTime(2026, 11, 1, 0, 0, 0, DateTimeKind.Utc), EstadoRodeo.Abierto, Avance());
 
-    public static FichaAnimalDto Ficha(Guid? animalId = null, string caravana = "1001", string? idElectronico = null, string cvet = "", bool entraEnTacto = true)
-        => new(animalId ?? Guid.NewGuid(), caravana, idElectronico, null, null, null, [], "", "", [], cvet, entraEnTacto);
+    public static FichaAnimalDto Ficha(Guid? animalId = null, string caravana = "1001", string? idElectronico = null, string cvet = "", bool entraEnTacto = true,
+        bool enEspera = false, RechazoVigenteDto? rechazoVigente = null)
+        => new(animalId ?? Guid.NewGuid(), caravana, idElectronico, null, null, null, [], "", "", [], cvet, entraEnTacto, null, enEspera, rechazoVigente);
+
+    /// <summary>La lectura de una vaca que está en espera: trae su ficha (con el cartel) y no marca ni suma.</summary>
+    public static ResultadoLecturaDto EnEspera(Guid animalId, string caravana)
+        => new(TipoResultadoLectura.EnEspera, caravana, animalId, caravana, Ficha(animalId, caravana, cvet: "PRE", enEspera: true), null, null, null, null, null, false);
+
+    public static EsperaDto Espera(string caravana, Guid? animalId = null, DateTime? desdeUtc = null, string cvet = "PRE")
+        => new(Guid.NewGuid(), animalId ?? Guid.NewGuid(), caravana, cvet, desdeUtc ?? new DateTime(2026, 11, 17, 13, 0, 0, DateTimeKind.Utc));
 
     public static ResultadoLecturaDto Marcada(Guid animalId, string caravana, Guid? marcaId = null, int manga = 1, int contador = 1)
         => new(TipoResultadoLectura.Marcada, caravana, animalId, caravana, Ficha(animalId, caravana), marcaId ?? Guid.NewGuid(), manga, contador, null, null, false);
