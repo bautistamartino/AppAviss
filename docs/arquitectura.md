@@ -43,7 +43,7 @@ Todas con `Guid Id`, `CreadoEnUtc`, `ActualizadoEnUtc`.
 - **Establecimiento** (tambo): `Nombre`, `Notas`. Cada tablet guarda varios.
 - **Rodeo** (una importación): `EstablecimientoId`, `Nombre`, `FechaImportacionUtc`, `ArchivoOrigenNombre`, `ArchivoOrigenHash` (SHA-256), `ArchivoOrigenBlob`, `PerfilExcel`, `Estado` (Abierto / Exportado).
 - **Animal**: `RodeoId`, `NumeroCaravana` (= `ID` de Dairy Comp), `IdElectronico?`, `EstadoReproductivoId`, `FechaUltimoTacto?`, `Observaciones`, `Origen` (Importado / AltaEnCampo), `DatosOriginalesJson` (todas las columnas del Excel tal cual).
-- **EstadoReproductivo**: catálogo con `Codigo`, `Nombre`, `CodigoDairyComp`. Valores vistos en la muestra: PREÑADA, INSEMIN, SECA, VACIA, FRESCA, NOINSEM. No es un enum fijo porque puede variar entre tambos.
+- **EstadoReproductivo** (catálogo de eventos, spec 005): `Codigo`, `Nombre`, `CodigoDairyComp`, `Tipo` (`Estado` o `SoloEvento`), `EsPrincipal`, `Orden` (solo vale entre principales) y `ClaveEstandar?` (identidad interna estable de los 9 estándar; renombrar o cambiar el código no la altera; índice único parcial). Principales de arranque: Revisar Nuevamente, OK, VACIA, PREÑADA, Aborto, NOINSEM; OK, Aborto y Revisar Nuevamente son `SoloEvento` con código provisorio. Valores vistos en la muestra: PREÑADA, INSEMIN, SECA, VACIA, FRESCA, NOINSEM. No es un enum fijo porque puede variar entre tambos.
 - **Tacto**: `AnimalId`, `FechaHoraUtc`, `EstadoAnteriorId`, `EstadoNuevoId`, `DiasPrenez?`, `Observaciones`, `UsuarioId`, `DispositivoId`, `Anulado`, `TactoAnuladoId?`. Evento que solo se agrega: una corrección es un tacto nuevo.
 - **Historial** (auditoría): `Entidad`, `EntidadId`, `Campo`, `ValorAnterior`, `ValorNuevo`, `FechaHoraUtc`, `UsuarioId`, `Accion`. Un trigger de SQLite aborta cualquier UPDATE o DELETE.
 - **Usuario** (veterinario): `Nombre`, `Matricula`. Se elige al abrir la app.
@@ -56,7 +56,7 @@ Todas con `Guid Id`, `CreadoEnUtc`, `ActualizadoEnUtc`.
 - **Espera** (spec 004): `AnimalId`, `FechaHoraUtc`, `UsuarioId`, `DispositivoId`, `Estado` (Pendiente / Resuelta / Salteada), `ResueltaEnUtc?`, `ResueltaPorUsuarioId?`, `RegistroResolucionId?`. Una vaca en espera mientras se tacta a otra; **sin temporizador ni vencimiento**. Un índice único parcial impide dos pendientes de la misma vaca; un trigger solo deja pasar Pendiente → Resuelta o Salteada (una vez) y no deja borrar. Se resuelve en la misma transacción que el tacto o el rechazo que la cierra. Sobrevive a cerrar la app.
 - **Rechazo** (spec 004): `AnimalId`, `FechaHoraUtc`, `OrdenInsercion`, `Observaciones` (el motivo, escrito a mano, tope 300), `UsuarioId`, `DispositivoId`, `Anulado`, `AnuladoEnUtc?`, `AnuladoPorUsuarioId?`. Marca de "no se pasó por el tacto"; **no cambia el estado de la vaca ni su fecha de último tacto**. Solo se agrega: un trigger permite únicamente Anulado de 0 a 1 y no deja borrar. Comparte el orden de guardado con `Tacto` y `MarcaPasada`.
 - **Historial** suma cinco acciones (poner en espera, resolver, saltear, registrar y anular rechazo); el CHECK de `Accion` se reescribió a mano en la migración `EsperaYRechazo` (recreando los triggers de inmutabilidad).
-- **Eventos de la ficha** (spec 004): la lista que ve el veterinario es `Eventos` (los estados activos del catálogo más el evento fijo **Rechazo**, `EventosCampo.Rechazo`); no es lo mismo que `Estados` (solo estados reproductivos). Elegir Rechazo guarda un `Rechazo`; cualquier otro, un `Tacto`.
+- **Eventos de la ficha** (spec 004): la lista que ve el veterinario es `Eventos` (los estados activos del catálogo más el evento fijo **Rechazo**, `EventosCampo.Rechazo`); no es lo mismo que `Estados` (solo estados reproductivos). Elegir Rechazo guarda un `Rechazo`; cualquier otro, un `Tacto`. **Desde la spec 005**, un evento `SoloEvento` del catálogo (OK, Aborto, Revisar Nuevamente) también se guarda como `Rechazo`, con `Rechazo.EventoId` apuntando al evento (nulo = el Rechazo fijo); no cambia el estado ni el último tacto. La tabla se sigue llamando `Rechazo` a propósito. Triggers: un `Rechazo` solo apunta a un `SoloEvento`, un `Tacto` Normal no apunta a un `SoloEvento` y `EventoId` no se modifica.
 
 ## 4. DTOs
 
@@ -137,6 +137,7 @@ Lectura → marca automática → ficha → elegir el evento (y, si se quiere, u
 - Deshacer con aviso de 5 s al guardar un tacto o cerrar una manga; en "Últimos movimientos", **Deshacer** y **Editar** (editar = anular y registrar uno nuevo, en una transacción).
 - Vibración y sonido (pitido de repetido, chicharra de CVET 0, tono de manga completa); pantalla siempre encendida durante el trabajo.
 - No encontrado: aviso con el ID cargado y botones "Buscar a mano" y "Cerrar" (no hay alta en campo desde el 2026-11-19: los números se corrigen en el bastón).
+- **Lista de eventos en dos niveles (spec 005):** el casillero Evento muestra los principales activos (botones de 60 dp, en su `Orden`) y "Otro evento". Este abre la lista secundaria: Rechazo primero y el resto alfabético (sin tildes ni mayúsculas, Ñ entre N y O), con "Volver" y "+ Nuevo evento" fijos. Elegir no guarda (lo hace **Entrar**) y resalta el evento actual. Es el mismo `SelectorEventosView` en la ficha y en Editar de movimientos; cualquier evento queda a 3 toques como máximo.
 - **Teclado y márgenes (Android):** el teclado se baja al buscar y `MainActivity` aplica los márgenes del sistema (barras y teclado), porque desde Android 15 la app se dibuja bajo las barras.
 - **ViewModels grandes:** `TrabajoViewModel` está partido en archivos `partial` por tema (núcleo, `.Ficha`, `.Mangas`, `.Avisos`).
 
@@ -157,8 +158,8 @@ Cada tablet es independiente: varios establecimientos, varios veterinarios (se e
 1. Dominio, SQLite y migraciones, con tests.
 2. Importación del `.xls` con vista previa.
 3. Flujo de campo con `FakeRfidReader` en emulador.
-4. Exportación con validación (según sección 14) (spec 006; la 004 es En Espera y Rechazo y la 005 eventos del catálogo).
-5. Integración real del XRS2 (spec 007).
+4. Exportación con validación (según sección 14) (spec 007; la 004 es En Espera y Rechazo, la 005 eventos del catálogo y la 006 sin veterinario).
+5. Integración real del XRS2 (spec 008).
 6. Pulido de UX, backups, empaquetado y distribución.
 
 ## 14. Pendientes de validar

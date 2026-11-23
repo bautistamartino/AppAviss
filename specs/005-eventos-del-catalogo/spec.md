@@ -1,6 +1,6 @@
 # 005 — Eventos del catálogo: OK, Aborto, Revisar Nuevamente y "Otro evento"
 
-Estado: aprobada
+Estado: implementada (T1 a T5), pendiente de revisor y de la prueba en la tablet
 Fecha: 2026-11-23
 
 > **Numeración:** esta spec es la 005 (rama `spec/005-eventos-del-catalogo`). La 006 es "sin veterinario" (otra sesión), la exportación pasa a ser la **007** y el bastón la **008**. Al aprobarla hay que actualizar: `docs/plan.md` (las etapas de exportación y bastón), `MEMORY.md` (las menciones a la spec 005 como exportación) y la spec 004 (nombra "exportación 005"; pasa a 006).
@@ -86,18 +86,18 @@ Lo usa el veterinario en la manga, de pie y con una mano, en vertical (800x1340)
 - **Nombres iguales con tildes o mayúsculas distintas:** no pueden coexistir (spec 003 RF-39 compara sin distinguir mayúsculas); el orden de RF-7 solo afecta cómo se ordenan.
 
 ## Criterios de aceptación
-- [ ] Una base nueva tiene los 6 estados de siempre más OK, Aborto y Revisar Nuevamente con código provisorio, y su marca de principal / orden (RF-1, RF-2, RF-3).
-- [ ] Una base anterior, con eventos creados a mano, un inicial desactivado y un "Aborto" creado a mano, se actualiza con backup previo: se agregan los eventos nuevos, el "Aborto" a mano se adopta como principal sin cambiarle nombre ni código, no se reactiva nada y los demás creados a mano quedan en "Otro evento" (RF-19, RF-20).
-- [ ] La lista del casillero muestra los principales en su orden y "Otro evento"; este abre la lista secundaria (Rechazo primero, alfabética con Ñ y tildes bien) con "Volver" y "+ Nuevo evento" fijo; elegir un evento no guarda nada y habilita Entrar (RF-6, RF-7, RF-8).
-- [ ] Renombrar un principal no lo mueve; desactivarlo no lo reemplaza (RF-5).
-- [ ] El resaltado funciona para un principal, para uno de "Otro evento" y para Rechazo, en la ficha y en Editar (RF-9, RF-12).
-- [ ] Guardar OK, Aborto y Revisar Nuevamente no cambia el estado ni la fecha de último tacto, y deja historial, deshacer, editar y aviso de repetido (RF-16, RF-17).
-- [ ] Un evento desactivado no aparece en ninguna lista pero sí en lo ya guardado (RF-13).
-- [ ] Un `RPRO` vacío o de un solo evento entra sin estado (vacío, sin advertencia) (caso límite RPRO).
-- [ ] Cada evento guardado (estado, solo evento, Rechazo y edición) conserva fecha y hora exactas, también al anularse (RF-22).
-- [ ] **Con tests** (ViewModel, catálogo, importación y migración sobre una base con datos): RF-1 a RF-9, RF-11 a RF-13, RF-16 a RF-20, RF-22.
-- [ ] **A verificar en la tablet (800x1340 vertical)**: la lista principal entra sin desplazar, cualquier evento a 3 toques como máximo con una mano, y la secundaria con ~25 eventos se recorre bien (RF-10, RF-14).
-- [ ] `dotnet build` y `dotnet test` en verde.
+- [x] Una base nueva tiene los 6 estados de siempre más OK, Aborto y Revisar Nuevamente con código provisorio, y su marca de principal / orden (RF-1, RF-2, RF-3).
+- [x] Una base anterior, con eventos creados a mano, un inicial desactivado y un "Aborto" creado a mano, se actualiza con backup previo: se agregan los eventos nuevos, el "Aborto" a mano se adopta como principal sin cambiarle nombre ni código, no se reactiva nada y los demás creados a mano quedan en "Otro evento" (RF-19, RF-20).
+- [x] La lista del casillero muestra los principales en su orden y "Otro evento"; este abre la lista secundaria (Rechazo primero, alfabética con Ñ y tildes bien) con "Volver" y "+ Nuevo evento" fijo; elegir un evento no guarda nada y habilita Entrar (RF-6, RF-7, RF-8).
+- [x] Renombrar un principal no lo mueve; desactivarlo no lo reemplaza (RF-5).
+- [x] El resaltado funciona para un principal, para uno de "Otro evento" y para Rechazo, en la ficha y en Editar (RF-9, RF-12).
+- [x] Guardar OK, Aborto y Revisar Nuevamente no cambia el estado ni la fecha de último tacto, y deja historial, deshacer, editar y aviso de repetido (RF-16, RF-17).
+- [x] Un evento desactivado no aparece en ninguna lista pero sí en lo ya guardado (RF-13).
+- [x] Un `RPRO` vacío o de un solo evento entra sin estado (vacío, sin advertencia) (caso límite RPRO).
+- [x] Cada evento guardado (estado, solo evento, Rechazo y edición) conserva fecha y hora exactas, también al anularse (RF-22).
+- [x] **Con tests** (ViewModel, catálogo, importación y migración sobre una base con datos): RF-1 a RF-9, RF-11 a RF-13, RF-16 a RF-20, RF-22.
+- [ ] (a verificar, sin marcar hasta la prueba en la tablet) **A verificar en la tablet (800x1340 vertical)**: la lista principal entra sin desplazar, cualquier evento a 3 toques como máximo con una mano, y la secundaria con ~25 eventos se recorre bien (RF-10, RF-14).
+- [ ] `dotnet build` y `dotnet test` en verde. (lo corre el coordinador al cerrar la spec)
 
 ## Preguntas abiertas
 - **P1 — Códigos reales de OK, Aborto y Revisar Nuevamente (los trae el padre del responsable).** Mientras tanto rigen los provisorios (RF-1), anotados en `MEMORY.md` como pendientes de validar. Recomendación: no agregar columna ni pantalla para marcarlos; cuando lleguen, corregirlos con una actualización del catálogo.

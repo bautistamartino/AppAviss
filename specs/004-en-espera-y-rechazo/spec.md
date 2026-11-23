@@ -3,7 +3,7 @@
 Estado: **implementada y mergeada** (2026-11-23; revisor aprobado y probada en la tablet por el usuario)
 Fecha: 2026-11-16 (reescrita: 2026-11-21)
 
-> **Spec hermana de `specs/003-flujo-de-tacto/spec.md`, que ya está implementada.** Esta amplía la ficha, el "último registro vigente" y la lista de últimos movimientos de la 003 (ver sus RF-39 a RF-52). Al aprobarse como 004, la exportación pasa a 005 y el bastón a 006 (`docs/plan.md`). 
+> **Spec hermana de `specs/003-flujo-de-tacto/spec.md`, que ya está implementada.** Esta amplía la ficha, el "último registro vigente" y la lista de últimos movimientos de la 003 (ver sus RF-39 a RF-52). Al aprobarse como 004, la exportación pasa a 007 y el bastón a 008 (la 005 es eventos del catálogo y la 006 sin veterinario) (`docs/plan.md`). 
 
 ## Contexto
 **En Espera.** Al escanear una vaca el veterinario empieza a tactarla y, a veces, demora. Mientras tanto la manga no puede frenarse: se sigue escaneando a las demás. La comodidad (palabras del usuario) es que **mientras se tacta un animal se puede seguir marcando a los otros y ver si van a tacto o no** (el CVET y la chicharra), y así saber si el siguiente va a tacto o si directamente ya se **libera a los animales de esa manga**. Agiliza el trabajo. Cuando el veterinario tiene el veredicto, **vuelve a la vaca que estaba tactando, abre su ficha y pone el evento**. Hoy una lectura nueva reemplaza la ficha abierta y la vaca anterior solo se recupera buscándola a mano. En el Daily, el botón "En Espera" (rosa) hace esto. Una espera suele durar unos minutos, pero **no tiene temporizador**: la vaca queda en espera hasta que se le agrega un evento o se la saltea a mano. Habrá 2 o 3 a la vez.

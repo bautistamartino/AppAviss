@@ -18,16 +18,17 @@ Cada ítem es una spec o un paso chico. Se marca con `[x]` cuando está terminad
 - [x] 3.2 **En Espera y Rechazo** (spec 004, rama `spec/004-en-espera-y-rechazo`, implementada, aprobada por el revisor, probada en la tablet y mergeada a `main`; depende de la 003): En Espera = poner una vaca en espera mientras se la tacta y se sigue marcando (sin temporizador; se sale con evento o Saltar; botonera de acceso directo; persistente), y el evento fijo "Rechazo" con el motivo escrito a mano (se edita y se deshace). Los tratamientos (Prostal, DIB), "solo tratamiento", los tres renglones de evento y desactivar estados quedan para una spec posterior.
   - Requisito del usuario que cubre la 004: agregar estados nuevos al catálogo y registrar observaciones o tratamientos (por ejemplo sincronización de celos) durante el tacto.
 - Ideas sin spec (anotadas para más adelante): **alertas habladas y reglas de alerta** (aviso por voz y reglas configurables); **historial completo de inseminaciones** (hoy `VINS` solo trae la cantidad; la fecha de la última inseminación habría que exportarla de Dairy Comp); **dos veterinarios por tacto** y **dos mangas ordeñando a la vez**, a confirmar con el usuario; **varios lotes en un Excel** (¿hay columna de lote?).
-- [ ] 3.3 **Eventos del catálogo** (spec **005**, aprobada, sin implementar): OK, Aborto, Revisar Nuevamente y "Otro evento" (ver `specs/005-eventos-del-catalogo/spec.md`).
+- [ ] 3.3 **Eventos del catálogo** (spec **005**, rama `spec/005-eventos-del-catalogo`, implementada T1 a T5; falta la prueba en la tablet y el revisor): OK, Aborto y Revisar Nuevamente como eventos de solo registro, principales y "Otro evento" (ver `specs/005-eventos-del-catalogo/spec.md`). Se desarrolló en paralelo con la 006.
+- [ ] 3.4 **Sin veterinario** (spec **006**, rama `spec/006-sin-veterinario`, otra sesión, aún sin mergear): quita al veterinario (`Usuario`) de la app y la base.
 
 
 ## Etapa 4 — Exportación
-- [ ] 4.1 Exportar el Excel sobre la copia del original, con validación (spec **006**). Depende de 0.2.
+- [ ] 4.1 Exportar el Excel sobre la copia del original, con validación (spec **007**). Depende de 0.2.
 
 ## Etapa 5 — Bastón real
-- [ ] 5.1 Spike del XRS2 (transporte y trama) y lector real con reconexión (spec **007**). Requiere bastón y tablet.
+- [ ] 5.1 Spike del XRS2 (transporte y trama) y lector real con reconexión (spec **008**). Requiere bastón y tablet.
 
-> **Renumeración (hecha):** la 004 es En Espera y Rechazo, la 005 eventos del catálogo, la exportación pasa a ser la **006** y el bastón la **007**. Las referencias a "spec 004" (exportación) y "spec 005" (bastón) en `MEMORY.md` y en las specs 001 a 003 corresponden a la numeración vieja.
+> **Renumeración (hecha):** la 004 es En Espera y Rechazo, la **005** eventos del catálogo, la **006** sin veterinario, la exportación pasa a ser la **007** y el bastón la **008**. En las specs 001 a 003, "spec 004" (exportación) y "spec 005" (bastón), y sus notas de "005 y 006", corresponden a la numeración vieja: léanse 007 y 008.
 
 ## Etapa 6 — Producto
 - [ ] 6.1 Varios veterinarios y tambos pulidos, backups, empaquetado, firma y distribución a las tablets.
