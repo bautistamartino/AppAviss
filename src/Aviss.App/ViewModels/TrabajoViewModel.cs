@@ -141,7 +141,7 @@ public sealed partial class TrabajoViewModel : ObservableObject
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HayFicha))]
-    [NotifyPropertyChangedFor(nameof(HayMotivoTacto), nameof(TextoMotivoTacto), nameof(NoEntraEnTacto), nameof(PuedeAgregarEventos), nameof(TituloFicha), nameof(FilasDatos), nameof(TituloBarra), nameof(PuedePonerEnEspera), nameof(EsEsperaAbierta))]
+    [NotifyPropertyChangedFor(nameof(HayMotivoTacto), nameof(TextoMotivoTacto), nameof(NoEntraEnTacto), nameof(PuedeAgregarEventos), nameof(TituloFicha), nameof(FilasDatos), nameof(TituloBarra), nameof(PuedePonerEnEspera), nameof(EsEsperaAbierta), nameof(HayRechazoVigente), nameof(TextoRechazoVigente))]
     [NotifyCanExecuteChangedFor(nameof(EntrarCommand))]
     private FichaAnimalDto? _ficha;
 

@@ -20,6 +20,16 @@ public sealed partial class TrabajoViewModel
 
     public string TextoMotivoTacto => Ficha is { } f && !string.IsNullOrWhiteSpace(f.Cvet) ? $"Motivo del tacto · CVET: {f.Cvet}" : "";
 
+    // ---- Franja de rechazo: se calcula en el ViewModel (y no con un DataTrigger en el XAML, que con bindings compilados no oculta)
+
+    /// <summary>La vaca de la ficha tiene un rechazo vigente: se muestra la franja roja.</summary>
+    public bool HayRechazoVigente => Ficha?.RechazoVigente is not null;
+
+    /// <summary>"Rechazo: motivo", o solo "Rechazo" si no se anotó motivo. Vacío si no hay rechazo vigente.</summary>
+    public string TextoRechazoVigente => Ficha?.RechazoVigente is { } r
+        ? string.IsNullOrWhiteSpace(r.Observaciones) ? "Rechazo" : $"Rechazo: {r.Observaciones.Trim()}"
+        : "";
+
     // ---- Pestañas de la ficha (Datos | Historial), título y tabla de datos, como en el Daily
 
     [ObservableProperty]
