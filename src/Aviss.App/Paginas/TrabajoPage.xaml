@@ -503,7 +503,8 @@
                     </VerticalStackLayout>
 
                     <VerticalStackLayout Spacing="12" IsVisible="{Binding HayFormularioEvento, Converter={StaticResource Invertir}}">
-                    <ScrollView MaximumHeightRequest="340">
+                    <!-- Alto para los 6 estados de siempre sin desplazar; si hay más (eventos propios), la barra queda siempre visible. -->
+                    <ScrollView MaximumHeightRequest="480" VerticalScrollBarVisibility="Always">
                         <VerticalStackLayout BindableLayout.ItemsSource="{Binding Estados}" Spacing="8">
                             <BindableLayout.ItemTemplate>
                                 <DataTemplate x:DataType="dto:EstadoActivoDto">
