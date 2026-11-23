@@ -1,6 +1,6 @@
 # 004 — En Espera y Rechazo (nuevos registros de campo)
 
-Estado: **implementada** (2026-11-23; falta el criterio de la tablet y el revisor)
+Estado: **implementada y mergeada** (2026-11-23; revisor aprobado y probada en la tablet por el usuario)
 Fecha: 2026-11-16 (reescrita: 2026-11-21)
 
 > **Spec hermana de `specs/003-flujo-de-tacto/spec.md`, que ya está implementada.** Esta amplía la ficha, el "último registro vigente" y la lista de últimos movimientos de la 003 (ver sus RF-39 a RF-52). Al aprobarse como 004, la exportación pasa a 005 y el bastón a 006 (`docs/plan.md`). 
@@ -87,7 +87,7 @@ Todo debe seguir siendo muy rápido y pensado para una mano, en vertical.
 - [x] **Pruebas de la base:** la espera no se borra ni se modifica salvo pendiente→resuelta o salteada (una vez); no puede haber dos pendientes de la misma vaca en un rodeo; el rechazo no se borra ni se modifica salvo "Anulado" de "no" a "sí"; el historial nuevo no se modifica ni se borra (RF-12, RF-13, RF-6).
 - [x] Las esperas pendientes sobreviven a cerrar y reabrir la app (RF-14).
 - [x] Con 20.000 vacas, poner en espera, listar y resolver cumple los tiempos de la 003 RF-37 (menos de 300 ms).
-- [ ] **A verificar en la tablet** (no con tests): el botón "En espera" y la botonera se alcanzan con una mano y se leen de un vistazo (constitución §9).
+- [x] **Verificado en la tablet (2026-11-23)** (no con tests): el botón "En espera" y la botonera se alcanzan con una mano y se leen de un vistazo (constitución §9).
 - [x] `dotnet build` y `dotnet test` en verde.
 
 ## Decisiones
