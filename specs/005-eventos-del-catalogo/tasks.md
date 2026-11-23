@@ -36,7 +36,7 @@ Tests primero en cada tarea de lógica. Ninguna tarea se da por terminada con `d
   - Hecho cuando: los tests de ViewModel cubren cada criterio de aceptación de la lista (elegir un principal no guarda y habilita Entrar; "Otro evento" muestra Rechazo primero y "Volver"; resaltado de un principal, de uno de "Otro evento" y de Rechazo, en la ficha y en Editar; cualquier evento activo a 3 toques como máximo; crear un evento lo deja en "Otro evento" sin elegirlo; Entrar con OK guarda un solo evento y con VACIA guarda un tacto; todos los principales desactivados deja solo "Otro evento").
   - Qué mirar en el emulador: nada todavía (la pantalla va en T4).
 
-- [ ] **T4** — Pantalla: selector de eventos en la ficha y en "Últimos movimientos".
+- [x] **T4** — Pantalla: selector de eventos en la ficha y en "Últimos movimientos".
   - Qué se hace:
     - `SelectorEventosView` (`ContentView`) con los principales (botones de 60 dp, 7 sin desplazar en 800x1340 vertical, `ScrollView` con barra siempre visible si hay más), "Otro evento", la vista secundaria con lista desplazable, "+ Nuevo evento" y "Volver" siempre visibles, y el resaltado.
     - `TrabajoPage`: la capa de eventos usa el selector y mantiene el formulario de evento nuevo. `MovimientosPage`: la edición usa el mismo selector.
