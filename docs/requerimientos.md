@@ -16,7 +16,7 @@ Una app Android para tablet que funcione **sin Internet**, que:
 4. Registre cada cambio (tacto) y mantenga el historial completo.
 5. Exporte un Excel que Dairy Comp pueda importar.
 
-Se usa en **varias tablets**, con **varios veterinarios** que trabajan en **muchos tambos**.
+Se usa en **varias tablets** que trabajan en **muchos tambos**. La app **no registra qué veterinario hace el trabajo** ni qué tablet es cada una (spec 006): cada tablet es independiente y los datos no llevan el nombre de quien los cargó.
 
 ## Flujo completo
 
@@ -48,8 +48,8 @@ Dairy Comp **usa el `ID`** para cruzar con la vaca y **crea eventos con historia
 - **Trabajo de campo**: leer la caravana con el bastón, buscar la vaca automáticamente, mostrar la ficha, elegir el evento (y una observación opcional) y guardar con "Entrar". Búsqueda manual como respaldo. Alta en campo de un animal no encontrado.
   - **Mangas** (spec 003): el trabajo se organiza en mangas numeradas por rodeo; cada vaca leída queda **marcada automáticamente** en la manga actual (contador de vacas distintas), con aviso si ya pasó ese día. Se cierran con "Finalizar manga" (verificando el contador contra la cantidad real) o "Terminar el tacto" (doble confirmación); un cierre se puede deshacer reabriendo la manga mientras sea el último del día.
   - **Registros y catálogos de campo** (spec 004, borrador): tratamientos, nota y días de preñez del tacto, rechazo y estados nuevos creados en el campo.
-- **Historial**: registrar fecha, animal, estado anterior y nuevo, veterinario y hora de cada cambio. Nunca borrar ni sobrescribir. Deshacer mediante anulación.
-- **Veterinarios**: elegir quién trabaja al abrir la app.
+- **Historial**: registrar fecha, animal, estado anterior y nuevo y hora de cada cambio (sin quién lo hizo, spec 006). Nunca borrar ni sobrescribir. Deshacer mediante anulación.
+- **Sin veterinario** (spec 006): al abrir se elige solo el establecimiento y el rodeo; no se elige, no se registra ni se exporta ningún veterinario.
 - **Exportación**: generar un Excel compatible con Dairy Comp a partir del original, con los cambios; validarlo antes de entregarlo.
 - **Lector RFID**: conectarse con el XRS2 (Bluetooth u otro método según el spike), reconectar solo, ignorar lecturas repetidas. Debe poder cambiarse el método de comunicación sin tocar el resto.
 - **Autoguardado y recuperación**: no perder datos ante un apagón o cierre inesperado; backups automáticos de la base.

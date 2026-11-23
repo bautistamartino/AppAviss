@@ -44,17 +44,17 @@ Todas con `Guid Id`, `CreadoEnUtc`, `ActualizadoEnUtc`.
 - **Rodeo** (una importación): `EstablecimientoId`, `Nombre`, `FechaImportacionUtc`, `ArchivoOrigenNombre`, `ArchivoOrigenHash` (SHA-256), `ArchivoOrigenBlob`, `PerfilExcel`, `Estado` (Abierto / Exportado).
 - **Animal**: `RodeoId`, `NumeroCaravana` (= `ID` de Dairy Comp), `IdElectronico?`, `EstadoReproductivoId`, `FechaUltimoTacto?`, `Observaciones`, `Origen` (Importado / AltaEnCampo), `DatosOriginalesJson` (todas las columnas del Excel tal cual).
 - **EstadoReproductivo**: catálogo con `Codigo`, `Nombre`, `CodigoDairyComp`. Valores vistos en la muestra: PREÑADA, INSEMIN, SECA, VACIA, FRESCA, NOINSEM. No es un enum fijo porque puede variar entre tambos.
-- **Tacto**: `AnimalId`, `FechaHoraUtc`, `EstadoAnteriorId`, `EstadoNuevoId`, `DiasPrenez?`, `Observaciones`, `UsuarioId`, `DispositivoId`, `Anulado`, `TactoAnuladoId?`. Evento que solo se agrega: una corrección es un tacto nuevo.
-- **Historial** (auditoría): `Entidad`, `EntidadId`, `Campo`, `ValorAnterior`, `ValorNuevo`, `FechaHoraUtc`, `UsuarioId`, `Accion`. Un trigger de SQLite aborta cualquier UPDATE o DELETE.
-- **Usuario** (veterinario): `Nombre`, `Matricula`. Se elige al abrir la app.
+- **Tacto**: `AnimalId`, `FechaHoraUtc`, `EstadoAnteriorId`, `EstadoNuevoId`, `DiasPrenez?`, `Observaciones`, `Anulado`, `TactoAnuladoId?`. Evento que solo se agrega: una corrección es un tacto nuevo.
+- **Historial** (auditoría): `Entidad`, `EntidadId`, `Campo`, `ValorAnterior`, `ValorNuevo`, `FechaHoraUtc`, `Accion`. Un trigger de SQLite aborta cualquier UPDATE o DELETE.
+- **Usuario** (veterinario): **se quitó en la spec 006**. Ninguna entidad guarda quién hizo el trabajo ni en qué tablet (migración `QuitarVeterinario`).
 - **LecturaRfid**: log crudo (`Codigo`, `FechaHoraUtc`, `AnimalId?`, `Resultado`) para diagnóstico y recuperación.
 - **Exportacion**: `RodeoId`, `FechaUtc`, `ArchivoNombre`, `Hash`.
-- **Manga** (spec 003): `RodeoId`, `Numero` (único por rodeo), `AbiertaPorUsuarioId`, `DispositivoId`. Nunca cambia. Se crea con la **primera marca** de la manga: la "manga por empezar" no existe en la base.
-- **CierreManga** (spec 003): `MangaId`, `Tipo` (Manual / TerminoElTacto / Automatico), `FechaHoraUtc`, `CantidadAviss`, `CantidadConfirmada?`, `Diferencia?`, `UsuarioId`, `Anulado`. Una manga está cerrada si tiene un cierre con `Anulado = 0` (un índice único parcial garantiza uno solo). Reabrir = anular el cierre; nunca se modifica ni se borra.
-- **MarcaPasada** (spec 003): `AnimalId`, `MangaId`, `FechaHoraUtc`, `OrdenInsercion`, `UsuarioId`, `Anulado`. Una marca vigente por vaca y manga (índice único parcial); un trigger impide marcar una vaca en la manga de otro rodeo. Comparte con `Tacto` el **orden de guardado** (`OrdenInsercion` = máximo entre ambas tablas + 1, dentro de la transacción).
+- **Manga** (spec 003): `RodeoId`, `Numero` (único por rodeo). Nunca cambia. Se crea con la **primera marca** de la manga: la "manga por empezar" no existe en la base.
+- **CierreManga** (spec 003): `MangaId`, `Tipo` (Manual / TerminoElTacto / Automatico), `FechaHoraUtc`, `CantidadAviss`, `CantidadConfirmada?`, `Diferencia?`, `Anulado`. Una manga está cerrada si tiene un cierre con `Anulado = 0` (un índice único parcial garantiza uno solo). Reabrir = anular el cierre; nunca se modifica ni se borra.
+- **MarcaPasada** (spec 003): `AnimalId`, `MangaId`, `FechaHoraUtc`, `OrdenInsercion`, `Anulado`. Una marca vigente por vaca y manga (índice único parcial); un trigger impide marcar una vaca en la manga de otro rodeo. Comparte con `Tacto` el **orden de guardado** (`OrdenInsercion` = máximo entre ambas tablas + 1, dentro de la transacción).
 - **Día local** (spec 003): "hoy" es el día calendario de la zona horaria del dispositivo (`DiaLocal`, convierte a un rango UTC; maneja días de 23 o 25 horas). No se guarda ningún "día": el avance y el contador se calculan por consulta. Una manga abierta no se cierra a medianoche: se cierra sola (tipo `Automatico`) al volver a entrar a trabajar un día posterior.
-- **Espera** (spec 004): `AnimalId`, `FechaHoraUtc`, `UsuarioId`, `DispositivoId`, `Estado` (Pendiente / Resuelta / Salteada), `ResueltaEnUtc?`, `ResueltaPorUsuarioId?`, `RegistroResolucionId?`. Una vaca en espera mientras se tacta a otra; **sin temporizador ni vencimiento**. Un índice único parcial impide dos pendientes de la misma vaca; un trigger solo deja pasar Pendiente → Resuelta o Salteada (una vez) y no deja borrar. Se resuelve en la misma transacción que el tacto o el rechazo que la cierra. Sobrevive a cerrar la app.
-- **Rechazo** (spec 004): `AnimalId`, `FechaHoraUtc`, `OrdenInsercion`, `Observaciones` (el motivo, escrito a mano, tope 300), `UsuarioId`, `DispositivoId`, `Anulado`, `AnuladoEnUtc?`, `AnuladoPorUsuarioId?`. Marca de "no se pasó por el tacto"; **no cambia el estado de la vaca ni su fecha de último tacto**. Solo se agrega: un trigger permite únicamente Anulado de 0 a 1 y no deja borrar. Comparte el orden de guardado con `Tacto` y `MarcaPasada`.
+- **Espera** (spec 004): `AnimalId`, `FechaHoraUtc`, `Estado` (Pendiente / Resuelta / Salteada), `ResueltaEnUtc?`, `RegistroResolucionId?`. Una vaca en espera mientras se tacta a otra; **sin temporizador ni vencimiento**. Un índice único parcial impide dos pendientes de la misma vaca; un trigger solo deja pasar Pendiente → Resuelta o Salteada (una vez) y no deja borrar. Se resuelve en la misma transacción que el tacto o el rechazo que la cierra. Sobrevive a cerrar la app.
+- **Rechazo** (spec 004): `AnimalId`, `FechaHoraUtc`, `OrdenInsercion`, `Observaciones` (el motivo, escrito a mano, tope 300), `Anulado`, `AnuladoEnUtc?`. Marca de "no se pasó por el tacto"; **no cambia el estado de la vaca ni su fecha de último tacto**. Solo se agrega: un trigger permite únicamente Anulado de 0 a 1 y no deja borrar. Comparte el orden de guardado con `Tacto` y `MarcaPasada`.
 - **Historial** suma cinco acciones (poner en espera, resolver, saltear, registrar y anular rechazo); el CHECK de `Accion` se reescribió a mano en la migración `EsperaYRechazo` (recreando los triggers de inmutabilidad).
 - **Eventos de la ficha** (spec 004): la lista que ve el veterinario es `Eventos` (los estados activos del catálogo más el evento fijo **Rechazo**, `EventosCampo.Rechazo`); no es lo mismo que `Estados` (solo estados reproductivos). Elegir Rechazo guarda un `Rechazo`; cualquier otro, un `Tacto`.
 
@@ -67,7 +67,7 @@ Todas con `Guid Id`, `CreadoEnUtc`, `ActualizadoEnUtc`.
 
 ## 5. Servicios y repositorios
 
-Servicios (Application): `IImportacionService`, `ITrabajoCampoService` (`ProcesarLecturaAsync`, `RegistrarTactoAsync`; es el corazón), `IAnimalService`, `IRodeoService`, `IHistorialService`, `IExportacionService`, `IBackupService`, `IRelojService`, `IUsuarioActualService`.
+Servicios (Application): `IImportacionService`, `ITrabajoCampoService` (`ProcesarLecturaAsync`, `RegistrarTactoAsync`; es el corazón), `IAnimalService`, `IRodeoService`, `IHistorialService`, `IExportacionService`, `IBackupService`, `IRelojService` (sin servicio de usuario ni de dispositivo desde la spec 006).
 
 **Fachada de campo (spec 003):** los ViewModels solo conocen `ICampoService` (en `Application`). Es un singleton que abre un scope (un `DbContext` y una transacción) por operación y delega en servicios internos (`MarcaPasadaService`, `MangaService`, `AltaCampoService`, `ConsultaCampoService`, `TrabajoCampoService`); las escrituras se serializan porque SQLite admite un solo escritor. Cubre iniciar trabajo, procesar lecturas (marca automática), ficha, tacto, alta con marca, deshacer, cierre y reapertura de mangas, movimientos y avance.
 
@@ -132,7 +132,7 @@ Lectura → marca automática → ficha → elegir el evento (y, si se quiere, u
 
 - Botones grandes, alto contraste, legibles al sol, pensados para una mano.
 - **CVET** de Dairy Comp: 0 = no entra en tacto (chicharra, queda marcada y suma, sin ficha); otro valor = motivo del tacto, se muestra en el título.
-- Barra de arriba siempre visible (engranaje, flechita para contraer, título, veterinario); contraída o abierta, con avance, horarios, contador de manga (opcional) y "Terminar el tacto".
+- Barra de arriba siempre visible (engranaje, flechita para contraer, título); contraída o abierta, con avance, horarios, contador de manga (opcional) y "Terminar el tacto".
 - **Mangas opcionales por establecimiento** (engranaje): cantidad a mano, contador N/M y cierre automático al completarse.
 - Deshacer con aviso de 5 s al guardar un tacto o cerrar una manga; en "Últimos movimientos", **Deshacer** y **Editar** (editar = anular y registrar uno nuevo, en una transacción).
 - Vibración y sonido (pitido de repetido, chicharra de CVET 0, tono de manga completa); pantalla siempre encendida durante el trabajo.
@@ -140,9 +140,9 @@ Lectura → marca automática → ficha → elegir el evento (y, si se quiere, u
 - **Teclado y márgenes (Android):** el teclado se baja al buscar y `MainActivity` aplica los márgenes del sistema (barras y teclado), porque desde Android 15 la app se dibuja bajo las barras.
 - **ViewModels grandes:** `TrabajoViewModel` está partido en archivos `partial` por tema (núcleo, `.Ficha`, `.Mangas`, `.Avisos`).
 
-## 11. Multi-tablet y multi-veterinario
+## 11. Multi-tablet, sin veterinario
 
-Cada tablet es independiente: varios establecimientos, varios veterinarios (se elige al abrir). Sin sincronización central en la primera versión; cada tablet exporta su Excel. Los IDs son GUID y los eventos solo se agregan, así que sumar sincronización después no requiere rediseñar.
+Cada tablet es independiente: varios establecimientos. **La app no registra qué veterinario trabaja ni identifica a cada tablet** (spec 006): al abrir se elige solo establecimiento y rodeo, y ningún dato guarda quién lo hizo ni se exporta. Por eso no hay tabla `Usuario` ni `DispositivoId`; el cierre automático de una manga se distingue por su tipo, no por quién. Sin sincronización central en la primera versión; cada tablet exporta su Excel. Los IDs son GUID y los eventos solo se agregan, así que sumar sincronización después no requiere rediseñar.
 
 ## 12. Escalabilidad
 
@@ -157,8 +157,8 @@ Cada tablet es independiente: varios establecimientos, varios veterinarios (se e
 1. Dominio, SQLite y migraciones, con tests.
 2. Importación del `.xls` con vista previa.
 3. Flujo de campo con `FakeRfidReader` en emulador.
-4. Exportación con validación (según sección 14) (spec 006; la 004 es En Espera y Rechazo y la 005 eventos del catálogo).
-5. Integración real del XRS2 (spec 007).
+4. Exportación con validación (según sección 14) (spec 007; la 004 es En Espera y Rechazo, la 005 eventos del catálogo y la 006 saca el veterinario).
+5. Integración real del XRS2 (spec 008).
 6. Pulido de UX, backups, empaquetado y distribución.
 
 ## 14. Pendientes de validar

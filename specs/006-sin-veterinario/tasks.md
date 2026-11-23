@@ -22,7 +22,7 @@ Regla de verificación: tras cada tarea se corren **solo los proyectos de tests 
   - RF: RF-11, RF-12, RF-13, RF-14, RF-15, RF-16, RF-21, RF-22
   - Hecho cuando: pasan todos los tests de `Aviss.Infrastructure.Tests` (sin Rendimiento) y `dotnet build` en verde; cada caso del plan para RF-11 a RF-16, RF-21 y RF-22 tiene su test; si alguna prueba obligó a tocar la migración, `has-pending-model-changes` sigue sin cambios pendientes.
 
-- [ ] **T4** — Documentación, specs 004/005 y cierre (suite completa, rendimiento y emulador)
+- [x] **T4** — Documentación, specs 004/005 y cierre (suite completa, rendimiento y emulador)
   - Qué hace:
     - **Spec 004** (`spec.md` línea 6): exportación 007 y bastón 008. No toca su plan ni sus tareas.
     - **Spec 005:** `spec.md` líneas ~6, ~28, ~82 y ~106 (exportación 007, bastón 008, "spec 007"), RF-16 sin "veterinario activo, dispositivo", RF-21 y el caso "Varios veterinarios o tambos" (sin veterinarios, con varias tablets); `plan.md` línea ~65 (el comando `RegistrarSoloEventoCommand(AnimalId, EventoId, Observaciones)` sin `UsuarioId`), línea ~112 (la fila de tests de RF-16 sin usuario ni dispositivo), línea ~124 ("spec 007"); `tasks.md` línea ~20 (el comando de la T1 sin `UsuarioId`) y **la tarea de cierre (línea ~57, cambia de contenido)**: ya no renumera, sino que verifica que no queden "exportación 006" ni "bastón 007" en `docs/`, `MEMORY.md` ni en las specs 004 y 005 y que la 005 no mencione veterinario ni dispositivo; y anotar que la 005 se implementa **después** de la 006 y parte de la base que esta deja.
