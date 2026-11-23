@@ -75,15 +75,11 @@ public sealed partial class TrabajoViewModel
     /// <summary>Solo una vaca que entra en tacto muestra "Agregar evento" y "Agregar observación".</summary>
     public bool PuedeAgregarEventos => HayFicha && Ficha!.EntraEnTacto;
 
-    /// <summary>Estados activos del catálogo: botones para el tacto de un toque (RF-15).</summary>
-    public ObservableCollection<EventoCampoDto> Estados { get; } = [];
-
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HayEstadosActivos))]
-    private bool _estadosCargados;
-
-    /// <summary>Si no hay estados activos no se puede tactar, pero sí leer y marcar (RF-15).</summary>
-    public bool HayEstadosActivos => Estados.Count > 0;
+    /// <summary>
+    /// El selector de eventos de dos niveles (spec 005): principales y "Otro evento". Lo muestra la capa <see cref="CuadroTrabajo.Eventos"/>.
+    /// Si no hay eventos activos no se puede tactar, pero sí leer y marcar.
+    /// </summary>
+    public SelectorEventosViewModel Selector { get; }
 
     public bool HayFicha => Ficha is not null && Etapa != EtapaTrabajo.Terminado;
     public bool EstaEsperando => Etapa == EtapaTrabajo.Esperando;
@@ -171,6 +167,8 @@ public sealed partial class TrabajoViewModel
         if (!PuedeAbrirCuadroDeFicha) return;
         MensajeCuadro = null;
         HayFormularioEvento = false;
+        // Siempre se abre en los principales, con resaltado: el evento ya elegido o, si no hay, el estado actual de la vaca (RF-9).
+        Selector.Abrir(EventoElegido?.Id ?? Ficha?.EstadoId);
         await CambiarCuadroAsync(CuadroTrabajo.Eventos);
     }
 
@@ -190,7 +188,8 @@ public sealed partial class TrabajoViewModel
     [RelayCommand]
     private void AbrirNuevoEvento()
     {
-        if (Cuadro != CuadroTrabajo.Eventos) return;
+        // "+ Nuevo evento" solo se ofrece desde la vista de "Otro evento" (RF-8).
+        if (Cuadro != CuadroTrabajo.Eventos || !Selector.PuedeCrearNuevo) return;
         MensajeCuadro = null;
         NuevoEventoNombre = "";
         NuevoEventoCodigoDc = "";
@@ -237,12 +236,9 @@ public sealed partial class TrabajoViewModel
 
     private async Task CargarEstadosAsync()
     {
-        // T2: la lista plana de siempre (principales y después los de "Otro evento", sin el Rechazo fijo, que suma ReconstruirEventos). El selector de dos niveles llega en T3/T4.
-        var lista = await EnCampoAsync(() => _campo.ListarEventosAsync());
-        Estados.Clear();
-        foreach (var e in lista.Principales.Concat(lista.Otros.Where(o => o.Id != EventosCampo.Rechazo))) Estados.Add(e);
-        OnPropertyChanged(nameof(HayEstadosActivos));
-        ReconstruirEventos();   // la lista de eventos de la ficha suma el "Rechazo" fijo
+        // El servicio arma las dos listas (principales y "Otro evento" con el Rechazo fijo primero); el selector solo las muestra.
+        // No cambia la vista: tras crear un evento el selector sigue en "Otro evento" (RF-8).
+        Selector.Actualizar(await EnCampoAsync(() => _campo.ListarEventosAsync()));
     }
 
 

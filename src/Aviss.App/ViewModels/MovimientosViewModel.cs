@@ -86,7 +86,19 @@ public sealed partial class MovimientosViewModel : ObservableObject
     private readonly ICampoService _campo;
     private readonly SesionTrabajo _sesion;
 
-    public MovimientosViewModel(ICampoService campo, SesionTrabajo sesion) => (_campo, _sesion) = (campo, sesion);
+    public MovimientosViewModel(ICampoService campo, SesionTrabajo sesion)
+    {
+        (_campo, _sesion) = (campo, sesion);
+        // Editar usa el mismo selector que la ficha, pero sin "+ Nuevo evento" (RF-12); elegir solo anota el evento, guardar es aparte.
+        Selector = new SelectorEventosViewModel(permiteNuevo: false)
+        {
+            AlElegir = evento =>
+            {
+                ElegirEventoEditado(evento);
+                return Task.CompletedTask;
+            }
+        };
+    }
 
     public ObservableCollection<MovimientoItem> Movimientos { get; } = [];
 
@@ -169,8 +181,11 @@ public sealed partial class MovimientosViewModel : ObservableObject
     // Los registros solo se agregan: editar es anular el tacto o el rechazo y registrar uno nuevo con el evento y la observación elegidos, todo junto
     // (si el nuevo se rechaza, el original sigue como estaba).
 
-    /// <summary>Los eventos entre los que se puede elegir al editar: los estados activos y "Rechazo" al final (se puede pasar de tacto a rechazo y al revés).</summary>
-    public ObservableCollection<EventoCampoDto> EstadosParaEditar { get; } = [];
+    /// <summary>
+    /// Los eventos entre los que se puede elegir al editar: el mismo selector de dos niveles de la ficha. Sirve para cualquier registro
+    /// (tacto, solo evento o Rechazo): se puede pasar de uno a otro.
+    /// </summary>
+    public SelectorEventosViewModel Selector { get; }
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HayEdicion), nameof(TituloEdicion))]
@@ -192,7 +207,12 @@ public sealed partial class MovimientosViewModel : ObservableObject
 
     public bool HayEdicion => Editando is not null;
     public bool HayMensajeEdicion => !string.IsNullOrEmpty(MensajeEdicion);
-    public string TituloEdicion => Editando is { } e ? $"Editar el {(e.EsRechazo ? "rechazo" : "tacto")} de {e.Titulo}" : "";
+    public string TituloEdicion => Editando is { } e ? $"Editar el {QueEs(e)} de {e.Titulo}" : "";
+
+    // "tacto", "rechazo" o "evento" (OK, Aborto, Revisar Nuevamente...: un solo evento del catálogo que no cambia el estado).
+    private static string QueEs(MovimientoItem e) =>
+        !e.EsRechazo ? "tacto"
+        : e.Dto.EventoId is null || e.Dto.EventoId == Aviss.Application.Campo.EventosCampo.Rechazo ? "rechazo" : "evento";
     public string TextoEventoEditado => EventoEditado?.Nombre ?? "Elegí un evento";
 
     /// <summary>Abre la edición con el evento y la observación actuales ya cargados.</summary>
@@ -205,13 +225,10 @@ public sealed partial class MovimientosViewModel : ObservableObject
             MensajeError = null;
             MensajeInfo = null;
             MensajeEdicion = null;
-            // T2: lista plana (principales y "Otro evento", con el Rechazo al final). El registro se reconoce por su EventoId, no por el nombre.
-            var lista = await _campo.ListarEventosAsync();
-            EstadosParaEditar.Clear();
-            foreach (var e in lista.Principales.Concat(lista.Otros.Where(o => o.Id != EventosCampo.Rechazo))) EstadosParaEditar.Add(e);
-            EstadosParaEditar.Add(TrabajoViewModel.EventoRechazo);
-
-            EventoEditado = EstadosParaEditar.FirstOrDefault(e => e.Id == item.Dto.EventoId);
+            // El registro se reconoce por su EventoId, no por el nombre. Si su evento ya no está activo no se elige ninguno (y no se resalta).
+            Selector.Actualizar(await _campo.ListarEventosAsync());
+            Selector.Abrir(item.Dto.EventoId);
+            EventoEditado = Selector.Buscar(item.Dto.EventoId);
             ObservacionEditada = item.Dto.Observaciones ?? "";
             Editando = item;
         }

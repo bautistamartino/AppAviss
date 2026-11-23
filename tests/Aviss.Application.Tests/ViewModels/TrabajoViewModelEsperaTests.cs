@@ -9,7 +9,7 @@ namespace Aviss.Application.Tests.ViewModels;
 // Spec 004: En Espera y Rechazo en la pantalla de trabajo (lógica de ViewModel, sin MAUI).
 public class TrabajoViewModelEsperaTests
 {
-    private static readonly EventoCampoDto Prenada = new(Guid.Parse("33333333-0000-0000-0000-000000000001"), "PREÑADA", true, false);
+    private static readonly EventoCampoDto Prenada = new(Guid.Parse("33333333-0000-0000-0000-000000000001"), "PREÑADA", true, true);
     private static readonly DateTime Ahora = new(2026, 11, 17, 13, 10, 0, DateTimeKind.Utc);
 
     private sealed class RelojFijo : IRelojService
@@ -445,14 +445,14 @@ public class TrabajoViewModelEsperaTests
     // ------------------------------------------------------------------ Rechazo (RF-6)
 
     [Fact]
-    public async Task La_lista_de_eventos_trae_siempre_el_Rechazo_al_final_y_el_catalogo_no_lo_incluye()
+    public async Task La_lista_de_eventos_trae_el_Rechazo_primero_en_Otro_evento_y_el_catalogo_no_lo_incluye()
     {
         var b = new Banco();
         await b.Vm.IniciarAsync();
 
-        Assert.Equal(["PREÑADA", "Rechazo"], b.Vm.Eventos.Select(e => e.Nombre));
-        Assert.Equal(EventosCampo.Rechazo, b.Vm.Eventos[^1].Id);
-        Assert.Equal(["PREÑADA"], b.Vm.Estados.Select(e => e.Nombre));
+        Assert.Equal(["PREÑADA"], b.Vm.Selector.Principales.Select(e => e.Nombre));
+        Assert.Equal(["Rechazo"], b.Vm.Selector.Otros.Select(e => e.Nombre));
+        Assert.Equal(EventosCampo.Rechazo, b.Vm.Selector.Otros[0].Id);
     }
 
     [Fact]
@@ -462,23 +462,25 @@ public class TrabajoViewModelEsperaTests
         b.Campo.Estados = [];
         await b.Vm.IniciarAsync();
 
-        Assert.Equal(["Rechazo"], b.Vm.Eventos.Select(e => e.Nombre));
-        Assert.False(b.Vm.HayEstadosActivos);
+        Assert.Equal(["Rechazo"], b.Vm.Selector.Otros.Select(e => e.Nombre));
+        Assert.False(b.Vm.Selector.HayPrincipales);
+        Assert.Equal([EventosCampo.Rechazo], b.Vm.Selector.Otros.Select(e => e.Id));
     }
 
     [Fact]
-    public async Task Un_estado_creado_con_Nuevo_evento_queda_antes_del_Rechazo()
+    public async Task Un_estado_creado_con_Nuevo_evento_queda_en_Otro_evento_despues_del_Rechazo()
     {
         var b = new Banco();
         await b.Vm.IniciarAsync();
         await b.AbrirFichaAsync("1001");
         await b.Vm.AbrirEventosCommand.ExecuteAsync(null);
+        b.Vm.Selector.VerOtrosCommand.Execute(null);
         b.Vm.AbrirNuevoEventoCommand.Execute(null);
         b.Vm.NuevoEventoNombre = "Aborto";
 
         await b.Vm.CrearEventoCommand.ExecuteAsync(null);
 
-        Assert.Equal(["PREÑADA", "ABORTO", "Rechazo"], b.Vm.Eventos.Select(e => e.Nombre));
+        Assert.Equal(["Rechazo", "ABORTO"], b.Vm.Selector.Otros.Select(e => e.Nombre));
     }
 
     [Fact]
@@ -489,7 +491,7 @@ public class TrabajoViewModelEsperaTests
         var animal = await b.AbrirFichaAsync("1001");
         var rechazoId = Guid.NewGuid();
         b.Campo.OnRegistrarRechazo = _ => Resultado.Ok(rechazoId);
-        await b.Vm.ElegirEventoCommand.ExecuteAsync(b.Vm.Eventos[^1]);
+        await b.Vm.ElegirEventoCommand.ExecuteAsync(TrabajoViewModel.EventoRechazo);
         b.Vm.ObservacionPendiente = "Pata";
 
         await b.Vm.EntrarCommand.ExecuteAsync(null);
@@ -509,7 +511,7 @@ public class TrabajoViewModelEsperaTests
         await b.Vm.IniciarAsync();
         await b.AbrirFichaAsync("1001");
 
-        await b.Vm.ElegirEventoCommand.ExecuteAsync(b.Vm.Eventos[^1]);
+        await b.Vm.ElegirEventoCommand.ExecuteAsync(TrabajoViewModel.EventoRechazo);
         await b.Vm.EntrarCommand.ExecuteAsync(null);
 
         Assert.Null(Assert.Single(b.Campo.Rechazos).Observaciones);
@@ -524,7 +526,7 @@ public class TrabajoViewModelEsperaTests
         await b.Vm.AbrirEsperaCommand.ExecuteAsync(b.Vm.Esperas[0]);
         b.Campo.Esperas = [];
 
-        await b.Vm.ElegirEventoCommand.ExecuteAsync(b.Vm.Eventos[^1]);
+        await b.Vm.ElegirEventoCommand.ExecuteAsync(TrabajoViewModel.EventoRechazo);
         await b.Vm.EntrarCommand.ExecuteAsync(null);
 
         Assert.Single(b.Campo.Rechazos);
@@ -540,7 +542,7 @@ public class TrabajoViewModelEsperaTests
         await b.Vm.AbrirEsperaCommand.ExecuteAsync(b.Vm.Esperas[0]);
         b.Campo.OnRegistrarRechazo = _ => Resultado.Error<Guid>(CodigoError.DatosInvalidos, "La hora de la tablet no es válida.");
 
-        await b.Vm.ElegirEventoCommand.ExecuteAsync(b.Vm.Eventos[^1]);
+        await b.Vm.ElegirEventoCommand.ExecuteAsync(TrabajoViewModel.EventoRechazo);
         await b.Vm.EntrarCommand.ExecuteAsync(null);
 
         Assert.True(b.Vm.HayFicha);
@@ -555,7 +557,7 @@ public class TrabajoViewModelEsperaTests
         var b = new Banco();
         await b.Vm.IniciarAsync();
         await b.AbrirFichaAsync("1001");
-        await b.Vm.ElegirEventoCommand.ExecuteAsync(b.Vm.Eventos[^1]);
+        await b.Vm.ElegirEventoCommand.ExecuteAsync(TrabajoViewModel.EventoRechazo);
         await b.Vm.EntrarCommand.ExecuteAsync(null);
 
         await b.Vm.DeshacerAvisoCommand.ExecuteAsync(null);

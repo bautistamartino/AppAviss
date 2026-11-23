@@ -571,34 +571,37 @@
                     </VerticalStackLayout>
 
                     <VerticalStackLayout Spacing="12" IsVisible="{Binding HayFormularioEvento, Converter={StaticResource Invertir}}">
-                    <!-- Alto para los 6 estados de siempre sin desplazar; si hay más (eventos propios), la barra queda siempre visible. -->
+                    <!-- Provisorio (spec 005, T3): el selector de dos niveles sin resaltado ni diseño final; la pantalla definitiva es T4. -->
                     <ScrollView MaximumHeightRequest="480" VerticalScrollBarVisibility="Always">
-                        <VerticalStackLayout BindableLayout.ItemsSource="{Binding Eventos}" Spacing="8">
-                            <BindableLayout.ItemTemplate>
-                                <DataTemplate x:DataType="dto:EventoCampoDto">
-                                    <Button Text="{Binding Nombre}" Style="{StaticResource BotonCampo}" HeightRequest="60" FontSize="22"
-                                            Command="{Binding Source={RelativeSource AncestorType={x:Type vm:TrabajoViewModel}}, Path=ElegirEventoCommand, x:DataType=vm:TrabajoViewModel}"
-                                            CommandParameter="{Binding .}">
-                                        <Button.BackgroundColor>
-                                            <MultiBinding Converter="{StaticResource EstadoActual}" ConverterParameter="fondo">
-                                                <Binding Path="Id" />
-                                                <Binding Source="{RelativeSource AncestorType={x:Type vm:TrabajoViewModel}}" Path="Ficha.EstadoId" x:DataType="vm:TrabajoViewModel" />
-                                            </MultiBinding>
-                                        </Button.BackgroundColor>
-                                        <Button.TextColor>
-                                            <MultiBinding Converter="{StaticResource EstadoActual}" ConverterParameter="texto">
-                                                <Binding Path="Id" />
-                                                <Binding Source="{RelativeSource AncestorType={x:Type vm:TrabajoViewModel}}" Path="Ficha.EstadoId" x:DataType="vm:TrabajoViewModel" />
-                                            </MultiBinding>
-                                        </Button.TextColor>
-                                    </Button>
-                                </DataTemplate>
-                            </BindableLayout.ItemTemplate>
+                        <VerticalStackLayout Spacing="8">
+                            <VerticalStackLayout BindableLayout.ItemsSource="{Binding Selector.Principales}" Spacing="8" IsVisible="{Binding Selector.MostrandoPrincipales}">
+                                <BindableLayout.ItemTemplate>
+                                    <DataTemplate x:DataType="dto:EventoCampoDto">
+                                        <Button Text="{Binding Nombre}" Style="{StaticResource BotonCampo}" HeightRequest="60" FontSize="22"
+                                                Command="{Binding Source={RelativeSource AncestorType={x:Type vm:TrabajoViewModel}}, Path=Selector.ElegirCommand, x:DataType=vm:TrabajoViewModel}"
+                                                CommandParameter="{Binding .}" />
+                                    </DataTemplate>
+                                </BindableLayout.ItemTemplate>
+                            </VerticalStackLayout>
+                            <Button Text="Otro evento" Style="{StaticResource BotonCampoSecundario}" HeightRequest="60" FontSize="22"
+                                    IsVisible="{Binding Selector.MostrandoPrincipales}" Command="{Binding Selector.VerOtrosCommand}" />
+                            <VerticalStackLayout BindableLayout.ItemsSource="{Binding Selector.Otros}" Spacing="8" IsVisible="{Binding Selector.MostrandoOtros}">
+                                <BindableLayout.ItemTemplate>
+                                    <DataTemplate x:DataType="dto:EventoCampoDto">
+                                        <Button Text="{Binding Nombre}" Style="{StaticResource BotonCampo}" HeightRequest="60" FontSize="22"
+                                                Command="{Binding Source={RelativeSource AncestorType={x:Type vm:TrabajoViewModel}}, Path=Selector.ElegirCommand, x:DataType=vm:TrabajoViewModel}"
+                                                CommandParameter="{Binding .}" />
+                                    </DataTemplate>
+                                </BindableLayout.ItemTemplate>
+                            </VerticalStackLayout>
                         </VerticalStackLayout>
                     </ScrollView>
                     <Button Text="+ Nuevo evento" Style="{StaticResource BotonCampoAlerta}" HeightRequest="56" FontSize="20"
+                            IsVisible="{Binding Selector.PuedeCrearNuevo}"
                             Command="{Binding AbrirNuevoEventoCommand}"
                             SemanticProperties.Hint="Crear un evento nuevo si no está en la lista" />
+                    <Button Text="Volver" Style="{StaticResource BotonCampoSecundario}" HeightRequest="52" FontSize="20"
+                            IsVisible="{Binding Selector.MostrandoOtros}" Command="{Binding Selector.VolverCommand}" />
                     <Button Text="Cancelar" Style="{StaticResource BotonCampoSecundario}" HeightRequest="52" FontSize="20"
                             Command="{Binding CerrarCuadroAgregarCommand}" />
                     </VerticalStackLayout>

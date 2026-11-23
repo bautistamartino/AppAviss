@@ -26,7 +26,7 @@ Tests primero en cada tarea de lógica. Ninguna tarea se da por terminada con `d
   - Hecho cuando: OK, Aborto y Revisar Nuevamente se guardan con observación, usuario, dispositivo y fecha y hora del reloj sin cambiar el estado ni el último tacto de la vaca, y quedan en el historial, en movimientos y en el aviso de repetido; se deshacen y se editan (estado ↔ solo evento ↔ Rechazo) sin dejar nada a medias; el armador devuelve principales activos en su orden y "Otros" con Rechazo primero y el resto alfabético; un evento desactivado no aparece en las listas pero sí en lo guardado; renombrar un principal no lo mueve y desactivarlo no lo reemplaza; las pruebas de Rechazo de la 004 siguen en verde.
   - Qué mirar en el emulador: nada (sin pantallas).
 
-- [ ] **T3** — ViewModels: selector de eventos compartido, ficha y edición de movimientos.
+- [x] **T3** — ViewModels: selector de eventos compartido, ficha y edición de movimientos.
   - Qué se hace (tests primero):
     - `SelectorEventosViewModel`: principales, "Otro evento", vista secundaria, "Volver", resaltado (incluido que un desactivado no resalta "Otro evento"), `PermiteNuevo`; se abre siempre en los principales.
     - `TrabajoViewModel` (`.Ficha`, `EstadosTrabajo`): la capa de eventos usa el selector; `ElegirEventoAsync` no guarda; `EntrarAsync` ramifica por `CambiaEstado` (estado → tacto; si no → `RegistrarSoloEventoAsync`); "+ Nuevo evento" solo desde la vista secundaria y sin elegir lo creado; resaltado inicial = estado actual de la vaca; lecturas con la lista abierta (principal o secundaria) quedan en cola.

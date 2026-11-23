@@ -72,6 +72,7 @@ public sealed partial class TrabajoViewModel : ObservableObject
         _simulador = simulador;
         _reloj = reloj;
         _cola = new ColaDeLecturas(ProcesarLecturaAsync);
+        Selector = new SelectorEventosViewModel(permiteNuevo: true) { AlElegir = ElegirEventoAsync };
         CargarPreferenciasDelEstablecimiento();
     }
 

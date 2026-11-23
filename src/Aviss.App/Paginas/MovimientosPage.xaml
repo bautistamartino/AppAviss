@@ -89,15 +89,31 @@
                     <Label Text="{Binding TextoEventoEditado, StringFormat='Evento: {0}'}" Style="{StaticResource TextoCampo}" FontSize="20" FontAttributes="Bold"
                            TextColor="{StaticResource CampoExito}" />
 
+                    <!-- Provisorio (spec 005, T3): el mismo selector de dos niveles que la ficha, sin resaltado; el diseño final es T4. -->
                     <ScrollView MaximumHeightRequest="260">
-                        <VerticalStackLayout BindableLayout.ItemsSource="{Binding EstadosParaEditar}" Spacing="8">
-                            <BindableLayout.ItemTemplate>
-                                <DataTemplate x:DataType="dto:EventoCampoDto">
-                                    <Button Text="{Binding Nombre}" Style="{StaticResource BotonCampoSecundario}" HeightRequest="52" FontSize="20"
-                                            Command="{Binding Source={RelativeSource AncestorType={x:Type vm:MovimientosViewModel}}, Path=ElegirEventoEditadoCommand, x:DataType=vm:MovimientosViewModel}"
-                                            CommandParameter="{Binding .}" />
-                                </DataTemplate>
-                            </BindableLayout.ItemTemplate>
+                        <VerticalStackLayout Spacing="8">
+                            <VerticalStackLayout BindableLayout.ItemsSource="{Binding Selector.Principales}" Spacing="8" IsVisible="{Binding Selector.MostrandoPrincipales}">
+                                <BindableLayout.ItemTemplate>
+                                    <DataTemplate x:DataType="dto:EventoCampoDto">
+                                        <Button Text="{Binding Nombre}" Style="{StaticResource BotonCampoSecundario}" HeightRequest="52" FontSize="20"
+                                                Command="{Binding Source={RelativeSource AncestorType={x:Type vm:MovimientosViewModel}}, Path=Selector.ElegirCommand, x:DataType=vm:MovimientosViewModel}"
+                                                CommandParameter="{Binding .}" />
+                                    </DataTemplate>
+                                </BindableLayout.ItemTemplate>
+                            </VerticalStackLayout>
+                            <Button Text="Otro evento" Style="{StaticResource BotonCampoSecundario}" HeightRequest="52" FontSize="20"
+                                    IsVisible="{Binding Selector.MostrandoPrincipales}" Command="{Binding Selector.VerOtrosCommand}" />
+                            <VerticalStackLayout BindableLayout.ItemsSource="{Binding Selector.Otros}" Spacing="8" IsVisible="{Binding Selector.MostrandoOtros}">
+                                <BindableLayout.ItemTemplate>
+                                    <DataTemplate x:DataType="dto:EventoCampoDto">
+                                        <Button Text="{Binding Nombre}" Style="{StaticResource BotonCampoSecundario}" HeightRequest="52" FontSize="20"
+                                                Command="{Binding Source={RelativeSource AncestorType={x:Type vm:MovimientosViewModel}}, Path=Selector.ElegirCommand, x:DataType=vm:MovimientosViewModel}"
+                                                CommandParameter="{Binding .}" />
+                                    </DataTemplate>
+                                </BindableLayout.ItemTemplate>
+                            </VerticalStackLayout>
+                            <Button Text="Volver" Style="{StaticResource BotonCampoSecundario}" HeightRequest="52" FontSize="20"
+                                    IsVisible="{Binding Selector.MostrandoOtros}" Command="{Binding Selector.VolverCommand}" />
                         </VerticalStackLayout>
                     </ScrollView>
 

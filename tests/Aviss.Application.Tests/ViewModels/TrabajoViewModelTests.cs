@@ -8,8 +8,8 @@ namespace Aviss.Application.Tests.ViewModels;
 // Prueban la pantalla de trabajo sin MAUI: la fachada de campo, el lector, el tiempo y la plataforma son falsos.
 public class TrabajoViewModelTests
 {
-    private static readonly EventoCampoDto Prenada = new(Guid.Parse("33333333-0000-0000-0000-000000000001"), "PREÑADA", true, false);
-    private static readonly EventoCampoDto Vacia = new(Guid.Parse("33333333-0000-0000-0000-000000000002"), "VACIA", true, false);
+    private static readonly EventoCampoDto Prenada = new(Guid.Parse("33333333-0000-0000-0000-000000000001"), "PREÑADA", true, true);
+    private static readonly EventoCampoDto Vacia = new(Guid.Parse("33333333-0000-0000-0000-000000000002"), "VACIA", true, true);
 
     /// <summary>Todo lo que necesita el ViewModel, armado con falsos y con la sesión ya elegida.</summary>
     private sealed class Banco
@@ -66,8 +66,8 @@ public class TrabajoViewModelTests
         Assert.Equal("Manga 2 · 7", b.Vm.TextoManga);
         Assert.True(b.Vm.MangaAbierta);
         Assert.Equal(30, b.Vm.Avance!.Procesadas);
-        Assert.Equal(2, b.Vm.Estados.Count);
-        Assert.True(b.Vm.HayEstadosActivos);
+        Assert.Equal([Prenada, Vacia], b.Vm.Selector.Principales);
+        Assert.True(b.Vm.Selector.HayPrincipales);
         Assert.True(b.Pantalla.Encendida);
         await Esperas.HastaAsync(() => b.Lector.Conexiones == 1);
         Assert.Equal("Tambo Norte", b.Vm.NombreEstablecimiento);
@@ -661,6 +661,7 @@ public class TrabajoViewModelTests
         await b.Vm.IniciarAsync();   // carga los estados
         await b.LeerAsync("1001");
         await b.Vm.AbrirEventosCommand.ExecuteAsync(null);
+        b.Vm.Selector.VerOtrosCommand.Execute(null);
         b.Vm.AbrirNuevoEventoCommand.Execute(null);
         Assert.True(b.Vm.HayFormularioEvento);
         b.Vm.NuevoEventoNombre = "  Aborto ";
@@ -668,7 +669,7 @@ public class TrabajoViewModelTests
         await b.Vm.CrearEventoCommand.ExecuteAsync(null);
 
         Assert.Equal([("Aborto", "ABORTO")], b.Campo.EstadosCreados);   // sin código de Dairy Comp: nombre en mayúsculas
-        Assert.Contains(b.Vm.Estados, e => e.Nombre == "ABORTO");
+        Assert.Contains(b.Vm.Selector.Otros, e => e.Nombre == "ABORTO");   // queda en "Otro evento", sin elegirse
         Assert.False(b.Vm.HayFormularioEvento);
         Assert.Equal(CuadroTrabajo.Eventos, b.Vm.Cuadro);   // sigue la lista abierta para elegirlo
         Assert.Empty(b.Campo.Tactos);
@@ -681,6 +682,7 @@ public class TrabajoViewModelTests
         b.Vaca("1001");
         await b.LeerAsync("1001");
         await b.Vm.AbrirEventosCommand.ExecuteAsync(null);
+        b.Vm.Selector.VerOtrosCommand.Execute(null);
         b.Vm.AbrirNuevoEventoCommand.Execute(null);
         b.Vm.NuevoEventoNombre = "Aborto";
         b.Vm.NuevoEventoCodigoDc = " ABORT ";
@@ -697,6 +699,7 @@ public class TrabajoViewModelTests
         b.Vaca("1001");
         await b.LeerAsync("1001");
         await b.Vm.AbrirEventosCommand.ExecuteAsync(null);
+        b.Vm.Selector.VerOtrosCommand.Execute(null);
         b.Vm.AbrirNuevoEventoCommand.Execute(null);
         b.Vm.NuevoEventoNombre = "   ";
 
@@ -715,6 +718,7 @@ public class TrabajoViewModelTests
         b.Campo.OnCrearEstado = _ => Resultado.Error<Guid>(CodigoError.Duplicado, "Ya existe un estado con ese nombre.");
         await b.LeerAsync("1001");
         await b.Vm.AbrirEventosCommand.ExecuteAsync(null);
+        b.Vm.Selector.VerOtrosCommand.Execute(null);
         b.Vm.AbrirNuevoEventoCommand.Execute(null);
         b.Vm.NuevoEventoNombre = "Vacia";
 
@@ -731,11 +735,13 @@ public class TrabajoViewModelTests
         b.Vaca("1001");
         await b.LeerAsync("1001");
         await b.Vm.AbrirEventosCommand.ExecuteAsync(null);
+        b.Vm.Selector.VerOtrosCommand.Execute(null);
         b.Vm.AbrirNuevoEventoCommand.Execute(null);
 
         b.Vm.CancelarNuevoEventoCommand.Execute(null);
         Assert.False(b.Vm.HayFormularioEvento);
 
+        b.Vm.Selector.VerOtrosCommand.Execute(null);
         b.Vm.AbrirNuevoEventoCommand.Execute(null);
         await b.Vm.CerrarCuadroAgregarCommand.ExecuteAsync(null);
         await b.Vm.AbrirEventosCommand.ExecuteAsync(null);
@@ -884,7 +890,8 @@ public class TrabajoViewModelTests
 
         await b.LeerAsync("1001");
 
-        Assert.False(b.Vm.HayEstadosActivos);
+        Assert.False(b.Vm.Selector.HayPrincipales);
+        Assert.Equal([EventosCampo.Rechazo], b.Vm.Selector.Otros.Select(e => e.Id));
         Assert.NotNull(b.Vm.Ficha);   // se marcó y se ve la ficha
     }
 
