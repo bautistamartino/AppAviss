@@ -81,12 +81,6 @@ public interface ITrabajoCampoService
     /// <summary>Anula el último tacto vigente de un animal con otro registro (RF-13, RF-14). Devuelve el Id del tacto de anulación.</summary>
     Task<Resultado<Guid>> AnularTactoAsync(AnularTactoCommand comando, CancellationToken ct = default);
 
-    /// <summary>
-    /// Corrige un tacto ("Editar" un movimiento): anula el tacto y registra uno nuevo con el evento y la observación elegidos, en UNA sola
-    /// transacción (si algo falla no queda nada a medias). Solo vale para el último registro vigente del animal. Devuelve el Id del tacto nuevo.
-    /// </summary>
-    Task<Resultado<Guid>> CorregirTactoAsync(CorregirTactoCommand comando, CancellationToken ct = default);
-
     /// <summary>Registra la marca de rechazo de una vaca (spec 004, RF-6); si tenía una espera pendiente, la resuelve en la misma transacción.</summary>
     Task<Resultado<Guid>> RegistrarRechazoAsync(RegistrarRechazoCommand comando, CancellationToken ct = default);
 
@@ -130,10 +124,6 @@ public interface ICampoService
 
     // ---- Deshacer y movimientos (RF-26 a RF-28) ----
     Task<Resultado<ResultadoDeshacerDto>> DeshacerAsync(DeshacerCommand comando, CancellationToken ct = default);
-
-    /// <summary>"Editar" un movimiento de tacto: lo anula y registra uno nuevo con el evento y la observación elegidos (una sola transacción).
-    /// Alias de <see cref="CorregirRegistroAsync"/> hasta que los ViewModels pasen a usar el nuevo (se quita en la T5 de la spec 004).</summary>
-    Task<Resultado<Guid>> CorregirTactoAsync(CorregirTactoCommand comando, CancellationToken ct = default);
 
     /// <summary>"Editar" un movimiento (tacto o rechazo, en ambas direcciones): anula el registro y guarda uno nuevo en una sola transacción (spec 004, RF-8).</summary>
     Task<Resultado<Guid>> CorregirRegistroAsync(CorregirRegistroCommand comando, CancellationToken ct = default);

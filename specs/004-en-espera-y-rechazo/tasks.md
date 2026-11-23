@@ -44,7 +44,7 @@ Tests primero en cada tarea de lógica. Ninguna tarea se da por terminada con `d
   - Hecho cuando: compila y se instala; la pantalla refleja los estados de los ViewModels de T3.
   - **Qué mirar en el emulador (o en la tablet):** (1) poner una vaca en espera y que aparezca su botón con la caravana; (2) leer otras vacas mientras tanto y que las esperas no se muevan; (3) tocar el botón de la espera y ver la ficha con el cartel; (4) Entrar con un evento y que el botón desaparezca; (5) Saltar y que desaparezca sin guardar nada; (6) releer una vaca en espera y que abra su ficha; (7) con más de 4 esperas, el "+N" y la lista; (8) el evento "Rechazo" con el motivo escrito a mano; (9) que los botones se alcancen con una mano.
 
-- [ ] **T5** — Movimientos, historial y cierre documental.
+- [x] **T5** — Movimientos, historial y cierre documental.
   - Qué se hace:
     - `MovimientosPage`: "Rechazo · motivo" como segundo renglón y Editar con "Rechazo" en la lista.
     - Quitar el alias `CorregirTactoAsync` y limpiar lo que quedó sin uso; suite completa y de rendimiento.

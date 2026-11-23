@@ -1,3 +1,4 @@
+using Aviss.Application.Campo;
 using Aviss.Application.Comandos;
 using Aviss.Application.Comun;
 using Aviss.Infrastructure.Tests.Soporte;
@@ -28,7 +29,7 @@ public sealed class CorregirTactoTests : IDisposable
         var (animal, tacto) = await VacaConTactoAsync();
         var vacia = _e.Base.Estado("VACIA", "VACIA", "VACIA");
 
-        var r = await _e.Campo.CorregirTactoAsync(new CorregirTactoCommand(tacto, vacia, "  Revisar pata ", _e.UsuarioId));
+        var r = await _e.Campo.CorregirRegistroAsync(new CorregirRegistroCommand(tacto, vacia, "  Revisar pata ", _e.UsuarioId));
 
         Assert.True(r.EsCorrecto, r.Mensaje);
         Assert.Equal("1", _e.Col("Tacto", tacto, "Anulado"));                 // el viejo queda anulado, no se borra
@@ -46,7 +47,7 @@ public sealed class CorregirTactoTests : IDisposable
         var (_, tacto) = await VacaConTactoAsync();
         var vacia = _e.Base.Estado("VACIA", "VACIA", "VACIA");
 
-        await _e.Campo.CorregirTactoAsync(new CorregirTactoCommand(tacto, vacia, null, _e.UsuarioId));
+        await _e.Campo.CorregirRegistroAsync(new CorregirRegistroCommand(tacto, vacia, null, _e.UsuarioId));
 
         Assert.Equal(2, _e.Cuenta("Historial", "Accion = 'Tacto'"));            // el original y el nuevo
         Assert.Equal(1, _e.Cuenta("Historial", "Accion = 'AnulacionTacto'"));
@@ -57,10 +58,10 @@ public sealed class CorregirTactoTests : IDisposable
     {
         var (_, tacto) = await VacaConTactoAsync();
         var vacia = _e.Base.Estado("VACIA", "VACIA", "VACIA");
-        var primera = await _e.Campo.CorregirTactoAsync(new CorregirTactoCommand(tacto, vacia, null, _e.UsuarioId));
+        var primera = await _e.Campo.CorregirRegistroAsync(new CorregirRegistroCommand(tacto, vacia, null, _e.UsuarioId));
         _e.Reloj.Avanzar(TimeSpan.FromSeconds(1));
 
-        var segunda = await _e.Campo.CorregirTactoAsync(new CorregirTactoCommand(primera.Valor, _e.EstadoPrenada, "otra vez", _e.UsuarioId));
+        var segunda = await _e.Campo.CorregirRegistroAsync(new CorregirRegistroCommand(primera.Valor, _e.EstadoPrenada, "otra vez", _e.UsuarioId));
 
         Assert.True(segunda.EsCorrecto, segunda.Mensaje);
         Assert.Equal("1", _e.Col("Tacto", primera.Valor, "Anulado"));
@@ -76,7 +77,7 @@ public sealed class CorregirTactoTests : IDisposable
         var manga = _e.Base.Manga(_e.RodeoId, 9, _e.UsuarioId);
         _e.Base.MarcaPasada(animal, manga, _e.UsuarioId, fechaHora: _e.Reloj.UtcAhora, orden: 1000);
 
-        var r = await _e.Campo.CorregirTactoAsync(new CorregirTactoCommand(tacto, vacia, null, _e.UsuarioId));
+        var r = await _e.Campo.CorregirRegistroAsync(new CorregirRegistroCommand(tacto, vacia, null, _e.UsuarioId));
 
         Assert.Equal(CodigoError.TactoNoEsElUltimo, r.Codigo);
         Assert.Equal("0", _e.Col("Tacto", tacto, "Anulado"));
@@ -89,7 +90,7 @@ public sealed class CorregirTactoTests : IDisposable
         var (animal, tacto) = await VacaConTactoAsync();
         var deBaja = _e.Base.Estado("BAJA", "BAJA", "BAJA", activo: false);
 
-        var r = await _e.Campo.CorregirTactoAsync(new CorregirTactoCommand(tacto, deBaja, null, _e.UsuarioId));
+        var r = await _e.Campo.CorregirRegistroAsync(new CorregirRegistroCommand(tacto, deBaja, null, _e.UsuarioId));
 
         Assert.False(r.EsCorrecto);
         Assert.Equal("0", _e.Col("Tacto", tacto, "Anulado"));                 // no se anuló
@@ -101,7 +102,7 @@ public sealed class CorregirTactoTests : IDisposable
     [Fact]
     public async Task Un_tacto_que_no_existe_se_rechaza()
     {
-        var r = await _e.Campo.CorregirTactoAsync(new CorregirTactoCommand(Guid.NewGuid(), _e.EstadoPrenada, null, _e.UsuarioId));
+        var r = await _e.Campo.CorregirRegistroAsync(new CorregirRegistroCommand(Guid.NewGuid(), _e.EstadoPrenada, null, _e.UsuarioId));
 
         Assert.Equal(CodigoError.NoEncontrado, r.Codigo);
     }
@@ -112,7 +113,7 @@ public sealed class CorregirTactoTests : IDisposable
         var (_, tacto) = await VacaConTactoAsync();
         await _e.DeshacerAsync(Aviss.Application.Campo.TipoDeshacer.Tacto, tacto);
 
-        var r = await _e.Campo.CorregirTactoAsync(new CorregirTactoCommand(tacto, _e.EstadoPrenada, null, _e.UsuarioId));
+        var r = await _e.Campo.CorregirRegistroAsync(new CorregirRegistroCommand(tacto, _e.EstadoPrenada, null, _e.UsuarioId));
 
         Assert.False(r.EsCorrecto);
         Assert.Equal(CodigoError.TactoYaAnulado, r.Codigo);

@@ -96,9 +96,6 @@ internal sealed class CampoService : ICampoService
 
     // ---- Deshacer, corregir y movimientos ----
 
-    public Task<Resultado<Guid>> CorregirTactoAsync(CorregirTactoCommand comando, CancellationToken ct = default)
-        => EscribirAsync(p => p.GetRequiredService<ITrabajoCampoService>().CorregirTactoAsync(comando, ct), ct);
-
     public Task<Resultado<Guid>> CorregirRegistroAsync(CorregirRegistroCommand comando, CancellationToken ct = default)
         => EscribirAsync(p => p.GetRequiredService<ITrabajoCampoService>().CorregirRegistroAsync(comando, ct), ct);
 

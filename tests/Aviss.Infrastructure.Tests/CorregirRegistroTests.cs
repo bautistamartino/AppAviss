@@ -165,16 +165,4 @@ public sealed class CorregirRegistroTests : IDisposable
         Assert.Equal("Resuelta", _e.Col("Espera", espera, "Estado"));
         Assert.Equal(T(r.Valor), _e.Col("Espera", espera, "RegistroResolucionId"));
     }
-
-    [Fact]
-    public async Task El_alias_CorregirTactoAsync_sigue_funcionando_hasta_la_T5()
-    {
-        var (_, tacto) = await VacaConTactoAsync();
-        var vacia = _e.Base.Estado("VACIA", "VACIA", "VACIA");
-
-        var r = await _e.Campo.CorregirTactoAsync(new CorregirTactoCommand(tacto, vacia, null, _e.UsuarioId));
-
-        Assert.True(r.EsCorrecto, r.Mensaje);
-        Assert.Equal(T(vacia), _e.Col("Tacto", r.Valor, "EstadoNuevoId"));
-    }
 }

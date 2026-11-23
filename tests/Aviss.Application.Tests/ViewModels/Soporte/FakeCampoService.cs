@@ -124,14 +124,6 @@ public class FakeCampoService : ICampoService
             ?? Resultado.Ok(new ResultadoDeshacerDto(comando.Tipo, null, null, 1, 0)));
     }
 
-    public List<Aviss.Application.Comandos.CorregirTactoCommand> Correcciones { get; } = [];
-    public Func<Aviss.Application.Comandos.CorregirTactoCommand, Resultado<Guid>>? OnCorregir { get; set; }
-
-    public Task<Resultado<Guid>> CorregirTactoAsync(Aviss.Application.Comandos.CorregirTactoCommand comando, CancellationToken ct = default)
-    {
-        Correcciones.Add(comando);
-        return Task.FromResult(OnCorregir?.Invoke(comando) ?? Resultado.Ok(Guid.NewGuid()));
-    }
 
     // ---- En Espera y Rechazo (spec 004) ----
     public IReadOnlyList<EsperaDto> Esperas { get; set; } = [];

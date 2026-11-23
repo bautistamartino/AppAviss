@@ -46,13 +46,6 @@ internal sealed class TrabajoCampoService : ITrabajoCampoService
     public Task<Resultado<Guid>> AnularTactoAsync(AnularTactoCommand c, CancellationToken ct = default)
         => _uow.EjecutarAsync(() => AnularNucleoAsync(c, null, ct), ct);
 
-    /// <summary>
-    /// Corregir un tacto = anularlo y registrar uno nuevo, dentro de UNA transacción: si el nuevo se rechaza (estado dado de baja,
-    /// por ejemplo), la anulación también se revierte y el tacto original sigue vigente. Los dos registros necesitan órdenes
-    /// distintos y consecutivos, porque el segundo todavía no ve al primero en la base.
-    /// </summary>
-    public Task<Resultado<Guid>> CorregirTactoAsync(CorregirTactoCommand c, CancellationToken ct = default)
-        => CorregirRegistroAsync(new CorregirRegistroCommand(c.TactoId, c.EstadoNuevoId, c.Observaciones, c.UsuarioId), ct);
 
     public Task<Resultado<Guid>> RegistrarRechazoAsync(RegistrarRechazoCommand c, CancellationToken ct = default)
         => _uow.EjecutarAsync(() => RegistrarRechazoNucleoAsync(c, null, ct), ct);
