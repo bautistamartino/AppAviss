@@ -306,12 +306,11 @@ public sealed partial class TrabajoViewModel
     /// <summary>Se puede tocar "Entrar": ficha de una vaca que entra en tacto, sin cuadros encima y con un evento elegido.</summary>
     private bool PuedeEntrar => Ficha is { EntraEnTacto: true } && Etapa == EtapaTrabajo.Ficha && Cuadro == CuadroTrabajo.Ninguno && EventoElegido is not null;
 
-    /// <summary>"Entrar": guarda el tacto con el evento elegido y la observación (si hay), con el veterinario activo.</summary>
+    /// <summary>"Entrar": guarda el tacto con el evento elegido y la observación (si hay).</summary>
     [RelayCommand(CanExecute = nameof(PuedeEntrar))]
     private async Task EntrarAsync()
     {
         if (Ficha is not { EntraEnTacto: true } ficha || EventoElegido is not { } estado || Etapa != EtapaTrabajo.Ficha || Cuadro != CuadroTrabajo.Ninguno) return;
-        if (_sesion.Veterinario is not { } vet) return;
 
         try
         {
@@ -321,9 +320,9 @@ public sealed partial class TrabajoViewModel
             // del catálogo es un tacto. Si la vaca estaba en espera, el servicio la resuelve en la misma transacción.
             var esRechazo = estado.Id == EventosCampo.Rechazo;
             var resultado = esRechazo
-                ? await EnCampoAsync(() => _campo.RegistrarRechazoAsync(new RegistrarRechazoCommand(ficha.AnimalId, observacion, vet.Id)))
+                ? await EnCampoAsync(() => _campo.RegistrarRechazoAsync(new RegistrarRechazoCommand(ficha.AnimalId, observacion, _sesion.UsuarioId)))
                 : await EnCampoAsync(() => _campo.RegistrarTactoAsync(
-                    new RegistrarTactoCommand(ficha.AnimalId, estado.Id, null, observacion, vet.Id)));
+                    new RegistrarTactoCommand(ficha.AnimalId, estado.Id, null, observacion, _sesion.UsuarioId)));
             if (!resultado.EsCorrecto)
             {
                 // Rechazo: motivo en español, nada cambia (el evento y la observación siguen elegidos), la ficha queda abierta

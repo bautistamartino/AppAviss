@@ -251,7 +251,6 @@ public sealed class MarcaPasadaServiceTests : IDisposable
         Assert.Equal("100", r.Caravana);
         Assert.Equal(TipoRegistroCampo.Marca, r.UltimoRegistro!.Tipo);
         Assert.Equal(1, r.UltimoRegistro.NumeroManga);
-        Assert.Equal("Vet Uno", r.UltimoRegistro.Veterinario);
         Assert.False(r.PuedeCorregir);        // lo último es la marca: no se ofrece "Corregir"
         Assert.Null(r.Ficha);                 // "Ver ficha" la pide aparte
         Assert.Equal(antes, _e.FotoCampo());

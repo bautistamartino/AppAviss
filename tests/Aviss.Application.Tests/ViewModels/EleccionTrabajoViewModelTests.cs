@@ -2,165 +2,122 @@ using Aviss.App.ViewModels;
 using Aviss.Application.Campo;
 using Aviss.Application.Comun;
 using Aviss.Application.Tests.ViewModels.Soporte;
-using Aviss.Domain.Entidades;
 
 namespace Aviss.Application.Tests.ViewModels;
 
+// Pantalla "Elegir con qué trabajar": solo establecimiento y rodeo (spec 006, RF-1, RF-2, RF-3).
 public class EleccionTrabajoViewModelTests
 {
-    private static readonly VeterinarioDto Ana = new(Guid.Parse("22222222-0000-0000-0000-000000000001"), "Dra. Ana", "M-1");
-    private static readonly VeterinarioDto Luis = new(Guid.Parse("22222222-0000-0000-0000-000000000002"), "Dr. Luis", null);
-
     private sealed class Banco
     {
         public FakeCampoService Campo { get; } = new();
-        public FakePreferencias Preferencias { get; } = new();
         public FakeNavegacion Navegacion { get; } = new();
         public SesionTrabajo Sesion { get; } = new();
         public EleccionTrabajoViewModel Vm { get; }
 
-        public Banco()
-        {
-            Campo.Veterinarios = [Ana, Luis];
-            Vm = new EleccionTrabajoViewModel(Campo, Preferencias, Navegacion, Sesion);
-        }
+        public Banco() => Vm = new EleccionTrabajoViewModel(Campo, Navegacion, Sesion);
+    }
+
+    // ------------------------------------------------------------------ RF-1: sin veterinario
+
+    [Fact]
+    public void La_pantalla_no_tiene_lista_de_veterinarios_ni_formulario_de_alta()
+    {
+        // Ni miembros públicos (propiedades, comandos) que mencionen al veterinario, ni constructor que pida las preferencias.
+        var nombres = typeof(EleccionTrabajoViewModel).GetMembers().Select(m => m.Name);
+        Assert.DoesNotContain(nombres, n => n.Contains("Veterinario", StringComparison.OrdinalIgnoreCase));
+        Assert.DoesNotContain(nombres, n => n.Contains("Matricula", StringComparison.OrdinalIgnoreCase));
+        Assert.DoesNotContain(nombres, n => n.Contains("FormularioNuevo", StringComparison.OrdinalIgnoreCase));
     }
 
     [Fact]
-    public async Task El_veterinario_recordado_queda_preseleccionado()
+    public void La_sesion_no_tiene_veterinario_ni_para_cambiarlo()
+    {
+        var nombres = typeof(SesionTrabajo).GetMembers().Select(m => m.Name);
+        Assert.DoesNotContain(nombres, n => n.Contains("Veterinario", StringComparison.OrdinalIgnoreCase));
+    }
+
+    // ------------------------------------------------------------------ RF-2: Empezar con solo el rodeo
+
+    [Fact]
+    public async Task Con_un_rodeo_elegido_se_puede_empezar_sin_pedir_nada_mas()
     {
         var b = new Banco();
-        b.Preferencias.Recordado = Luis.Id;
+        b.Campo.Rodeos = [Datos.Rodeo()];
 
+        await b.Vm.CargarAsync();   // un solo rodeo: queda elegido solo
+
+        Assert.True(b.Vm.PuedeEmpezar);
+        Assert.False(b.Vm.FaltaAlgo);
+        Assert.Equal("", b.Vm.QueFalta);
+        Assert.True(b.Vm.EmpezarCommand.CanExecute(null));
+    }
+
+    [Fact]
+    public async Task Sin_rodeo_no_empieza()
+    {
+        var b = new Banco();
+        b.Campo.Rodeos = [Datos.Rodeo(), Datos.Rodeo()];   // dos rodeos del mismo establecimiento: no se elige solo
         await b.Vm.CargarAsync();
-
-        Assert.Equal(Luis, b.Vm.VeterinarioSeleccionado);
-        Assert.False(b.Vm.RecordadoNoDisponible);
-    }
-
-    [Fact]
-    public async Task Si_el_recordado_ya_no_esta_activo_se_pide_elegir_otro()
-    {
-        var b = new Banco();
-        b.Preferencias.Recordado = Guid.NewGuid();   // dado de baja: no está en la lista de activos
-
-        await b.Vm.CargarAsync();
-
-        Assert.Null(b.Vm.VeterinarioSeleccionado);
-        Assert.True(b.Vm.RecordadoNoDisponible);
-        Assert.False(b.Vm.PuedeEmpezar);
-    }
-
-    [Fact]
-    public async Task Sin_recordado_no_hay_nada_preseleccionado_ni_aviso()
-    {
-        var b = new Banco();
-
-        await b.Vm.CargarAsync();
-
-        Assert.Null(b.Vm.VeterinarioSeleccionado);
-        Assert.False(b.Vm.RecordadoNoDisponible);
-    }
-
-    [Fact]
-    public async Task Sin_asignar_no_se_ofrece_para_trabajar()
-    {
-        var b = new Banco();
-        b.Campo.Veterinarios = [new VeterinarioDto(Usuario.SinAsignarId, Usuario.NombreSinAsignar, null), Ana];
-
-        await b.Vm.CargarAsync();
-
-        Assert.Equal([Ana], b.Vm.Veterinarios);
-    }
-
-    [Fact]
-    public async Task Crear_un_veterinario_lo_suma_y_lo_deja_elegido()
-    {
-        var b = new Banco();
-        await b.Vm.CargarAsync();
-        b.Vm.NuevoNombre = "  Dra. Marta ";
-        b.Vm.NuevaMatricula = "M-9";
-
-        await b.Vm.CrearVeterinarioCommand.ExecuteAsync(null);
-
-        Assert.Equal(("Dra. Marta", "M-9"), b.Campo.VeterinariosCreados.Single());
-        Assert.Equal("Dra. Marta", b.Vm.VeterinarioSeleccionado!.Nombre);
-        Assert.Equal(3, b.Vm.Veterinarios.Count);
-        Assert.Equal("", b.Vm.NuevoNombre);
-        Assert.False(b.Vm.HayMensajeError);
-    }
-
-    [Fact]
-    public async Task Crear_con_un_nombre_repetido_muestra_el_error_y_no_elige_a_nadie()
-    {
-        var b = new Banco();
-        b.Campo.OnCrearVeterinario = _ => Resultado.Error<Guid>(CodigoError.Duplicado, "Ya existe un veterinario con ese nombre.");
-        await b.Vm.CargarAsync();
-        b.Vm.NuevoNombre = "dra. ana";
-
-        await b.Vm.CrearVeterinarioCommand.ExecuteAsync(null);
-
-        Assert.Equal("Ya existe un veterinario con ese nombre.", b.Vm.MensajeError);
-        Assert.Null(b.Vm.VeterinarioSeleccionado);
-        Assert.Equal(2, b.Vm.Veterinarios.Count);
-    }
-
-    [Fact]
-    public async Task Crear_sin_nombre_pide_el_nombre_y_no_llama_al_servicio()
-    {
-        var b = new Banco();
-
-        await b.Vm.CrearVeterinarioCommand.ExecuteAsync(null);
-
-        Assert.True(b.Vm.HayMensajeError);
-        Assert.Empty(b.Campo.VeterinariosCreados);
-    }
-
-    [Fact]
-    public async Task Sin_matricula_se_manda_nula()
-    {
-        var b = new Banco();
-        b.Vm.NuevoNombre = "Dr. Pablo";
-        b.Vm.NuevaMatricula = "  ";
-
-        await b.Vm.CrearVeterinarioCommand.ExecuteAsync(null);
-
-        Assert.Null(b.Campo.VeterinariosCreados.Single().Matricula);
-    }
-
-    [Fact]
-    public async Task Sin_veterinario_o_sin_rodeo_no_empieza()
-    {
-        var b = new Banco();
-        var rodeo = Datos.Rodeo();
-        b.Campo.Rodeos = [rodeo];
-        await b.Vm.CargarAsync();   // un solo rodeo: queda elegido, pero no hay veterinario
 
         Assert.False(b.Vm.PuedeEmpezar);
         await b.Vm.EmpezarCommand.ExecuteAsync(null);
 
         Assert.Empty(b.Navegacion.Destinos);
         Assert.Null(b.Sesion.Rodeo);
-        Assert.Equal(0, b.Preferencias.Guardados);
+        Assert.False(b.Sesion.EstaLista);
     }
 
     [Fact]
-    public async Task Empezar_guarda_la_preferencia_llena_la_sesion_y_navega_al_trabajo()
+    public async Task Empezar_llena_la_sesion_con_el_rodeo_y_navega_al_trabajo()
     {
         var b = new Banco();
         var rodeo = Datos.Rodeo();
         b.Campo.Rodeos = [rodeo];
-        b.Preferencias.Recordado = Ana.Id;
         await b.Vm.CargarAsync();
 
-        Assert.True(b.Vm.PuedeEmpezar);
         await b.Vm.EmpezarCommand.ExecuteAsync(null);
 
-        Assert.Equal(Ana.Id, b.Preferencias.Recordado);
-        Assert.Equal(1, b.Preferencias.Guardados);
-        Assert.Equal(Ana, b.Sesion.Veterinario);
         Assert.Equal(rodeo, b.Sesion.Rodeo);
+        Assert.True(b.Sesion.EstaLista);
         Assert.Equal(["Trabajo"], b.Navegacion.Destinos);
+    }
+
+    [Fact]
+    public async Task Que_falta_solo_habla_del_establecimiento_y_del_rodeo()
+    {
+        var b = new Banco();
+        var norte = Guid.NewGuid();
+        var sur = Guid.NewGuid();
+        b.Campo.Rodeos = [Datos.Rodeo("Tambo Norte", "A", norte, Guid.NewGuid()), Datos.Rodeo("Tambo Sur", "B", sur, Guid.NewGuid())];
+        await b.Vm.CargarAsync();
+
+        // Sin establecimiento ni rodeo.
+        Assert.True(b.Vm.FaltaAlgo);
+        Assert.Equal("Falta elegir un establecimiento y un rodeo", b.Vm.QueFalta);
+
+        // Con establecimiento de dos rodeos, falta el rodeo.
+        b.Campo.Rodeos = [Datos.Rodeo("Tambo Norte", "A", norte, Guid.NewGuid()), Datos.Rodeo("Tambo Norte", "B", norte, Guid.NewGuid())];
+        await b.Vm.CargarAsync();
+        Assert.Equal("Falta elegir un rodeo", b.Vm.QueFalta);
+        Assert.DoesNotContain("veterinario", b.Vm.QueFalta, StringComparison.OrdinalIgnoreCase);
+    }
+
+    // ------------------------------------------------------------------ RF-3: no recuerda nada de quién trabaja
+
+    [Fact]
+    public async Task Empezar_no_guarda_nada_en_las_preferencias_y_la_pantalla_no_las_recibe()
+    {
+        // El constructor ya no recibe preferencias (no hay nada que recordar); la sesión queda sin autor.
+        var b = new Banco();
+        b.Campo.Rodeos = [Datos.Rodeo()];
+        await b.Vm.CargarAsync();
+        await b.Vm.EmpezarCommand.ExecuteAsync(null);
+
+        Assert.Equal(1, typeof(EleccionTrabajoViewModel).GetConstructors().Single().GetParameters()
+            .Count(p => p.ParameterType == typeof(SesionTrabajo)));
+        Assert.DoesNotContain(typeof(EleccionTrabajoViewModel).GetConstructors().Single().GetParameters(),
+            p => p.ParameterType.Name.Contains("Preferencias"));
     }
 
     [Fact]
@@ -215,79 +172,13 @@ public class EleccionTrabajoViewModelTests
     public async Task Una_falla_al_cargar_muestra_un_mensaje_fijo()
     {
         var b = new Banco();
-        var vm = new EleccionTrabajoViewModel(new FalloCampo(), b.Preferencias, b.Navegacion, b.Sesion);
+        var vm = new EleccionTrabajoViewModel(new FalloCampo(), b.Navegacion, b.Sesion);
 
         await vm.CargarAsync();
 
         Assert.Equal(EleccionTrabajoViewModel.MensajeFalla, vm.MensajeError);
     }
 
-    // ------------------------------------------------------------------ pantalla más clara (formulario y "qué falta")
-
-    [Fact]
-    public async Task Sin_veterinarios_el_formulario_de_alta_se_muestra_solo()
-    {
-        var b = new Banco();
-        b.Campo.Veterinarios = [];
-
-        await b.Vm.CargarAsync();
-
-        Assert.False(b.Vm.HayVeterinarios);
-        Assert.True(b.Vm.MostrarFormularioNuevo);
-    }
-
-    [Fact]
-    public async Task Con_veterinarios_el_formulario_queda_oculto_hasta_pedirlo()
-    {
-        var b = new Banco();
-        await b.Vm.CargarAsync();
-
-        Assert.True(b.Vm.HayVeterinarios);
-        Assert.False(b.Vm.MostrarFormularioNuevo);
-
-        b.Vm.MostrarCrearVeterinarioCommand.Execute(null);
-
-        Assert.True(b.Vm.MostrarFormularioNuevo);
-    }
-
-    [Fact]
-    public async Task Crear_un_veterinario_cierra_el_formulario()
-    {
-        var b = new Banco();
-        await b.Vm.CargarAsync();
-        b.Vm.MostrarCrearVeterinarioCommand.Execute(null);
-        b.Vm.NuevoNombre = "Dra. Marta";
-
-        await b.Vm.CrearVeterinarioCommand.ExecuteAsync(null);
-
-        Assert.False(b.Vm.MostrarFormularioNuevo);
-        Assert.True(b.Vm.HayVeterinarios);
-    }
-
-    [Fact]
-    public async Task Que_falta_dice_que_hay_que_elegir_veterinario_y_rodeo()
-    {
-        var b = new Banco();
-        b.Campo.Rodeos = [Datos.Rodeo(), Datos.Rodeo()];   // dos rodeos del mismo establecimiento: no se elige solo
-        await b.Vm.CargarAsync();
-
-        Assert.True(b.Vm.FaltaAlgo);
-        Assert.Contains("veterinario", b.Vm.QueFalta);
-        Assert.Contains("rodeo", b.Vm.QueFalta);
-    }
-
-    [Fact]
-    public async Task Que_falta_se_vacia_cuando_esta_todo_elegido()
-    {
-        var b = new Banco();
-        b.Campo.Rodeos = [Datos.Rodeo()];
-        b.Preferencias.Recordado = Ana.Id;
-
-        await b.Vm.CargarAsync();
-
-        Assert.False(b.Vm.FaltaAlgo);
-        Assert.Equal("", b.Vm.QueFalta);
-    }
 
     // ------------------------------------------------------------------ resetear un rodeo (para pruebas), con doble verificación
 
@@ -387,7 +278,7 @@ public class EleccionTrabajoViewModelTests
     // La fachada que siempre falla (disco, base): el ViewModel no debe caerse.
     private sealed class FalloCampo : FakeCampoService
     {
-        public override Task<IReadOnlyList<VeterinarioDto>> ListarVeterinariosActivosAsync(CancellationToken ct = default)
+        public override Task<IReadOnlyList<RodeoParaTrabajarDto>> ListarRodeosParaTrabajarAsync(CancellationToken ct = default)
             => throw new InvalidOperationException("falla");
     }
 }

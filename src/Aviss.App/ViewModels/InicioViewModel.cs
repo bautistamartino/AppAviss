@@ -13,7 +13,7 @@ public sealed partial class InicioViewModel : ObservableObject
     [RelayCommand]
     private Task ImportarRodeoAsync() => _navegacion.IrAImportarAsync();
 
-    /// <summary>"Trabajar": va a elegir veterinario, establecimiento y rodeo (RF-1, RF-2).</summary>
+    /// <summary>"Trabajar": va a elegir establecimiento y rodeo (RF-1, RF-2).</summary>
     [RelayCommand]
     private Task TrabajarAsync() => _navegacion.IrAEleccionTrabajoAsync();
 }

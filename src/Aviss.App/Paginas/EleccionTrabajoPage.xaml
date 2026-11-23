@@ -30,7 +30,7 @@
             </Setter>
         </Style>
 
-        <!-- Número del paso (1, 2, 3) en un círculo oscuro. -->
+        <!-- Número del paso (1, 2) en un círculo oscuro. -->
         <Style x:Key="InsigniaPaso" TargetType="Border">
             <Setter Property="BackgroundColor" Value="{StaticResource CampoPanel}" />
             <Setter Property="StrokeThickness" Value="0" />
@@ -53,8 +53,8 @@
     </ContentPage.Resources>
 
     <!--
-        Elegir con qué trabajar (spec 003, RF-1 y RF-2): veterinario (el recordado viene marcado), establecimiento y rodeo
-        con su avance de hoy. Tres pasos en una sola columna, para que se lea igual en vertical y en horizontal.
+        Elegir con qué trabajar (spec 003, RF-1 y RF-2; spec 006: sin veterinario): establecimiento y rodeo
+        con su avance de hoy. Dos pasos en una sola columna, para que se lea igual en vertical y en horizontal.
         Sin lógica acá: todo está en EleccionTrabajoViewModel.
     -->
     <Grid RowDefinitions="Auto,Auto,*,Auto" Padding="24,16" RowSpacing="12">
@@ -71,9 +71,6 @@
             <Border IsVisible="{Binding HayMensajeInfo}" BackgroundColor="{StaticResource CampoAlerta}" StrokeThickness="0" Padding="16,10">
                 <Label Text="{Binding MensajeInfo}" TextColor="Black" FontSize="20" FontAttributes="Bold" />
             </Border>
-            <Border IsVisible="{Binding RecordadoNoDisponible}" BackgroundColor="{StaticResource CampoAlerta}" StrokeThickness="0" Padding="16,10">
-                <Label Text="El último veterinario ya no está activo. Elegí otro o creá uno." TextColor="Black" FontSize="22" FontAttributes="Bold" />
-            </Border>
         </VerticalStackLayout>
 
         <!-- Sin rodeos importados: se ofrece ir a importar (RF-2). -->
@@ -84,58 +81,15 @@
             <Button Text="Importar rodeo" Style="{StaticResource BotonCampo}" Command="{Binding IrAImportarCommand}" />
         </VerticalStackLayout>
 
-        <!-- Tres pasos, uno debajo del otro -->
+        <!-- Dos pasos, uno debajo del otro -->
         <ScrollView Grid.Row="2" IsVisible="{Binding NoHayRodeos, Converter={StaticResource Invertir}}">
             <VerticalStackLayout Spacing="28">
 
-                <!-- 1. Veterinario -->
+                <!-- 1. Establecimiento -->
                 <VerticalStackLayout Spacing="10">
                     <HorizontalStackLayout Spacing="12">
                         <Border Style="{StaticResource InsigniaPaso}">
                             <Label Text="1" Style="{StaticResource NumeroPaso}" />
-                        </Border>
-                        <Label Text="¿Quién trabaja?" Style="{StaticResource TituloCuadro}" FontSize="28" VerticalOptions="Center" />
-                    </HorizontalStackLayout>
-                    <Label Text="{Binding TextoVeterinarioElegido}" Style="{StaticResource ElegidoPaso}" />
-
-                    <CollectionView ItemsSource="{Binding Veterinarios}" SelectionMode="Single"
-                                    SelectedItem="{Binding VeterinarioSeleccionado, Mode=TwoWay}"
-                                    IsVisible="{Binding HayVeterinarios}">
-                        <CollectionView.ItemTemplate>
-                            <DataTemplate x:DataType="dto:VeterinarioDto">
-                                <Grid Style="{StaticResource FilaElegible}" Margin="0,0,0,8" MinimumHeightRequest="72">
-                                    <VerticalStackLayout VerticalOptions="Center">
-                                        <Label Text="{Binding Nombre}" Style="{StaticResource TextoCampo}" FontSize="26" FontAttributes="Bold" />
-                                        <Label Text="{Binding Matricula, StringFormat='Matrícula: {0}'}" Style="{StaticResource TextoCampo}"
-                                               FontSize="18" TextColor="{StaticResource Gray600}" />
-                                    </VerticalStackLayout>
-                                </Grid>
-                            </DataTemplate>
-                        </CollectionView.ItemTemplate>
-                    </CollectionView>
-
-                    <Label Text="Todavía no hay veterinarios. Cargá el primero:" Style="{StaticResource TextoCampo}"
-                           IsVisible="{Binding HayVeterinarios, Converter={StaticResource Invertir}}" />
-
-                    <Button Text="+ Nuevo veterinario" Style="{StaticResource BotonCampoSecundario}"
-                            Command="{Binding MostrarCrearVeterinarioCommand}" IsVisible="{Binding PuedePedirFormulario}" />
-
-                    <!-- Crear veterinario: nombre obligatorio, matrícula opcional. -->
-                    <Border BackgroundColor="{StaticResource CampoClaro}" StrokeThickness="0" Padding="16" IsVisible="{Binding MostrarFormularioNuevo}">
-                        <VerticalStackLayout Spacing="10">
-                            <Label Text="Nuevo veterinario" Style="{StaticResource TextoCampo}" FontAttributes="Bold" />
-                            <Entry Style="{StaticResource EntradaCampo}" Placeholder="Nombre" Text="{Binding NuevoNombre}" MaxLength="60" />
-                            <Entry Style="{StaticResource EntradaCampo}" Placeholder="Matrícula (opcional)" Text="{Binding NuevaMatricula}" MaxLength="30" />
-                            <Button Text="Guardar veterinario" Style="{StaticResource BotonCampoSecundario}" Command="{Binding CrearVeterinarioCommand}" />
-                        </VerticalStackLayout>
-                    </Border>
-                </VerticalStackLayout>
-
-                <!-- 2. Establecimiento -->
-                <VerticalStackLayout Spacing="10">
-                    <HorizontalStackLayout Spacing="12">
-                        <Border Style="{StaticResource InsigniaPaso}">
-                            <Label Text="2" Style="{StaticResource NumeroPaso}" />
                         </Border>
                         <Label Text="¿En qué establecimiento?" Style="{StaticResource TituloCuadro}" FontSize="28" VerticalOptions="Center" />
                     </HorizontalStackLayout>
@@ -153,11 +107,11 @@
                     </CollectionView>
                 </VerticalStackLayout>
 
-                <!-- 3. Rodeo, con el avance de hoy -->
+                <!-- 2. Rodeo, con el avance de hoy -->
                 <VerticalStackLayout Spacing="10">
                     <HorizontalStackLayout Spacing="12">
                         <Border Style="{StaticResource InsigniaPaso}">
-                            <Label Text="3" Style="{StaticResource NumeroPaso}" />
+                            <Label Text="2" Style="{StaticResource NumeroPaso}" />
                         </Border>
                         <Label Text="¿Qué rodeo?" Style="{StaticResource TituloCuadro}" FontSize="28" VerticalOptions="Center" />
                     </HorizontalStackLayout>
@@ -198,7 +152,7 @@
             <Button Grid.Row="1" Grid.Column="0" Text="Volver" Style="{StaticResource BotonCampoSecundario}" Command="{Binding VolverAlInicioCommand}" />
             <Button Grid.Row="1" Grid.Column="1" Text="Empezar a trabajar" Style="{StaticResource BotonCampo}" BackgroundColor="{StaticResource CampoExito}"
                     Command="{Binding EmpezarCommand}"
-                    SemanticProperties.Hint="Abre la pantalla de trabajo con el veterinario y el rodeo elegidos" />
+                    SemanticProperties.Hint="Abre la pantalla de trabajo con el rodeo elegido" />
         </Grid>
 
         <!-- Resetear un rodeo: dos preguntas seguidas. Solo la segunda hace el cambio. -->

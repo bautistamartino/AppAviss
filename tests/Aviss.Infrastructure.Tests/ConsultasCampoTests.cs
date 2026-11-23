@@ -295,7 +295,7 @@ public sealed class ConsultasCampoTests : IDisposable
         Assert.Equal("V59", lista[0].Caravana);
         Assert.Equal("V10", lista[49].Caravana);
         Assert.Equal(lista.OrderByDescending(m => m.FechaHoraUtc).Select(m => m.RegistroId), lista.Select(m => m.RegistroId));
-        Assert.All(lista, m => { Assert.True(m.PuedeDeshacer); Assert.Equal(1, m.NumeroManga); Assert.Equal("Vet Uno", m.Veterinario); });
+        Assert.All(lista, m => { Assert.True(m.PuedeDeshacer); Assert.Equal(1, m.NumeroManga); });
     }
 
     [Fact]
@@ -399,33 +399,15 @@ public sealed class ConsultasCampoTests : IDisposable
         Assert.Equal("2", mios[0].Caravana);
     }
 
-    // ---------- Veterinarios (RF-1) ----------
+    // ---------- Sin veterinario (spec 006, RF-5) ----------
 
     [Fact]
-    public async Task Los_veterinarios_activos_no_incluyen_a_los_de_baja_ni_a_sin_asignar()
+    public void Los_DTO_de_consulta_no_traen_el_nombre_de_nadie_y_la_fachada_no_ofrece_veterinarios()
     {
-        _e.Base.Usuario("Sin asignar", id: Usuario.SinAsignarId);
-        _e.Base.Usuario("De baja", activo: false);
-        _e.Base.Usuario("Ana", matricula: "MP-1");
-
-        var lista = await _e.Campo.ListarVeterinariosActivosAsync();
-
-        Assert.Equal(["Ana", "Vet Uno"], lista.Select(v => v.Nombre));
-        Assert.Equal("MP-1", lista[0].Matricula);
-    }
-
-    [Fact]
-    public async Task Crear_un_veterinario_lo_deja_en_la_lista_y_un_nombre_repetido_se_rechaza()
-    {
-        var r = await _e.Campo.CrearVeterinarioAsync("  Dra. Paz ", "123");
-        Assert.True(r.EsCorrecto, r.Mensaje);
-        Assert.Contains(await _e.Campo.ListarVeterinariosActivosAsync(), v => v.Id == r.Valor && v.Nombre == "Dra. Paz");
-
-        var repetido = await _e.Campo.CrearVeterinarioAsync("dra. paz", null);
-        Assert.Equal(CodigoError.Duplicado, repetido.Codigo);
-        _e.Base.Usuario("Sin asignar", id: Usuario.SinAsignarId);
-        var sinAsignar = await _e.Campo.CrearVeterinarioAsync("SIN ASIGNAR", null);
-        Assert.False(sinAsignar.EsCorrecto);
+        foreach (var tipo in new[] { typeof(MovimientoDto), typeof(UltimoRegistroDto) })
+            Assert.DoesNotContain(tipo.GetProperties(), p => p.Name.Contains("Veterinario", StringComparison.OrdinalIgnoreCase));
+        Assert.DoesNotContain(typeof(Aviss.Application.Servicios.ICampoService).GetMethods(),
+            m => m.Name.Contains("Veterinario", StringComparison.OrdinalIgnoreCase));
     }
 
     [Fact]

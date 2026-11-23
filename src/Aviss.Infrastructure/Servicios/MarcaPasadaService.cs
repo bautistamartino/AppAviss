@@ -181,8 +181,7 @@ internal sealed class MarcaPasadaService
             string? estado = null;
             if (ultimo.EstadoId is Guid estadoId)
                 estado = (await _estados.ObtenerAsync(estadoId, ct))?.Nombre;
-            var veterinario = (await _usuarios.ObtenerAsync(ultimo.UsuarioId, ct))?.Nombre ?? "";
-            ultimoDto = new UltimoRegistroDto(ultimo.Tipo, ultimo.Id, ultimo.FechaHoraUtc, estado, veterinario, numeroManga, ultimo.Observaciones);
+            ultimoDto = new UltimoRegistroDto(ultimo.Tipo, ultimo.Id, ultimo.FechaHoraUtc, estado, numeroManga, ultimo.Observaciones);
         }
 
         var tipo = aviso == TipoAviso.Repetido ? TipoResultadoLectura.Repetido : TipoResultadoLectura.YaPaso;

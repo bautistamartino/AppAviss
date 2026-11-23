@@ -47,12 +47,9 @@ public interface IZonaHoraria
     TimeZoneInfo Zona { get; }
 }
 
-/// <summary>Preferencias de la tablet (fuera de la base, como el identificador del dispositivo): el veterinario recordado (RF-1).</summary>
-public interface IPreferenciasDispositivo
+/// <summary>Preferencias de la tablet (fuera de la base): solo la de mangas por establecimiento (spec 003, RF-43).</summary>
+public interface IPreferenciasMangas
 {
-    Guid? ObtenerVeterinarioRecordado();
-    void GuardarVeterinarioRecordado(Guid veterinarioId);
-
     /// <summary>
     /// Si en ese establecimiento se eligió llevar el control por manga (contador "7/10" y cierre de mangas), o nulo si nunca se eligió
     /// (en ese caso se usa <see cref="ControlPorMangaPorDefecto"/>). Es una preferencia de cada establecimiento (cada tambo trabaja a su manera).
@@ -62,6 +59,16 @@ public interface IPreferenciasDispositivo
 
     /// <summary>Lo que se usa mientras no se elija: apagado (cada establecimiento lo prende si lo quiere).</summary>
     const bool ControlPorMangaPorDefecto = false;
+}
+
+/// <summary>
+/// Limpieza de lo que una versión anterior dejó en las preferencias de la tablet (spec 006, RF-21). Es un puerto aparte porque
+/// <c>Preferences</c> es de MAUI e Infrastructure no depende de MAUI. Nunca toca la preferencia de mangas.
+/// </summary>
+public interface ILimpiezaPreferencias
+{
+    /// <summary>Borra las claves que ya no se usan (el veterinario recordado). Si no se puede, no debe fallar.</summary>
+    void EliminarClavesObsoletas();
 }
 
 /// <summary>Vibración y sonido simples del sistema, sin voz (RF-16, RF-22).</summary>

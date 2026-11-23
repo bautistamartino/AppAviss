@@ -101,8 +101,6 @@ public interface ICampoService
 {
     // ---- Preparar el trabajo (RF-1, RF-2) ----
     Task<IReadOnlyList<RodeoParaTrabajarDto>> ListarRodeosParaTrabajarAsync(CancellationToken ct = default);
-    Task<IReadOnlyList<VeterinarioDto>> ListarVeterinariosActivosAsync(CancellationToken ct = default);
-    Task<Resultado<Guid>> CrearVeterinarioAsync(string nombre, string? matricula, CancellationToken ct = default);
     Task<IReadOnlyList<EstadoActivoDto>> ListarEstadosActivosAsync(CancellationToken ct = default);
     /// <summary>Crea un estado nuevo en el catálogo desde el campo ("Agregar evento"). El código interno sale del nombre.</summary>
     Task<Resultado<Guid>> CrearEstadoAsync(string nombre, string codigoDairyComp, CancellationToken ct = default);

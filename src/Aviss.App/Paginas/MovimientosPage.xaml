@@ -36,7 +36,7 @@
                     <DataTemplate x:DataType="vm:MovimientoItem">
                         <!-- Una fila compacta y alineada: la hora en una columna fija; en el medio la caravana con su CVET y debajo
                              "Tacto · evento" (y la observación si hay); a la derecha los botones apilados, todos del mismo ancho.
-                             Sin manga ni veterinario. -->
+                             Sin manga ni nombre de quien lo hizo. -->
                         <Grid ColumnDefinitions="62,*,Auto" ColumnSpacing="8" Padding="10,6" Margin="0,0,0,6" BackgroundColor="{StaticResource CampoClaro}">
                             <Label Grid.Column="0" Text="{Binding Hora}" Style="{StaticResource TextoCampo}" FontSize="20" FontAttributes="Bold"
                                    VerticalOptions="Center" />

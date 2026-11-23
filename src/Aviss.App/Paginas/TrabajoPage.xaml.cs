@@ -5,7 +5,7 @@ namespace Aviss.App.Paginas;
 
 /// <summary>
 /// Pantalla de trabajo (spec 003). Acá no hay lógica de negocio: solo el ciclo de vida de la página (arrancar y cortar el
-/// lector, recalcular al volver de segundo plano), la lista para cambiar de veterinario y, solo en Debug, el panel del
+/// lector, recalcular al volver de segundo plano) y, solo en Debug, el panel del
 /// simulador. Todo lo demás está enlazado al <see cref="TrabajoViewModel"/>.
 /// </summary>
 public partial class TrabajoPage : ContentPage
@@ -60,37 +60,6 @@ public partial class TrabajoPage : ContentPage
 		try { await _vm.RecalcularAsync(); }
 		catch (Exception) { }
 	}
-
-	// ---- Cambiar de veterinario sin salir de la manga (RF-1) ----
-
-	private async void OnCambiarVeterinarioClicked(object? sender, EventArgs e)
-	{
-		IReadOnlyList<VeterinarioDto> veterinarios;
-		try { veterinarios = await _vm.ListarVeterinariosAsync(); }
-		catch (Exception) { return; }
-
-		ListaVeterinarios.Children.Clear();
-		// El estilo de botón de campo vive en Styles.xaml (recursos de la aplicación).
-		// (Se escribe completo: "Application" solo, dentro de Aviss.*, apunta al espacio de nombres Aviss.Application.)
-		Microsoft.Maui.Controls.Application.Current!.Resources.TryGetValue("BotonCampo", out var estilo);
-		foreach (var v in veterinarios)
-		{
-			var boton = new Button { Text = v.Nombre, BindingContext = v };
-			if (estilo is Style s) boton.Style = s;
-			boton.Clicked += OnVeterinarioElegido;
-			ListaVeterinarios.Children.Add(boton);
-		}
-		CapaVeterinarios.IsVisible = true;
-	}
-
-	private void OnVeterinarioElegido(object? sender, EventArgs e)
-	{
-		if (sender is Button { BindingContext: VeterinarioDto elegido })
-			_vm.CambiarVeterinarioCommand.Execute(elegido);
-		CapaVeterinarios.IsVisible = false;
-	}
-
-	private void OnCerrarVeterinariosClicked(object? sender, EventArgs e) => CapaVeterinarios.IsVisible = false;
 
 	// Al buscar (botón "Buscar" o Enter en el teclado) el teclado se baja solo: si no, queda tapando la ficha que acaba de aparecer.
 	// Es solo de pantalla: la búsqueda en sí la hace el ViewModel con su comando.

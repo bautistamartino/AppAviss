@@ -44,12 +44,6 @@ internal sealed class CampoService : ICampoService
     public Task<IReadOnlyList<RodeoParaTrabajarDto>> ListarRodeosParaTrabajarAsync(CancellationToken ct = default)
         => LeerAsync(p => p.GetRequiredService<ConsultaCampoService>().ListarRodeosParaTrabajarAsync(ct));
 
-    public Task<IReadOnlyList<VeterinarioDto>> ListarVeterinariosActivosAsync(CancellationToken ct = default)
-        => LeerAsync(p => p.GetRequiredService<ConsultaCampoService>().ListarVeterinariosActivosAsync(ct));
-
-    public Task<Resultado<Guid>> CrearVeterinarioAsync(string nombre, string? matricula, CancellationToken ct = default)
-        => EscribirAsync(p => p.GetRequiredService<IUsuarioService>().CrearAsync(nombre, matricula, ct), ct);
-
     public Task<IReadOnlyList<EstadoActivoDto>> ListarEstadosActivosAsync(CancellationToken ct = default)
         => LeerAsync(p => p.GetRequiredService<ConsultaCampoService>().ListarEstadosActivosAsync(ct));
 

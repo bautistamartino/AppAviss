@@ -143,11 +143,11 @@ public sealed partial class TrabajoViewModel
     [RelayCommand]
     private async Task PonerEnEsperaAsync()
     {
-        if (!PuedePonerEnEspera || Ficha is not { } ficha || _sesion.Veterinario is not { } vet) return;
+        if (!PuedePonerEnEspera || Ficha is not { } ficha) return;
         try
         {
             MensajeError = null;
-            var resultado = await EnCampoAsync(() => _campo.PonerEnEsperaAsync(new PonerEnEsperaCommand(ficha.AnimalId, vet.Id)));
+            var resultado = await EnCampoAsync(() => _campo.PonerEnEsperaAsync(new PonerEnEsperaCommand(ficha.AnimalId, _sesion.UsuarioId)));
             if (!resultado.EsCorrecto)
             {
                 MensajeError = resultado.Mensaje;   // por ejemplo, ya estaba en espera: la ficha sigue abierta
@@ -226,11 +226,10 @@ public sealed partial class TrabajoViewModel
             return;
         }
 
-        if (_sesion.Veterinario is not { } vet) return;
         try
         {
             MensajeError = null;
-            var resultado = await EnCampoAsync(() => _campo.SaltearEsperaAsync(new SaltearEsperaCommand(ficha.AnimalId, vet.Id)));
+            var resultado = await EnCampoAsync(() => _campo.SaltearEsperaAsync(new SaltearEsperaCommand(ficha.AnimalId, _sesion.UsuarioId)));
             if (!resultado.EsCorrecto)
             {
                 MensajeError = resultado.Mensaje;   // la ficha sigue abierta

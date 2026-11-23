@@ -40,7 +40,10 @@ public static class MauiProgram
 		builder.Services.AddSingleton<INavegacion, NavegacionShell>();
 
 		// Flujo de campo (spec 003): lo propio de la tablet detrás de los puertos de Application.
-		builder.Services.AddSingleton<IPreferenciasDispositivo, PreferenciasMaui>();
+		// Una sola instancia con dos puertos: la preferencia de mangas y la limpieza de claves viejas (spec 006, RF-21).
+		builder.Services.AddSingleton<PreferenciasMaui>();
+		builder.Services.AddSingleton<IPreferenciasMangas>(sp => sp.GetRequiredService<PreferenciasMaui>());
+		builder.Services.AddSingleton<ILimpiezaPreferencias>(sp => sp.GetRequiredService<PreferenciasMaui>());
 		builder.Services.AddSingleton<IPantalla, PantallaMaui>();
 		builder.Services.AddSingleton<ITemporizador, TemporizadorReal>();
 		builder.Services.AddSingleton<IAvisosCampo, AvisosAndroid>();
@@ -60,7 +63,7 @@ public static class MauiProgram
 		// (La vista previa sobrevive a rotar y a pasar a segundo plano porque la pantalla sigue abierta.)
 		builder.Services.AddTransient<InicioViewModel>();
 		builder.Services.AddTransient<ImportarViewModel>();
-		// La sesión (veterinario y rodeo elegidos) es única y vive mientras la app esté viva (RF-36).
+		// La sesión (el rodeo elegido) es única y vive mientras la app esté viva (RF-36).
 		builder.Services.AddSingleton<SesionTrabajo>();
 		builder.Services.AddTransient<EleccionTrabajoViewModel>();
 		builder.Services.AddTransient<TrabajoViewModel>();
