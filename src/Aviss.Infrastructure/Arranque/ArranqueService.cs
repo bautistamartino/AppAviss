@@ -20,14 +20,17 @@ public sealed class ArranqueService : IArranqueService
     private readonly IBackupService _backups;
     private readonly SembradorInicial _sembrador;
     private readonly ArranqueResultado _resultado;
+    private readonly LimpiezaDeRastros _limpieza;
 
-    public ArranqueService(RutasAviss rutas, IMigrador migrador, IBackupService backups, SembradorInicial sembrador, ArranqueResultado resultado)
+    public ArranqueService(RutasAviss rutas, IMigrador migrador, IBackupService backups, SembradorInicial sembrador,
+        ArranqueResultado resultado, LimpiezaDeRastros limpieza)
     {
         _rutas = rutas;
         _migrador = migrador;
         _backups = backups;
         _sembrador = sembrador;
         _resultado = resultado;
+        _limpieza = limpieza;
     }
 
     public async Task<ResultadoArranque> IniciarAsync(CancellationToken ct = default)
@@ -50,6 +53,10 @@ public sealed class ArranqueService : IArranqueService
         {
             SqliteConnection.ClearAllPools();
         }
+        // Solo si la app queda abierta (Correcto, BaseCreada o BaseActualizada): una actualización fallida, una base dañada
+        // o más nueva no pierden nada por esto (spec 006, RF-21). Nunca lanza.
+        if (resultado.PuedeAbrir) _limpieza.Ejecutar();
+
         _resultado.Establecer(resultado);
         return resultado;
     }

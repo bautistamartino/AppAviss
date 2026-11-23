@@ -52,6 +52,14 @@ public sealed class BaseDeDatosDePrueba : IDisposable
         }
     }
 
+    /// <summary>Cierra la conexión directa (y las del pool) para poder copiar, mover o restaurar el archivo; se vuelve a abrir sola al usarla.</summary>
+    public void CerrarCruda()
+    {
+        _cruda?.Dispose();
+        _cruda = null;
+        SqliteConnection.ClearAllPools();
+    }
+
     public int Ejecutar(string sql, params (string Nombre, object? Valor)[] parametros)
     {
         using var cmd = Cruda.CreateCommand();

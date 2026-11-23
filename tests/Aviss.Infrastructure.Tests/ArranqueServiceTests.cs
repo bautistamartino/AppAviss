@@ -35,7 +35,8 @@ public sealed class ArranqueServiceTests : IDisposable
 
     private ArranqueService Servicio(IMigrador? migrador = null, ArranqueResultado? resultado = null)
         => new(_rutas, migrador ?? new MigradorEf(), new BackupService(_rutas, _reloj, _espacio),
-            new SembradorInicial(_reloj), resultado ?? new ArranqueResultado());
+            new SembradorInicial(_reloj), resultado ?? new ArranqueResultado(),
+            new LimpiezaDeRastros(_rutas, new LimpiezaPreferenciasNula()));
 
     private static SqliteConnection Abrir(string ruta, bool soloLectura = false)
     {

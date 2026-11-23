@@ -11,6 +11,7 @@ namespace Aviss.Infrastructure.Tests;
 /// "aplicar una segunda migración sobre una base con datos". El peligro concreto: SQLite reconstruye la tabla
 /// Historial al cambiar su CHECK y, al hacerlo, pierde sus triggers (el historial quedaría modificable en silencio).
 /// </summary>
+[Collection("Migraciones")] // comparten ClearAllPools y archivos: de a una
 public sealed class MigracionMangasTests : IDisposable
 {
     private readonly BaseDeDatosDePrueba _db = new(migrar: false);

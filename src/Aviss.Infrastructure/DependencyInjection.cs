@@ -67,6 +67,9 @@ public static class DependencyInjection
         servicios.AddSingleton<IMigrador, MigradorEf>();
         servicios.AddSingleton<SembradorInicial>();
         servicios.AddSingleton<IBackupService, BackupService>();
+        // Limpieza de restos de la versión anterior (spec 006): la preferencia real la registra la app (MauiProgram) antes; este es el respaldo que no hace nada.
+        servicios.TryAddSingleton<ILimpiezaPreferencias, LimpiezaPreferenciasNula>();
+        servicios.AddSingleton<LimpiezaDeRastros>();
         servicios.AddSingleton<ArranqueResultado>();
         servicios.AddSingleton<IArranqueResultado>(p => p.GetRequiredService<ArranqueResultado>());
         servicios.AddSingleton<IArranqueService, ArranqueService>();

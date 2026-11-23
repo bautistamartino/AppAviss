@@ -10,6 +10,7 @@ namespace Aviss.Infrastructure.Tests;
 /// Actualizar una base que ya tiene datos de la migración "IndiceTactoFecha" a "EsperaYRechazo" (spec 004). El peligro es el
 /// mismo que en "Mangas": la tabla Historial se reconstruye para ampliar su CHECK y no debe perder datos ni triggers.
 /// </summary>
+[Collection("Migraciones")] // comparten ClearAllPools y archivos: de a una
 public sealed class MigracionEsperaYRechazoTests : IDisposable
 {
     private readonly BaseDeDatosDePrueba _db = new(migrar: false);

@@ -30,6 +30,12 @@ public static class MauiProgram
 		// ANTES de AddAvissInfrastructure, que usa TryAdd y por eso no lo pisa.
 		builder.Services.AddSingleton<Aviss.Infrastructure.Sistema.IEspacioLibreProvider, EspacioLibreAndroid>();
 
+		// Preferencias de la tablet (SharedPreferences): una sola instancia con dos puertos, la de mangas y la limpieza de la
+		// clave vieja del veterinario (spec 006, RF-21). La limpieza se registra ANTES de AddAvissInfrastructure, que usa
+		// TryAdd con una versión que no hace nada y por eso no pisa esta.
+		builder.Services.AddSingleton<PreferenciasMaui>();
+		builder.Services.AddSingleton<ILimpiezaPreferencias>(sp => sp.GetRequiredService<PreferenciasMaui>());
+
 		// Todo lo de datos vive en el almacenamiento privado de la app (en Android, /data/data/com.aviss.app/files).
 		// Infrastructure no conoce MAUI: acá se le pasa la carpeta.
 		builder.Services.AddAvissInfrastructure(new RutasAviss(FileSystem.AppDataDirectory));
@@ -40,10 +46,7 @@ public static class MauiProgram
 		builder.Services.AddSingleton<INavegacion, NavegacionShell>();
 
 		// Flujo de campo (spec 003): lo propio de la tablet detrás de los puertos de Application.
-		// Una sola instancia con dos puertos: la preferencia de mangas y la limpieza de claves viejas (spec 006, RF-21).
-		builder.Services.AddSingleton<PreferenciasMaui>();
 		builder.Services.AddSingleton<IPreferenciasMangas>(sp => sp.GetRequiredService<PreferenciasMaui>());
-		builder.Services.AddSingleton<ILimpiezaPreferencias>(sp => sp.GetRequiredService<PreferenciasMaui>());
 		builder.Services.AddSingleton<IPantalla, PantallaMaui>();
 		builder.Services.AddSingleton<ITemporizador, TemporizadorReal>();
 		builder.Services.AddSingleton<IAvisosCampo, AvisosAndroid>();
