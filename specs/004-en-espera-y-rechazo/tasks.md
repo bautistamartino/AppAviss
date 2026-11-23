@@ -12,7 +12,7 @@ Tests primero en cada tarea de lógica. Ninguna tarea se da por terminada con `d
   - Hecho cuando: `dotnet ef migrations has-pending-model-changes` dice que no hay cambios; los tests de esquema comprueban que la base rechaza lo que corresponde aunque el intento no venga de la app (espera: borrar, modificar fuera de pendiente→resuelta/salteada, dos pendientes de la misma vaca; rechazo: borrar, modificar salvo anulado 0→1, volver a 0; historial nuevo no se modifica ni se borra); `ReglasEsperaTests` pasa; una base creada con `IndiceTactoFecha` se actualiza sin perder datos.
   - Qué mirar en el emulador: nada (sin pantallas).
 
-- [ ] **T2** — Servicios de campo: espera, rechazo, corrección generalizada y lectura.
+- [x] **T2** — Servicios de campo: espera, rechazo, corrección generalizada y lectura.
   - Qué se hace:
     - `IEsperaRepository`, `IRechazoRepository`, `EsperaService`; `OrdenCompartido` y `ObtenerUltimoVigenteAsync`/avance/horarios incluyen rechazos.
     - Núcleo de rechazo (registrar y anular) en `TrabajoCampoService`; **resolver la espera dentro de la misma transacción** al guardar un tacto o un rechazo.

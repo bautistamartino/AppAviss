@@ -7,11 +7,15 @@ namespace Aviss.Application.Campo;
 /// <summary>Un tacto de la vaca tal como lo necesita el historial de la ficha.</summary>
 public sealed record TactoParaFicha(DateTime FechaHoraUtc, string? EstadoNombre, bool Anulado);
 
-/// <summary>Lo que arma <see cref="ConstructorFicha"/>: los campos del Excel, el dato de inseminaciones, el historial y el CVET.</summary>
+/// <summary>Un rechazo de la vaca tal como lo necesita la ficha (spec 004, RF-11).</summary>
+public sealed record RechazoParaFicha(Guid Id, DateTime FechaHoraUtc, long OrdenInsercion, string? Observaciones, bool Anulado);
+
+/// <summary>Lo que arma <see cref="ConstructorFicha"/>: los campos del Excel, el dato de inseminaciones, el historial, el CVET y el rechazo vigente.</summary>
 public sealed record FichaArmada(
     IReadOnlyList<CampoFichaDto> Campos, string Inseminaciones, string UltimoToro, IReadOnlyList<EventoFichaDto> Historial,
     string Cvet = "",
-    IReadOnlyList<CampoFichaDto>? Extras = null);
+    IReadOnlyList<CampoFichaDto>? Extras = null,
+    RechazoVigenteDto? RechazoVigente = null);
 
 /// <summary>
 /// Arma lo que la ficha muestra a partir de las columnas originales del Excel (JSON) y los tactos de Aviss (spec 003,
@@ -32,7 +36,8 @@ public static class ConstructorFicha
     ];
 
     public static FichaArmada Armar(
-        string? datosOriginalesJson, IEnumerable<TactoParaFicha> tactos, DateTime ahoraUtc, TimeZoneInfo zona)
+        string? datosOriginalesJson, IEnumerable<TactoParaFicha> tactos, DateTime ahoraUtc, TimeZoneInfo zona,
+        IEnumerable<RechazoParaFicha>? rechazos = null)
     {
         var originales = LeerOriginales(datosOriginalesJson);
         string Valor(string columna) => originales.TryGetValue(columna, out var v) ? v : "";
@@ -68,10 +73,24 @@ public static class ConstructorFicha
             datados.Add(new EventoFichaDto(OrigenEvento.Aviss, titulo, local, null, (hoyLocal - local.Date).Days, t.Anulado));
         }
 
+        // Los rechazos entran al historial con su motivo; los anulados quedan marcados (RF-11).
+        var listaRechazos = (rechazos ?? []).ToList();
+        foreach (var r in listaRechazos)
+        {
+            var local = TimeZoneInfo.ConvertTimeFromUtc(r.FechaHoraUtc, zona);
+            var titulo = string.IsNullOrWhiteSpace(r.Observaciones) ? "Rechazo" : $"Rechazo: {r.Observaciones}";
+            datados.Add(new EventoFichaDto(OrigenEvento.Aviss, titulo, local, null, (hoyLocal - local.Date).Days, r.Anulado));
+        }
+
+        // El rechazo vigente es el no anulado más reciente (fecha y, con empate, el guardado después).
+        var vigente = listaRechazos.Where(r => !r.Anulado)
+            .OrderByDescending(r => r.FechaHoraUtc).ThenByDescending(r => r.OrdenInsercion).FirstOrDefault();
+        var rechazoVigente = vigente is null ? null : new RechazoVigenteDto(vigente.Id, vigente.Observaciones, vigente.FechaHoraUtc);
+
         // Cronológico, del más viejo al más nuevo. OrderBy es estable: con la misma fecha queda primero el del Excel.
         var historial = datados.OrderBy(e => e.FechaLocal).Concat(ilegibles).ToList();
 
-        return new FichaArmada(campos, Valor("VINS"), Valor("UTORO"), historial, Valor("CVET"), ColumnasExtra(originales));
+        return new FichaArmada(campos, Valor("VINS"), Valor("UTORO"), historial, Valor("CVET"), ColumnasExtra(originales), rechazoVigente);
     }
 
     // Columnas que la ficha ya muestra por su cuenta (o que no son un dato para mirar): no van entre las "extras".

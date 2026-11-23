@@ -218,7 +218,8 @@ internal static class OrdenCompartido
     {
         var tactos = await db.Tactos.MaxAsync(t => (long?)t.OrdenInsercion, ct) ?? 0;
         var marcas = await db.MarcasPasada.MaxAsync(m => (long?)m.OrdenInsercion, ct) ?? 0;
-        return Math.Max(tactos, marcas) + 1;
+        var rechazos = await db.Rechazos.MaxAsync(r => (long?)r.OrdenInsercion, ct) ?? 0; // spec 004
+        return Math.Max(Math.Max(tactos, marcas), rechazos) + 1;
     }
 }
 
@@ -330,9 +331,18 @@ internal sealed class RegistroCampoRepository : IRegistroCampoRepository
             .Select(m => new RegistroCampoVigente(TipoRegistroCampo.Marca, m.Id, m.FechaHoraUtc, m.OrdenInsercion, m.UsuarioId, null, m.MangaId))
             .FirstOrDefaultAsync(ct);
 
-        if (tacto is null) return marca;
-        if (marca is null) return tacto;
-        return (marca.FechaHoraUtc, marca.OrdenInsercion).CompareTo((tacto.FechaHoraUtc, tacto.OrdenInsercion)) > 0 ? marca : tacto;
+        var rechazo = await _db.Rechazos.AsNoTracking()
+            .Where(r => r.AnimalId == animalId && !r.Anulado)
+            .OrderByDescending(r => r.FechaHoraUtc).ThenByDescending(r => r.OrdenInsercion)
+            .Select(r => new RegistroCampoVigente(TipoRegistroCampo.Rechazo, r.Id, r.FechaHoraUtc, r.OrdenInsercion, r.UsuarioId, null, null, r.Observaciones))
+            .FirstOrDefaultAsync(ct);
+
+        // Gana el de (fecha, orden) más alto entre los tres.
+        RegistroCampoVigente? ganador = null;
+        foreach (var r in new[] { tacto, marca, rechazo })
+            if (r is not null && (ganador is null || (r.FechaHoraUtc, r.OrdenInsercion).CompareTo((ganador.FechaHoraUtc, ganador.OrdenInsercion)) > 0))
+                ganador = r;
+        return ganador;
     }
 
     public Task<long> SiguienteOrdenAsync(CancellationToken ct = default) => OrdenCompartido.SiguienteAsync(_db, ct);
@@ -360,7 +370,13 @@ internal sealed class RegistroCampoRepository : IRegistroCampoRepository
                        where a.RodeoId == rodeoId && !a.Anulado && t.Tipo == TipoTacto.Normal && !t.Anulado
                              && t.FechaHoraUtc >= desde && t.FechaHoraUtc < hasta
                        select a.Id;
-        return porMarca.Union(porTacto).CountAsync(ct);
+        // Los rechazos son pocos: se parte de ellos (EXISTS sobre el animal) y no de los 20.000 animales del rodeo, para que
+        // una tabla casi vacía no cueste una pasada por todo el rodeo.
+        var porRechazo = from r in _db.Rechazos
+                         where !r.Anulado && r.FechaHoraUtc >= desde && r.FechaHoraUtc < hasta
+                               && _db.Animales.Any(a => a.Id == r.AnimalId && a.RodeoId == rodeoId && !a.Anulado)
+                         select r.AnimalId;
+        return porMarca.Union(porTacto).Union(porRechazo).CountAsync(ct);
     }
 
     // Primer y último movimiento de hoy: se mira la marca y el tacto normal más tempranos y más tardíos (vigentes, de vacas
@@ -379,15 +395,65 @@ internal sealed class RegistroCampoRepository : IRegistroCampoRepository
                      where a.RodeoId == rodeoId && !a.Anulado && t.Tipo == TipoTacto.Normal && !t.Anulado
                            && t.FechaHoraUtc >= desde && t.FechaHoraUtc < hasta
                      select t.FechaHoraUtc;
+        var rechazos = from r in _db.Rechazos.AsNoTracking()
+                       where !r.Anulado && r.FechaHoraUtc >= desde && r.FechaHoraUtc < hasta
+                             && _db.Animales.Any(a => a.Id == r.AnimalId && a.RodeoId == rodeoId && !a.Anulado)
+                       select r.FechaHoraUtc;
 
+        DateTime? primerRechazo = await rechazos.OrderBy(f => f).Select(f => (DateTime?)f).FirstOrDefaultAsync(ct);
+        DateTime? ultimoRechazo = await rechazos.OrderByDescending(f => f).Select(f => (DateTime?)f).FirstOrDefaultAsync(ct);
         DateTime? primeraMarca = await marcas.OrderBy(f => f).Select(f => (DateTime?)f).FirstOrDefaultAsync(ct);
         DateTime? primerTacto = await tactos.OrderBy(f => f).Select(f => (DateTime?)f).FirstOrDefaultAsync(ct);
         DateTime? ultimaMarca = await marcas.OrderByDescending(f => f).Select(f => (DateTime?)f).FirstOrDefaultAsync(ct);
         DateTime? ultimoTacto = await tactos.OrderByDescending(f => f).Select(f => (DateTime?)f).FirstOrDefaultAsync(ct);
 
-        return new HorarioDeRegistros(Menor(primeraMarca, primerTacto), Mayor(ultimaMarca, ultimoTacto));
+        return new HorarioDeRegistros(Menor(Menor(primeraMarca, primerTacto), primerRechazo), Mayor(Mayor(ultimaMarca, ultimoTacto), ultimoRechazo));
     }
 
     private static DateTime? Menor(DateTime? a, DateTime? b) => a is null ? b : b is null ? a : (a < b ? a : b);
     private static DateTime? Mayor(DateTime? a, DateTime? b) => a is null ? b : b is null ? a : (a > b ? a : b);
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// Spec 004: esperas y rechazos.
+// ---------------------------------------------------------------------------------------------------------------
+
+internal sealed class EsperaRepository : IEsperaRepository
+{
+    private readonly AvissDbContext _db;
+    public EsperaRepository(AvissDbContext db) => _db = db;
+
+    // Con seguimiento: quien la pide la resuelve o la saltea. La base no admite dos pendientes de la misma vaca.
+    public Task<Espera?> ObtenerPendienteAsync(Guid animalId, CancellationToken ct = default)
+        => _db.Esperas.FirstOrDefaultAsync(e => e.AnimalId == animalId && e.Estado == EstadoEspera.Pendiente, ct);
+
+    public async Task<IReadOnlyList<EsperaDto>> ListarPendientesAsync(Guid rodeoId, CancellationToken ct = default)
+    {
+        var filas = await (from e in _db.Esperas.AsNoTracking()
+                           join a in _db.Animales on e.AnimalId equals a.Id
+                           where a.RodeoId == rodeoId && e.Estado == EstadoEspera.Pendiente
+                           orderby e.FechaHoraUtc, e.CreadoEnUtc
+                           select new { e.Id, e.AnimalId, a.NumeroCaravana, a.DatosOriginalesJson, e.FechaHoraUtc }).ToListAsync(ct);
+        return filas.Select(f => new EsperaDto(f.Id, f.AnimalId, f.NumeroCaravana, ConstructorFicha.LeerCvet(f.DatosOriginalesJson), f.FechaHoraUtc)).ToList();
+    }
+
+    public void Agregar(Espera espera) => _db.Esperas.Add(espera);
+}
+
+internal sealed class RechazoRepository : IRechazoRepository
+{
+    private readonly AvissDbContext _db;
+    public RechazoRepository(AvissDbContext db) => _db = db;
+
+    // Con seguimiento: quien lo pide puede anularlo.
+    public Task<Rechazo?> ObtenerAsync(Guid id, CancellationToken ct = default)
+        => _db.Rechazos.FirstOrDefaultAsync(r => r.Id == id, ct);
+
+    public async Task<IReadOnlyList<Rechazo>> ListarPorAnimalAsync(Guid animalId, CancellationToken ct = default)
+        => await _db.Rechazos.AsNoTracking()
+            .Where(r => r.AnimalId == animalId)
+            .OrderBy(r => r.FechaHoraUtc).ThenBy(r => r.OrdenInsercion)
+            .ToListAsync(ct);
+
+    public void Agregar(Rechazo rechazo) => _db.Rechazos.Add(rechazo);
 }

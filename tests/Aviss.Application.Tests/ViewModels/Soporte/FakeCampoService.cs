@@ -133,6 +133,48 @@ public class FakeCampoService : ICampoService
         return Task.FromResult(OnCorregir?.Invoke(comando) ?? Resultado.Ok(Guid.NewGuid()));
     }
 
+    // ---- En Espera y Rechazo (spec 004) ----
+    public IReadOnlyList<EsperaDto> Esperas { get; set; } = [];
+    public List<PonerEnEsperaCommand> EsperasPuestas { get; } = [];
+    public List<SaltearEsperaCommand> EsperasSalteadas { get; } = [];
+    public List<RegistrarRechazoCommand> Rechazos { get; } = [];
+    public List<CorregirRegistroCommand> RegistrosCorregidos { get; } = [];
+    public Func<PonerEnEsperaCommand, Resultado<Guid>>? OnPonerEnEspera { get; set; }
+    public Func<SaltearEsperaCommand, Resultado>? OnSaltearEspera { get; set; }
+    public Func<RegistrarRechazoCommand, Resultado<Guid>>? OnRegistrarRechazo { get; set; }
+    public Func<CorregirRegistroCommand, Resultado<Guid>>? OnCorregirRegistro { get; set; }
+    public int ConsultasDeEsperas { get; private set; }
+
+    public Task<Resultado<Guid>> CorregirRegistroAsync(CorregirRegistroCommand comando, CancellationToken ct = default)
+    {
+        RegistrosCorregidos.Add(comando);
+        return Task.FromResult(OnCorregirRegistro?.Invoke(comando) ?? Resultado.Ok(Guid.NewGuid()));
+    }
+
+    public Task<Resultado<Guid>> PonerEnEsperaAsync(PonerEnEsperaCommand comando, CancellationToken ct = default)
+    {
+        EsperasPuestas.Add(comando);
+        return Task.FromResult(OnPonerEnEspera?.Invoke(comando) ?? Resultado.Ok(Guid.NewGuid()));
+    }
+
+    public Task<Resultado> SaltearEsperaAsync(SaltearEsperaCommand comando, CancellationToken ct = default)
+    {
+        EsperasSalteadas.Add(comando);
+        return Task.FromResult(OnSaltearEspera?.Invoke(comando) ?? Resultado.Ok());
+    }
+
+    public Task<IReadOnlyList<EsperaDto>> ListarEsperasAsync(Guid rodeoId, CancellationToken ct = default)
+    {
+        ConsultasDeEsperas++;
+        return Task.FromResult(Esperas);
+    }
+
+    public Task<Resultado<Guid>> RegistrarRechazoAsync(RegistrarRechazoCommand comando, CancellationToken ct = default)
+    {
+        Rechazos.Add(comando);
+        return Task.FromResult(OnRegistrarRechazo?.Invoke(comando) ?? Resultado.Ok(Guid.NewGuid()));
+    }
+
     public List<Guid> Reseteados { get; } = [];
     public Func<Guid, Resultado<Guid>>? OnResetear { get; set; }
 

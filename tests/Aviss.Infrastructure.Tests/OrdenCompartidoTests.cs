@@ -82,6 +82,25 @@ public sealed class OrdenCompartidoTests : IDisposable
     }
 
     [Fact]
+    public async Task Un_rechazo_toma_el_orden_que_sigue_al_mayor_de_todas_las_tablas_y_los_demas_lo_respetan()
+    {
+        // Spec 004: el rechazo entra en el orden compartido. Con un orden alto ya ocupado por un rechazo, el próximo tacto y la
+        // próxima marca (de otras vacas) toman el siguiente.
+        var conRechazo = _e.AnimalImportado("1", _e.EstadoSeca);
+        _e.Base.Rechazo(conRechazo, _e.UsuarioId, fechaHora: _e.Reloj.UtcAhora.AddDays(-1), orden: 700);
+        var animalTacto = _e.AnimalImportado("2", _e.EstadoSeca);
+        var tacto = await _e.TactoAsync(animalTacto, _e.EstadoPrenada);
+        Assert.Equal(701, Orden("Tacto", tacto));
+
+        var nuevo = await _e.Campo.RegistrarRechazoAsync(new RegistrarRechazoCommand(animalTacto, null, _e.UsuarioId));
+        Assert.Equal(702, Orden("Rechazo", nuevo.Valor));
+
+        _e.AnimalImportado("3");
+        var lectura = await _e.LeerAsync("3");
+        Assert.Equal(703, Orden("MarcaPasada", lectura.MarcaId!.Value));
+    }
+
+    [Fact]
     public async Task Un_tacto_de_ayer_no_impide_marcar_hoy()
     {
         // El tacto de ayer es anterior a la marca de hoy: la vaca no cuenta como procesada hoy y la marca se acepta.

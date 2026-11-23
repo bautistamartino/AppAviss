@@ -91,6 +91,39 @@ public sealed class HistorialCampoTests : IDisposable
     }
 
     [Fact]
+    public async Task Las_cinco_acciones_de_la_spec_004_quedan_en_el_historial_con_veterinario_y_fecha()
+    {
+        var animal = _e.AnimalImportado("100", _e.EstadoSeca);
+        var espera = (await _e.Campo.PonerEnEsperaAsync(new PonerEnEsperaCommand(animal, _e.UsuarioId))).Valor;
+        var rechazo = (await _e.Campo.RegistrarRechazoAsync(new RegistrarRechazoCommand(animal, "pata", _e.UsuarioId))).Valor;
+        await _e.DeshacerAsync(TipoDeshacer.Rechazo, rechazo);
+        var otra = _e.AnimalImportado("200", _e.EstadoSeca);
+        await _e.Campo.PonerEnEsperaAsync(new PonerEnEsperaCommand(otra, _e.UsuarioId));
+        await _e.Campo.SaltearEsperaAsync(new SaltearEsperaCommand(otra, _e.UsuarioId));
+
+        var creada = Filas("EsperaCreada");
+        Assert.Equal(2, creada.Count);
+        creada.ForEach(ConVeterinarioYFecha);
+        Assert.Contains(creada, f => (f.Entidad, f.EntidadId, f.Campo, f.Anterior, f.Nuevo) == ("Espera", T(espera), "Estado", null, "Pendiente"));
+
+        var resuelta = Assert.Single(Filas("EsperaResuelta"));
+        ConVeterinarioYFecha(resuelta);
+        Assert.Equal(("Espera", T(espera), "Pendiente", "Resuelta"), (resuelta.Entidad, resuelta.EntidadId, resuelta.Anterior, resuelta.Nuevo));
+
+        var salteada = Assert.Single(Filas("EsperaSalteada"));
+        ConVeterinarioYFecha(salteada);
+        Assert.Equal(("Pendiente", "Salteada"), (salteada.Anterior, salteada.Nuevo));
+
+        var rechazoCreado = Assert.Single(Filas("RechazoCreado"));
+        ConVeterinarioYFecha(rechazoCreado);
+        Assert.Equal(("Rechazo", T(rechazo), "pata"), (rechazoCreado.Entidad, rechazoCreado.EntidadId, rechazoCreado.Nuevo));
+
+        var anulado = Assert.Single(Filas("RechazoAnulado"));
+        ConVeterinarioYFecha(anulado);
+        Assert.Equal(("Rechazo", T(rechazo), "0", "1"), (anulado.Entidad, anulado.EntidadId, anulado.Anterior, anulado.Nuevo));
+    }
+
+    [Fact]
     public async Task El_historial_nuevo_no_se_puede_modificar_ni_borrar_en_la_base()
     {
         await _e.VacaMarcadaAsync("100");

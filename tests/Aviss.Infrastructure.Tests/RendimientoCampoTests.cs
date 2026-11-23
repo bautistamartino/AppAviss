@@ -201,6 +201,60 @@ public sealed class RendimientoCampoTests : IDisposable
         Assert.True(ms < 200, $"Calcular el avance y el contador tardó {ms} ms");
     }
 
+    // Spec 004: poner en espera, listar las esperas y resolver una (con un tacto) cumplen lo mismo que RF-37 (menos de 300 ms).
+
+    [Fact]
+    public async Task Poner_en_espera_a_una_vaca_tarda_menos_de_300_ms()
+    {
+        var ms = await MejorDeTresAsync(async i =>
+        {
+            var r = await _e.Campo.PonerEnEsperaAsync(new PonerEnEsperaCommand(_ids[17_000 + i], _e.UsuarioId));
+            Assert.True(r.EsCorrecto, r.Mensaje);
+        });
+        Assert.True(ms < 300, $"Poner en espera tardó {ms} ms");
+    }
+
+    [Fact]
+    public async Task Listar_las_esperas_con_el_volumen_completo_tarda_menos_de_300_ms()
+    {
+        for (var i = 0; i < 4; i++)
+            Assert.True((await _e.Campo.PonerEnEsperaAsync(new PonerEnEsperaCommand(_ids[17_500 + i], _e.UsuarioId))).EsCorrecto);
+
+        var ms = await MejorDeTresAsync(async _ =>
+        {
+            var lista = await _e.Campo.ListarEsperasAsync(_e.RodeoId);
+            Assert.Equal(4, lista.Count);
+        });
+        Assert.True(ms < 300, $"Listar las esperas tardó {ms} ms");
+    }
+
+    [Fact]
+    public async Task Resolver_una_espera_guardando_un_tacto_tarda_menos_de_300_ms()
+    {
+        for (var i = 0; i <= 3; i++)
+            Assert.True((await _e.Campo.PonerEnEsperaAsync(new PonerEnEsperaCommand(_ids[18_000 + i], _e.UsuarioId))).EsCorrecto);
+
+        var ms = await MejorDeTresAsync(async i =>
+        {
+            var r = await _e.Campo.RegistrarTactoAsync(
+                new RegistrarTactoCommand(_ids[18_000 + i], _e.EstadoPrenada, null, null, _e.UsuarioId));
+            Assert.True(r.EsCorrecto, r.Mensaje);
+        });
+        Assert.True(ms < 300, $"Resolver la espera con un tacto tardó {ms} ms");
+        Assert.Equal(0, _e.Cuenta("Espera", $"Estado = 'Pendiente' AND AnimalId IN ('{EscenarioConServicios.Texto(_ids[18_000])}','{EscenarioConServicios.Texto(_ids[18_001])}')"));
+    }
+
+    [Fact]
+    public async Task Guardar_un_rechazo_tarda_menos_de_300_ms()
+    {
+        var ms = await MejorDeTresAsync(async i =>
+        {
+            var r = await _e.Campo.RegistrarRechazoAsync(new RegistrarRechazoCommand(_ids[19_000 + i], "pata", _e.UsuarioId));
+            Assert.True(r.EsCorrecto, r.Mensaje);
+        });
+        Assert.True(ms < 300, $"Guardar el rechazo tardó {ms} ms");
+    }
+
     [Fact]
     public async Task Los_ultimos_movimientos_con_el_volumen_completo_tardan_menos_de_300_ms()
     {

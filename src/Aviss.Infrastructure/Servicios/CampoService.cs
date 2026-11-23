@@ -99,6 +99,23 @@ internal sealed class CampoService : ICampoService
     public Task<Resultado<Guid>> CorregirTactoAsync(CorregirTactoCommand comando, CancellationToken ct = default)
         => EscribirAsync(p => p.GetRequiredService<ITrabajoCampoService>().CorregirTactoAsync(comando, ct), ct);
 
+    public Task<Resultado<Guid>> CorregirRegistroAsync(CorregirRegistroCommand comando, CancellationToken ct = default)
+        => EscribirAsync(p => p.GetRequiredService<ITrabajoCampoService>().CorregirRegistroAsync(comando, ct), ct);
+
+    // ---- En Espera y Rechazo (spec 004) ----
+
+    public Task<Resultado<Guid>> PonerEnEsperaAsync(PonerEnEsperaCommand comando, CancellationToken ct = default)
+        => EscribirAsync(p => p.GetRequiredService<EsperaService>().PonerAsync(comando, ct), ct);
+
+    public Task<Resultado> SaltearEsperaAsync(SaltearEsperaCommand comando, CancellationToken ct = default)
+        => EscribirAsync(p => p.GetRequiredService<EsperaService>().SaltearAsync(comando, ct), ct);
+
+    public Task<IReadOnlyList<EsperaDto>> ListarEsperasAsync(Guid rodeoId, CancellationToken ct = default)
+        => LeerAsync(p => p.GetRequiredService<ConsultaCampoService>().ListarEsperasAsync(rodeoId, ct));
+
+    public Task<Resultado<Guid>> RegistrarRechazoAsync(RegistrarRechazoCommand comando, CancellationToken ct = default)
+        => EscribirAsync(p => p.GetRequiredService<ITrabajoCampoService>().RegistrarRechazoAsync(comando, ct), ct);
+
     public Task<Resultado<ResultadoDeshacerDto>> DeshacerAsync(DeshacerCommand comando, CancellationToken ct = default)
         => EscribirAsync(p => DeshacerEnScopeAsync(p, comando, ct), ct);
 
@@ -118,6 +135,14 @@ internal sealed class CampoService : ICampoService
                 var r = await p.GetRequiredService<ITrabajoCampoService>().AnularTactoAsync(new AnularTactoCommand(c.Id, c.UsuarioId), ct);
                 if (!r.EsCorrecto) return Resultado.Error<ResultadoDeshacerDto>(r.Codigo!.Value, r.Mensaje!);
                 return Resultado.Ok(new ResultadoDeshacerDto(TipoDeshacer.Tacto, tacto?.AnimalId, null, null, null));
+            }
+            case TipoDeshacer.Rechazo:
+            {
+                // Igual que el tacto: se agrega el animal al resultado para que la pantalla actualice su ficha.
+                var rechazo = await p.GetRequiredService<IRechazoRepository>().ObtenerAsync(c.Id, ct);
+                var r = await p.GetRequiredService<ITrabajoCampoService>().AnularRechazoAsync(new AnularRechazoCommand(c.Id, c.UsuarioId), ct);
+                if (!r.EsCorrecto) return Resultado.Error<ResultadoDeshacerDto>(r.Codigo!.Value, r.Mensaje!);
+                return Resultado.Ok(new ResultadoDeshacerDto(TipoDeshacer.Rechazo, rechazo?.AnimalId, null, null, null));
             }
             default:
                 return Resultado.Error<ResultadoDeshacerDto>(CodigoError.DatosInvalidos, "No se sabe qué deshacer.");

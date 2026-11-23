@@ -54,9 +54,12 @@ internal sealed class ArmadorFicha
     private readonly IEstadoReproductivoRepository _estados;
     private readonly IRelojService _reloj;
     private readonly IZonaHoraria _zona;
+    private readonly IRechazoRepository _rechazos;
+    private readonly IEsperaRepository _esperas;
 
-    public ArmadorFicha(ITactoRepository tactos, IEstadoReproductivoRepository estados, IRelojService reloj, IZonaHoraria zona)
-        => (_tactos, _estados, _reloj, _zona) = (tactos, estados, reloj, zona);
+    public ArmadorFicha(ITactoRepository tactos, IEstadoReproductivoRepository estados, IRelojService reloj, IZonaHoraria zona,
+        IRechazoRepository rechazos, IEsperaRepository esperas)
+        => (_tactos, _estados, _reloj, _zona, _rechazos, _esperas) = (tactos, estados, reloj, zona, rechazos, esperas);
 
     public async Task<FichaAnimalDto> ArmarAsync(Animal animal, CancellationToken ct)
     {
@@ -65,13 +68,16 @@ internal sealed class ArmadorFicha
 
         var tactos = (await _tactos.ListarPorAnimalAsync(animal.Id, ct))
             .Select(t => new TactoParaFicha(t.FechaHoraUtc, Nombre(t.EstadoNuevoId), t.Anulado));
-        var armada = ConstructorFicha.Armar(animal.DatosOriginalesJson, tactos, _reloj.UtcAhora, _zona.Zona);
+        var rechazos = (await _rechazos.ListarPorAnimalAsync(animal.Id, ct))
+            .Select(r => new RechazoParaFicha(r.Id, r.FechaHoraUtc, r.OrdenInsercion, r.Observaciones, r.Anulado));
+        var armada = ConstructorFicha.Armar(animal.DatosOriginalesJson, tactos, _reloj.UtcAhora, _zona.Zona, rechazos);
+        var enEspera = await _esperas.ObtenerPendienteAsync(animal.Id, ct) is not null;
 
         return new FichaAnimalDto(
             animal.Id, animal.NumeroCaravana, animal.IdElectronico, animal.EstadoReproductivoId,
             Nombre(animal.EstadoReproductivoId), animal.FechaUltimoTactoUtc,
             armada.Campos, armada.Inseminaciones, armada.UltimoToro, armada.Historial,
-            armada.Cvet, Aviss.Domain.Reglas.ReglasCvet.EntraEnTacto(armada.Cvet), armada.Extras);
+            armada.Cvet, Aviss.Domain.Reglas.ReglasCvet.EntraEnTacto(armada.Cvet), armada.Extras, enEspera, armada.RechazoVigente);
     }
 }
 

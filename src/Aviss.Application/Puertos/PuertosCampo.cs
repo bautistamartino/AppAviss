@@ -165,9 +165,32 @@ public interface IRegistroCampoRepository
     Task<HorarioDeRegistros> ObtenerHorarioAsync(Guid rodeoId, RangoUtc rango, CancellationToken ct = default);
 }
 
+/// <summary>Esperas de vacas (spec 004). No son registros de campo: no entran en el orden compartido ni en el "último vigente".</summary>
+public interface IEsperaRepository
+{
+    /// <summary>La espera pendiente de la vaca (con seguimiento: quien la pide la resuelve o saltea), o null.</summary>
+    Task<Espera?> ObtenerPendienteAsync(Guid animalId, CancellationToken ct = default);
+
+    /// <summary>Las esperas pendientes del rodeo, de la más antigua a la más reciente.</summary>
+    Task<IReadOnlyList<EsperaDto>> ListarPendientesAsync(Guid rodeoId, CancellationToken ct = default);
+
+    void Agregar(Espera espera);
+}
+
+public interface IRechazoRepository
+{
+    Task<Rechazo?> ObtenerAsync(Guid id, CancellationToken ct = default);
+
+    /// <summary>Todos los rechazos de la vaca (también los anulados), del más viejo al más nuevo, sin seguimiento (para la ficha).</summary>
+    Task<IReadOnlyList<Rechazo>> ListarPorAnimalAsync(Guid animalId, CancellationToken ct = default);
+
+    void Agregar(Rechazo rechazo);
+}
+
 /// <summary>La hora del primer y del último movimiento de un día (nulos si no hubo ninguno).</summary>
 public readonly record struct HorarioDeRegistros(DateTime? PrimeroUtc, DateTime? UltimoUtc);
 
 /// <summary>El último registro de campo vigente de una vaca, sin importar de qué tipo sea.</summary>
 public sealed record RegistroCampoVigente(
-    TipoRegistroCampo Tipo, Guid Id, DateTime FechaHoraUtc, long OrdenInsercion, Guid UsuarioId, Guid? EstadoId, Guid? MangaId);
+    TipoRegistroCampo Tipo, Guid Id, DateTime FechaHoraUtc, long OrdenInsercion, Guid UsuarioId, Guid? EstadoId, Guid? MangaId,
+    string? Observaciones = null);
