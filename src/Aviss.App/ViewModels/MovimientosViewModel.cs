@@ -142,7 +142,7 @@ public sealed partial class MovimientosViewModel : ObservableObject
                 TipoMovimiento.Rechazo => TipoDeshacer.Rechazo,
                 _ => TipoDeshacer.Cierre
             };
-            var resultado = await _campo.DeshacerAsync(new DeshacerCommand(tipo, item.Dto.RegistroId, _sesion.UsuarioId));
+            var resultado = await _campo.DeshacerAsync(new DeshacerCommand(tipo, item.Dto.RegistroId));
             if (!resultado.EsCorrecto)
             {
                 MensajeError = resultado.Mensaje;
@@ -249,7 +249,7 @@ public sealed partial class MovimientosViewModel : ObservableObject
         try
         {
             var observacion = string.IsNullOrWhiteSpace(ObservacionEditada) ? null : ObservacionEditada.Trim();
-            var resultado = await _campo.CorregirRegistroAsync(new CorregirRegistroCommand(item.Dto.RegistroId, evento.Id, observacion, _sesion.UsuarioId));
+            var resultado = await _campo.CorregirRegistroAsync(new CorregirRegistroCommand(item.Dto.RegistroId, evento.Id, observacion));
             if (!resultado.EsCorrecto)
             {
                 MensajeEdicion = resultado.Mensaje;

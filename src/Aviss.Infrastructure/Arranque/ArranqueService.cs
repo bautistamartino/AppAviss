@@ -19,17 +19,14 @@ public sealed class ArranqueService : IArranqueService
     private readonly IMigrador _migrador;
     private readonly IBackupService _backups;
     private readonly SembradorInicial _sembrador;
-    private readonly IDispositivoService _dispositivo;
     private readonly ArranqueResultado _resultado;
 
-    public ArranqueService(RutasAviss rutas, IMigrador migrador, IBackupService backups, SembradorInicial sembrador,
-        IDispositivoService dispositivo, ArranqueResultado resultado)
+    public ArranqueService(RutasAviss rutas, IMigrador migrador, IBackupService backups, SembradorInicial sembrador, ArranqueResultado resultado)
     {
         _rutas = rutas;
         _migrador = migrador;
         _backups = backups;
         _sembrador = sembrador;
-        _dispositivo = dispositivo;
         _resultado = resultado;
     }
 
@@ -60,7 +57,6 @@ public sealed class ArranqueService : IArranqueService
     private async Task<ResultadoArranque> IniciarInternoAsync(CancellationToken ct)
     {
         Directory.CreateDirectory(_rutas.DirectorioDatos);
-        _dispositivo.ObtenerId(); // genera dispositivo.id la primera vez
 
         DescartarArchivosDeCreacion();
 
@@ -127,7 +123,6 @@ public sealed class ArranqueService : IArranqueService
             using (var ctx = NuevoContexto(creando))
             {
                 await _sembrador.SembrarEstadosAsync(ctx, ct);
-                await _sembrador.SembrarUsuarioSinAsignarAsync(ctx, ct);
             }
 
             // Se vuelca el WAL al archivo principal para que el .creando sea autosuficiente antes de moverlo.

@@ -34,8 +34,6 @@ public sealed class MarcaPasadaServiceTests : IDisposable
         var marca = r.MarcaId!.Value;
         Assert.Equal(T(animal), _e.Col("MarcaPasada", marca, "AnimalId"));
         Assert.Equal(BaseDeDatosDePrueba.Fecha(_e.Reloj.UtcAhora), _e.Col("MarcaPasada", marca, "FechaHoraUtc"));
-        Assert.Equal(T(_e.UsuarioId), _e.Col("MarcaPasada", marca, "UsuarioId"));
-        Assert.Equal(T(_e.DispositivoId), _e.Col("MarcaPasada", marca, "DispositivoId"));
         Assert.Equal("0", _e.Col("MarcaPasada", marca, "Anulado"));
         Assert.Equal(T(_e.EstadoSeca), _e.Col("Animal", animal, "EstadoReproductivoId"));
         Assert.Null(_e.Col("Animal", animal, "FechaUltimoTactoUtc"));
@@ -116,7 +114,6 @@ public sealed class MarcaPasadaServiceTests : IDisposable
         var manga = Guid.Parse(_e.Base.Escalar("SELECT Id FROM Manga")!.ToString()!);
         Assert.Equal("1", _e.Col("Manga", manga, "Numero"));
         Assert.Equal(T(_e.RodeoId), _e.Col("Manga", manga, "RodeoId"));
-        Assert.Equal(T(_e.UsuarioId), _e.Col("Manga", manga, "AbiertaPorUsuarioId"));
         Assert.Equal(T(manga), _e.Col("MarcaPasada", r.MarcaId!.Value, "MangaId"));
 
         Assert.Equal(2, _e.Cuenta("Historial"));
@@ -296,9 +293,9 @@ public sealed class MarcaPasadaServiceTests : IDisposable
     public async Task Una_vaca_marcada_ayer_hoy_se_marca_de_nuevo()
     {
         var animal = _e.AnimalImportado("100");
-        var mangaAyer = _e.Base.Manga(_e.RodeoId, 1, _e.UsuarioId, creadaEn: _e.Reloj.UtcAhora.AddDays(-1));
-        _e.Base.MarcaPasada(animal, mangaAyer, _e.UsuarioId, fechaHora: _e.Reloj.UtcAhora.AddDays(-1));
-        _e.Base.CierreManga(mangaAyer, _e.UsuarioId, fechaHora: _e.Reloj.UtcAhora.AddDays(-1));
+        var mangaAyer = _e.Base.Manga(_e.RodeoId, 1, creadaEn: _e.Reloj.UtcAhora.AddDays(-1));
+        _e.Base.MarcaPasada(animal, mangaAyer, fechaHora: _e.Reloj.UtcAhora.AddDays(-1));
+        _e.Base.CierreManga(mangaAyer, fechaHora: _e.Reloj.UtcAhora.AddDays(-1));
 
         var r = await _e.LeerAsync("100");
 
@@ -313,10 +310,10 @@ public sealed class MarcaPasadaServiceTests : IDisposable
     {
         var animal = _e.AnimalImportado("100");
         // Un registro de la vaca con fecha dos días en el futuro (no es "hoy"): la hora de la tablet quedó atrasada.
-        _e.Base.Tacto(animal, _e.UsuarioId, _e.EstadoSeca, fechaHora: _e.Reloj.UtcAhora.AddDays(2));
+        _e.Base.Tacto(animal, _e.EstadoSeca, fechaHora: _e.Reloj.UtcAhora.AddDays(2));
         var antes = _e.FotoCampo();
 
-        var r = await _e.Campo.ProcesarLecturaAsync(new ProcesarLecturaCommand(_e.RodeoId, "100", _e.UsuarioId));
+        var r = await _e.Campo.ProcesarLecturaAsync(new ProcesarLecturaCommand(_e.RodeoId, "100"));
 
         Assert.False(r.EsCorrecto);
         Assert.Equal(CodigoError.FechaAnteriorAlUltimoRegistro, r.Codigo);
@@ -332,7 +329,7 @@ public sealed class MarcaPasadaServiceTests : IDisposable
         _e.AnimalImportado("100");
         _e.Base.Ejecutar("UPDATE Rodeo SET Activo = 0");
 
-        var r = await _e.Campo.ProcesarLecturaAsync(new ProcesarLecturaCommand(_e.RodeoId, "100", _e.UsuarioId));
+        var r = await _e.Campo.ProcesarLecturaAsync(new ProcesarLecturaCommand(_e.RodeoId, "100"));
 
         Assert.Equal(CodigoError.RodeoDeBaja, r.Codigo);
         Assert.Equal(0, _e.Cuenta("MarcaPasada"));
@@ -344,30 +341,16 @@ public sealed class MarcaPasadaServiceTests : IDisposable
         _e.AnimalImportado("100");
         _e.Base.Ejecutar("UPDATE Establecimiento SET Activo = 0");
 
-        var r = await _e.Campo.ProcesarLecturaAsync(new ProcesarLecturaCommand(_e.RodeoId, "100", _e.UsuarioId));
+        var r = await _e.Campo.ProcesarLecturaAsync(new ProcesarLecturaCommand(_e.RodeoId, "100"));
 
         Assert.Equal(CodigoError.EstablecimientoDeBaja, r.Codigo);
         Assert.Equal(0, _e.Cuenta("MarcaPasada"));
     }
 
     [Fact]
-    public async Task Un_veterinario_de_baja_o_inexistente_no_puede_marcar()
-    {
-        _e.AnimalImportado("100");
-        var baja = _e.Base.Usuario("De baja", activo: false);
-
-        var deBaja = await _e.Campo.ProcesarLecturaAsync(new ProcesarLecturaCommand(_e.RodeoId, "100", baja));
-        var inexistente = await _e.Campo.ProcesarLecturaAsync(new ProcesarLecturaCommand(_e.RodeoId, "100", Guid.NewGuid()));
-
-        Assert.Equal(CodigoError.UsuarioDeBaja, deBaja.Codigo);
-        Assert.Equal(CodigoError.NoEncontrado, inexistente.Codigo);
-        Assert.Equal(0, _e.Cuenta("MarcaPasada"));
-    }
-
-    [Fact]
     public async Task Un_rodeo_inexistente_se_rechaza()
     {
-        var r = await _e.Campo.ProcesarLecturaAsync(new ProcesarLecturaCommand(Guid.NewGuid(), "100", _e.UsuarioId));
+        var r = await _e.Campo.ProcesarLecturaAsync(new ProcesarLecturaCommand(Guid.NewGuid(), "100"));
         Assert.Equal(CodigoError.NoEncontrado, r.Codigo);
     }
 
@@ -381,7 +364,7 @@ public sealed class MarcaPasadaServiceTests : IDisposable
         _e.ForzarFallaAlGuardarHistorial("MarcaPasada"); // el historial de la marca falla DESPUÉS de insertar manga y marca
 
         await Assert.ThrowsAnyAsync<Exception>(() =>
-            _e.Campo.ProcesarLecturaAsync(new ProcesarLecturaCommand(_e.RodeoId, "100", _e.UsuarioId)));
+            _e.Campo.ProcesarLecturaAsync(new ProcesarLecturaCommand(_e.RodeoId, "100")));
 
         Assert.Equal(antes, _e.FotoCampo());
         Assert.Equal(0, _e.Cuenta("Manga"));

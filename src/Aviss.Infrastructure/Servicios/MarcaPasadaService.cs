@@ -18,7 +18,6 @@ internal sealed class MarcaPasadaService
     private readonly IAnimalRepository _animales;
     private readonly IRodeoRepository _rodeos;
     private readonly IEstablecimientoRepository _establecimientos;
-    private readonly IUsuarioRepository _usuarios;
     private readonly IEstadoReproductivoRepository _estados;
     private readonly IMangaRepository _mangas;
     private readonly IMarcaPasadaRepository _marcas;
@@ -31,12 +30,12 @@ internal sealed class MarcaPasadaService
     private readonly IEsperaRepository _esperas;
 
     public MarcaPasadaService(IUnitOfWork uow, IAnimalRepository animales, IRodeoRepository rodeos,
-        IEstablecimientoRepository establecimientos, IUsuarioRepository usuarios, IEstadoReproductivoRepository estados,
+        IEstablecimientoRepository establecimientos, IEstadoReproductivoRepository estados,
         IMangaRepository mangas, IMarcaPasadaRepository marcas, IRegistroCampoRepository registros,
         IHistorialRepository historial, IRelojService reloj, IZonaHoraria zona, Marcador marcador, ArmadorFicha ficha,
         IEsperaRepository esperas)
     {
-        _uow = uow; _animales = animales; _rodeos = rodeos; _establecimientos = establecimientos; _usuarios = usuarios;
+        _uow = uow; _animales = animales; _rodeos = rodeos; _establecimientos = establecimientos;
         _estados = estados; _mangas = mangas; _marcas = marcas; _registros = registros; _historial = historial;
         _reloj = reloj; _zona = zona; _marcador = marcador; _ficha = ficha; _esperas = esperas;
     }
@@ -44,8 +43,6 @@ internal sealed class MarcaPasadaService
     public Task<Resultado<ResultadoLecturaDto>> ProcesarLecturaAsync(ProcesarLecturaCommand c, CancellationToken ct)
         => _uow.EjecutarAsync(async () =>
         {
-            var errorUsuario = await Ayudas.ValidarUsuarioAsync(_usuarios, c.UsuarioId, ct);
-            if (errorUsuario is not null) return Resultado.Error<ResultadoLecturaDto>(errorUsuario.Codigo!.Value, errorUsuario.Mensaje!);
 
             var rodeo = await _rodeos.ObtenerAsync(c.RodeoId, ct);
             if (rodeo is null) return Resultado.Error<ResultadoLecturaDto>(CodigoError.NoEncontrado, "El rodeo no existe.");
@@ -105,7 +102,7 @@ internal sealed class MarcaPasadaService
 
             try
             {
-                var preparada = await _marcador.MarcarAsync(animal.Id, c.RodeoId, ahora, c.UsuarioId, ct);
+                var preparada = await _marcador.MarcarAsync(animal.Id, c.RodeoId, ahora, ct);
 
                 // CVET 0: la vaca no entra en tacto. Igual queda marcada (suma al conteo de la manga y se puede deshacer),
                 // pero no se arma ni se devuelve la ficha: la pantalla solo hace sonar la chicharra y sigue con la próxima.
@@ -120,15 +117,13 @@ internal sealed class MarcaPasadaService
             catch (DominioException ex) { return Ayudas.DatosInvalidos<ResultadoLecturaDto>(ex); }
         }, ct);
 
-    public Task<Resultado<ResultadoDeshacerDto>> DeshacerAsync(Guid marcaId, Guid usuarioId, CancellationToken ct)
+    public Task<Resultado<ResultadoDeshacerDto>> DeshacerAsync(Guid marcaId, CancellationToken ct)
         => _uow.EjecutarAsync(async () =>
         {
             var marca = await _marcas.ObtenerAsync(marcaId, ct);
             if (marca is null) return Resultado.Error<ResultadoDeshacerDto>(CodigoError.NoEncontrado, "La marca de pasada no existe.");
             if (marca.Anulado) return Resultado.Error<ResultadoDeshacerDto>(CodigoError.MarcaYaAnulada, MensajesCampo.Para(CodigoError.MarcaYaAnulada));
 
-            var errorUsuario = await Ayudas.ValidarUsuarioAsync(_usuarios, usuarioId, ct);
-            if (errorUsuario is not null) return Resultado.Error<ResultadoDeshacerDto>(errorUsuario.Codigo!.Value, errorUsuario.Mensaje!);
 
             // Una vaca en espera no se desmarca: primero hay que resolver o saltear la espera (spec 004, RF-9).
             if (!ReglasEspera.PuedeDesmarcarse(await _esperas.ObtenerPendienteAsync(marca.AnimalId, ct) is not null))
@@ -145,7 +140,7 @@ internal sealed class MarcaPasadaService
                 var manga = await _mangas.ObtenerAsync(marca.MangaId, ct);
                 var contador = await _mangas.ContarVacasAsync(marca.MangaId, ct) - 1; // todavía cuenta esta marca
                 marca.MarcarAnulada(ahora); // el único cambio que la base permite sobre una marca guardada
-                _historial.Agregar(Historial.Crear("MarcaPasada", marca.Id, "Anulado", "0", "1", ahora, usuarioId, AccionHistorial.AnulacionMarca));
+                _historial.Agregar(Historial.Crear("MarcaPasada", marca.Id, "Anulado", "0", "1", ahora, AccionHistorial.AnulacionMarca));
                 return Resultado.Ok(new ResultadoDeshacerDto(TipoDeshacer.Marca, marca.AnimalId, marca.MangaId, manga?.Numero, contador));
             }
             catch (DominioException ex) { return Ayudas.DatosInvalidos<ResultadoDeshacerDto>(ex); }

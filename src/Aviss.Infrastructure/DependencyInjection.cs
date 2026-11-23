@@ -15,14 +15,13 @@ namespace Aviss.Infrastructure;
 public static class DependencyInjection
 {
     /// <summary>
-    /// Registra todo lo de Infrastructure. Reloj y dispositivo son singleton; el DbContext, los repositorios, la unidad de
+    /// Registra todo lo de Infrastructure. El reloj es singleton; el DbContext, los repositorios, la unidad de
     /// trabajo y los servicios son "scoped": cada operación abre su propio scope (un contexto y una transacción).
     /// </summary>
     public static IServiceCollection AddAvissInfrastructure(this IServiceCollection servicios, RutasAviss rutas)
     {
         servicios.AddSingleton(rutas);
         servicios.AddSingleton<IRelojService, RelojSistema>();
-        servicios.AddSingleton<IDispositivoService, DispositivoService>();
         // La zona horaria real; la app de pruebas o la plataforma pueden registrar otra antes (TryAdd).
         servicios.TryAddSingleton<IZonaHoraria, ZonaHorariaSistema>();
 
@@ -31,7 +30,6 @@ public static class DependencyInjection
 
         servicios.AddScoped<IEstablecimientoRepository, EstablecimientoRepository>();
         servicios.AddScoped<IRodeoRepository, RodeoRepository>();
-        servicios.AddScoped<IUsuarioRepository, UsuarioRepository>();
         servicios.AddScoped<IEstadoReproductivoRepository, EstadoReproductivoRepository>();
         servicios.AddScoped<IAnimalRepository, AnimalRepository>();
         servicios.AddScoped<ITactoRepository, TactoRepository>();
@@ -44,7 +42,6 @@ public static class DependencyInjection
 
         servicios.AddScoped<IEstablecimientoService, EstablecimientoService>();
         servicios.AddScoped<IRodeoService, RodeoService>();
-        servicios.AddScoped<IUsuarioService, UsuarioService>();
         servicios.AddScoped<ICatalogoEstadosService, CatalogoEstadosService>();
         // AnimalService también se pide por su clase (los servicios de campo lo usan dentro de su propia transacción).
         servicios.AddScoped<AnimalService>();

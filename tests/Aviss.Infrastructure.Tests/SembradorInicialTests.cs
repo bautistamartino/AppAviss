@@ -75,19 +75,4 @@ public sealed class SembradorInicialTests : IDisposable
         Assert.Equal(0, _base.Contar("SELECT COUNT(*) FROM EstadoReproductivo WHERE Codigo = 'INSEMIN'"));
         Assert.Equal(5, _base.Contar("SELECT COUNT(*) FROM EstadoReproductivo WHERE Codigo <> 'PROPIO'"));
     }
-
-    [Fact]
-    public async Task Crea_el_usuario_Sin_asignar_con_id_fijo_una_sola_vez()
-    {
-        using (var ctx = _base.NuevoContexto())
-        {
-            var sembrador = new SembradorInicial(_base.Reloj);
-            await sembrador.SembrarUsuarioSinAsignarAsync(ctx);
-            await sembrador.SembrarUsuarioSinAsignarAsync(ctx);
-        }
-
-        Assert.Equal(1, _base.Contar("SELECT COUNT(*) FROM Usuario"));
-        Assert.Equal("Sin asignar", _base.Escalar("SELECT Nombre FROM Usuario WHERE Id = $id", ("$id", Usuario.SinAsignarId)));
-        Assert.Equal(1, _base.Contar("SELECT Activo FROM Usuario"));
-    }
 }

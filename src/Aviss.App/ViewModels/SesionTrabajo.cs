@@ -16,10 +16,6 @@ public sealed class SesionTrabajo
     /// <summary>Hay un rodeo elegido: se puede trabajar.</summary>
     public bool EstaLista => Rodeo is not null;
 
-    // TRANSITORIO: lo borra la T2 de la spec 006. Los comandos todavía piden un UsuarioId y se les pasa el usuario
-    // "Sin asignar" (existe en toda base); cuando los comandos pierdan el campo, esto desaparece.
-    public Guid UsuarioId => Usuario.SinAsignarId;
-
     public void Empezar(RodeoParaTrabajarDto rodeo) => Rodeo = rodeo;
 
     /// <summary>Al volver a la elección de rodeo.</summary>

@@ -30,7 +30,7 @@ public class FakeCampoService : ICampoService
     public string? CaravanaMuestra { get; set; } = "MUESTRA-1";
 
     // ---- lo que llamaron ----
-    public List<(Guid RodeoId, Guid UsuarioId)> IniciosDeTrabajo { get; } = [];
+    public List<Guid> IniciosDeTrabajo { get; } = [];
     public List<ProcesarLecturaCommand> LecturasProcesadas { get; } = [];
     public List<RegistrarTactoCommand> Tactos { get; } = [];
     public List<DeshacerCommand> Deshaceres { get; } = [];
@@ -56,9 +56,9 @@ public class FakeCampoService : ICampoService
         return Task.FromResult(Resultado.Ok(id));
     }
 
-    public Task<Resultado<EstadoTrabajoDto>> IniciarTrabajoAsync(Guid rodeoId, Guid usuarioId, CancellationToken ct = default)
+    public Task<Resultado<EstadoTrabajoDto>> IniciarTrabajoAsync(Guid rodeoId, CancellationToken ct = default)
     {
-        IniciosDeTrabajo.Add((rodeoId, usuarioId));
+        IniciosDeTrabajo.Add(rodeoId);
         return Task.FromResult(Resultado.Ok(Estado));
     }
 
@@ -176,8 +176,6 @@ public class FakeCampoService : ICampoService
 public static class Datos
 {
     public static readonly Guid RodeoId = Guid.Parse("11111111-0000-0000-0000-000000000001");
-    // El UsuarioId que la sesión todavía pasa a los comandos (TRANSITORIO hasta la T2 de la spec 006).
-    public static readonly Guid UsuarioId = Aviss.Domain.Entidades.Usuario.SinAsignarId;
 
     public static AvanceRodeoDto Avance(int total = 100, int procesadas = 0, DateTime? primera = null, DateTime? fin = null, bool terminado = false)
         => new(new DateOnly(2026, 11, 17), total, procesadas, total - procesadas, total == 0 ? 0 : procesadas * 100 / total, primera, fin, terminado);

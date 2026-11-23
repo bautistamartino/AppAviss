@@ -320,9 +320,9 @@ public sealed partial class TrabajoViewModel
             // del catálogo es un tacto. Si la vaca estaba en espera, el servicio la resuelve en la misma transacción.
             var esRechazo = estado.Id == EventosCampo.Rechazo;
             var resultado = esRechazo
-                ? await EnCampoAsync(() => _campo.RegistrarRechazoAsync(new RegistrarRechazoCommand(ficha.AnimalId, observacion, _sesion.UsuarioId)))
+                ? await EnCampoAsync(() => _campo.RegistrarRechazoAsync(new RegistrarRechazoCommand(ficha.AnimalId, observacion)))
                 : await EnCampoAsync(() => _campo.RegistrarTactoAsync(
-                    new RegistrarTactoCommand(ficha.AnimalId, estado.Id, null, observacion, _sesion.UsuarioId)));
+                    new RegistrarTactoCommand(ficha.AnimalId, estado.Id, null, observacion)));
             if (!resultado.EsCorrecto)
             {
                 // Rechazo: motivo en español, nada cambia (el evento y la observación siguen elegidos), la ficha queda abierta

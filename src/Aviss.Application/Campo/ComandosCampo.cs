@@ -1,35 +1,35 @@
 namespace Aviss.Application.Campo;
 
-// Comandos del flujo de campo (spec 003). Todos llevan el veterinario activo (UsuarioId); la hora la toma el servicio del reloj.
+// Comandos del flujo de campo (spec 003). La hora la toma el servicio del reloj.
 
 /// <summary>Una lectura del bastón o una búsqueda manual: el código es la caravana (o, si no coincide, el identificador electrónico).</summary>
-public sealed record ProcesarLecturaCommand(Guid RodeoId, string Codigo, Guid UsuarioId);
+public sealed record ProcesarLecturaCommand(Guid RodeoId, string Codigo);
 
 /// <summary><see cref="CantidadReal"/> nula = "Coincide" (la cantidad confirmada es la que contó Aviss).</summary>
-public sealed record FinalizarMangaCommand(Guid RodeoId, int? CantidadReal, Guid UsuarioId);
+public sealed record FinalizarMangaCommand(Guid RodeoId, int? CantidadReal);
 
-public sealed record TerminarElTactoCommand(Guid RodeoId, int? CantidadReal, Guid UsuarioId);
+public sealed record TerminarElTactoCommand(Guid RodeoId, int? CantidadReal);
 
-public sealed record DeshacerCommand(TipoDeshacer Tipo, Guid Id, Guid UsuarioId);
+public sealed record DeshacerCommand(TipoDeshacer Tipo, Guid Id);
 
 // ---- En Espera y Rechazo (spec 004) ----
 
 /// <summary>Poner en espera a una vaca (RF-1). La fecha y hora las toma el servicio del reloj.</summary>
-public sealed record PonerEnEsperaCommand(Guid AnimalId, Guid UsuarioId);
+public sealed record PonerEnEsperaCommand(Guid AnimalId);
 
 /// <summary>Saltear la espera pendiente de una vaca: no hacía falta cargar un evento (RF-3).</summary>
-public sealed record SaltearEsperaCommand(Guid AnimalId, Guid UsuarioId);
+public sealed record SaltearEsperaCommand(Guid AnimalId);
 
 /// <summary>La marca de rechazo de una vaca; <see cref="Observaciones"/> es el motivo escrito a mano (RF-6).</summary>
-public sealed record RegistrarRechazoCommand(Guid AnimalId, string? Observaciones, Guid UsuarioId);
+public sealed record RegistrarRechazoCommand(Guid AnimalId, string? Observaciones);
 
-public sealed record AnularRechazoCommand(Guid RechazoId, Guid UsuarioId);
+public sealed record AnularRechazoCommand(Guid RechazoId);
 
 /// <summary>
 /// "Editar" un movimiento (RF-8): se anula el registro (un tacto o un rechazo) y se guarda uno nuevo. <see cref="Evento"/> es el
 /// Id de un estado del catálogo (se guarda un tacto) o <see cref="EventosCampo.Rechazo"/> (se guarda un rechazo).
 /// </summary>
-public sealed record CorregirRegistroCommand(Guid RegistroId, Guid Evento, string? Observaciones, Guid UsuarioId);
+public sealed record CorregirRegistroCommand(Guid RegistroId, Guid Evento, string? Observaciones);
 
 /// <summary>Eventos fijos de la lista de eventos de la ficha que no pertenecen al catálogo de estados.</summary>
 public static class EventosCampo

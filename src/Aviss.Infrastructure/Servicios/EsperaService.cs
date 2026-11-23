@@ -21,17 +21,15 @@ internal sealed class EsperaService
     private readonly IAnimalRepository _animales;
     private readonly IRodeoRepository _rodeos;
     private readonly IEstablecimientoRepository _establecimientos;
-    private readonly IUsuarioRepository _usuarios;
     private readonly IEsperaRepository _esperas;
     private readonly IHistorialRepository _historial;
     private readonly IRelojService _reloj;
-    private readonly IDispositivoService _dispositivo;
 
     public EsperaService(IUnitOfWork uow, IAnimalRepository animales, IRodeoRepository rodeos, IEstablecimientoRepository establecimientos,
-        IUsuarioRepository usuarios, IEsperaRepository esperas, IHistorialRepository historial, IRelojService reloj, IDispositivoService dispositivo)
+        IEsperaRepository esperas, IHistorialRepository historial, IRelojService reloj)
     {
-        _uow = uow; _animales = animales; _rodeos = rodeos; _establecimientos = establecimientos; _usuarios = usuarios;
-        _esperas = esperas; _historial = historial; _reloj = reloj; _dispositivo = dispositivo;
+        _uow = uow; _animales = animales; _rodeos = rodeos; _establecimientos = establecimientos;
+        _esperas = esperas; _historial = historial; _reloj = reloj;
     }
 
     public Task<Resultado<Guid>> PonerAsync(PonerEnEsperaCommand c, CancellationToken ct = default)
@@ -47,8 +45,6 @@ internal sealed class EsperaService
             if (!rodeo.Activo) return Resultado.Error<Guid>(CodigoError.RodeoDeBaja, "El rodeo está dado de baja y no admite esperas.");
             if (!establecimiento.Activo)
                 return Resultado.Error<Guid>(CodigoError.EstablecimientoDeBaja, "El establecimiento está dado de baja y no admite esperas.");
-            var errorUsuario = await Ayudas.ValidarUsuarioAsync(_usuarios, c.UsuarioId, ct);
-            if (errorUsuario is not null) return Resultado.Error<Guid>(errorUsuario.Codigo!.Value, errorUsuario.Mensaje!);
 
             // RF-1: solo una vaca que entra en tacto (CVET distinto de 0) y que todavía no está en espera.
             var entra = ReglasCvet.EntraEnTacto(ConstructorFicha.LeerCvet(animal.DatosOriginalesJson));
@@ -61,9 +57,9 @@ internal sealed class EsperaService
             try
             {
                 var ahora = _reloj.UtcAhora;
-                var espera = Espera.Crear(animal.Id, ahora, c.UsuarioId, _dispositivo.ObtenerId(), ahora);
+                var espera = Espera.Crear(animal.Id, ahora, ahora);
                 _esperas.Agregar(espera);
-                _historial.Agregar(Historial.Crear("Espera", espera.Id, "Estado", null, nameof(EstadoEspera.Pendiente), ahora, c.UsuarioId, AccionHistorial.EsperaCreada));
+                _historial.Agregar(Historial.Crear("Espera", espera.Id, "Estado", null, nameof(EstadoEspera.Pendiente), ahora, AccionHistorial.EsperaCreada));
                 return Resultado.Ok(espera.Id);
             }
             catch (DominioException ex) { return Ayudas.DatosInvalidos<Guid>(ex); }
@@ -73,8 +69,6 @@ internal sealed class EsperaService
     public Task<Resultado> SaltearAsync(SaltearEsperaCommand c, CancellationToken ct = default)
         => _uow.EjecutarAsync(async () =>
         {
-            var errorUsuario = await Ayudas.ValidarUsuarioAsync(_usuarios, c.UsuarioId, ct);
-            if (errorUsuario is not null) return errorUsuario;
 
             var espera = await _esperas.ObtenerPendienteAsync(c.AnimalId, ct);
             if (espera is null) return Resultado.Error(CodigoError.EsperaNoPendiente, MensajesCampo.Para(CodigoError.EsperaNoPendiente));
@@ -82,9 +76,9 @@ internal sealed class EsperaService
             try
             {
                 var ahora = _reloj.UtcAhora;
-                espera.Saltear(c.UsuarioId, ahora);
+                espera.Saltear(ahora);
                 _historial.Agregar(Historial.Crear("Espera", espera.Id, "Estado", nameof(EstadoEspera.Pendiente), nameof(EstadoEspera.Salteada),
-                    ahora, c.UsuarioId, AccionHistorial.EsperaSalteada));
+                    ahora, AccionHistorial.EsperaSalteada));
                 return Resultado.Ok();
             }
             catch (DominioException ex) { return Ayudas.DatosInvalidos(ex); }
@@ -98,12 +92,12 @@ internal sealed class EsperaService
     /// con su registro de historial. NO abre transacción: la abre quien lo llama, así que si el registro se rechaza o algo falla,
     /// la espera sigue pendiente (RF-3).
     /// </summary>
-    public async Task ResolverSiHayAsync(Guid animalId, Guid registroId, Guid usuarioId, DateTime ahora, CancellationToken ct)
+    public async Task ResolverSiHayAsync(Guid animalId, Guid registroId, DateTime ahora, CancellationToken ct)
     {
         var espera = await _esperas.ObtenerPendienteAsync(animalId, ct);
         if (espera is null) return;
-        espera.Resolver(registroId, usuarioId, ahora);
+        espera.Resolver(registroId, ahora);
         _historial.Agregar(Historial.Crear("Espera", espera.Id, "Estado", nameof(EstadoEspera.Pendiente), nameof(EstadoEspera.Resuelta),
-            ahora, usuarioId, AccionHistorial.EsperaResuelta));
+            ahora, AccionHistorial.EsperaResuelta));
     }
 }

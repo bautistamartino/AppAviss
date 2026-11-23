@@ -24,16 +24,13 @@ public sealed class CierreManga : EntidadEditable
     /// <summary>Confirmada menos Aviss. Nula si no hay cantidad confirmada.</summary>
     public int? Diferencia { get; private set; }
 
-    public Guid UsuarioId { get; private set; }
-    public Guid DispositivoId { get; private set; }
     public bool Anulado { get; private set; }
 
     private CierreManga() { }
     private CierreManga(DateTime ahoraUtc) : base(ahoraUtc) { }
 
     public static CierreManga Cerrar(
-        Guid mangaId, TipoCierreManga tipo, DateTime fechaHoraUtc, int cantidadAviss, int? cantidadConfirmada,
-        Guid usuarioId, Guid dispositivoId, DateTime ahoraUtc)
+        Guid mangaId, TipoCierreManga tipo, DateTime fechaHoraUtc, int cantidadAviss, int? cantidadConfirmada, DateTime ahoraUtc)
     {
         if (!Enum.IsDefined(tipo))
             throw new DominioException("El tipo de cierre no es válido.");
@@ -53,8 +50,6 @@ public sealed class CierreManga : EntidadEditable
             CantidadAviss = cantidadAviss,
             CantidadConfirmada = cantidadConfirmada,
             Diferencia = cantidadConfirmada is int c ? c - cantidadAviss : null,
-            UsuarioId = Validar.IdObligatorio(usuarioId, "El usuario"),
-            DispositivoId = Validar.IdObligatorio(dispositivoId, "El dispositivo")
         };
     }
 

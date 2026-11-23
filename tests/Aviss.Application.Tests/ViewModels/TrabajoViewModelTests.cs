@@ -62,7 +62,7 @@ public class TrabajoViewModelTests
 
         await b.Vm.IniciarAsync();
 
-        Assert.Equal([(Datos.RodeoId, Datos.UsuarioId)], b.Campo.IniciosDeTrabajo);
+        Assert.Equal([Datos.RodeoId], b.Campo.IniciosDeTrabajo);
         Assert.Equal("Manga 2 · 7", b.Vm.TextoManga);
         Assert.True(b.Vm.MangaAbierta);
         Assert.Equal(30, b.Vm.Avance!.Procesadas);
@@ -142,7 +142,6 @@ public class TrabajoViewModelTests
         // Marcar no muestra el aviso de deshacer (se puede deshacer desde "Movimientos").
         Assert.Null(b.Vm.AvisoDeshacer);
         Assert.Single(b.Campo.LecturasProcesadas);
-        Assert.Equal(Datos.UsuarioId, b.Campo.LecturasProcesadas[0].UsuarioId);
     }
 
     [Fact]
@@ -436,7 +435,7 @@ public class TrabajoViewModelTests
         await b.Vm.EntrarCommand.ExecuteAsync(null);
 
         var cmd = Assert.Single(b.Campo.Tactos);
-        Assert.Equal((animal, Prenada.Id, "Cojera", Datos.UsuarioId), (cmd.AnimalId, cmd.EstadoNuevoId, cmd.Observaciones, cmd.UsuarioId));
+        Assert.Equal((animal, Prenada.Id, "Cojera"), (cmd.AnimalId, cmd.EstadoNuevoId, cmd.Observaciones));
         Assert.Null(b.Vm.Ficha);
         Assert.Null(b.Vm.EventoElegido);
         Assert.Equal("Opcional", b.Vm.TextoCasilleroObservacion);
@@ -595,7 +594,6 @@ public class TrabajoViewModelTests
         var cmd = Assert.Single(b.Campo.Tactos);
         Assert.Equal(animal, cmd.AnimalId);
         Assert.Equal(Prenada.Id, cmd.EstadoNuevoId);
-        Assert.Equal(Datos.UsuarioId, cmd.UsuarioId);
         Assert.Null(b.Vm.Ficha);
         Assert.Equal(EtapaTrabajo.Esperando, b.Vm.Etapa);
         Assert.Equal("1001: PREÑADA", b.Vm.UltimoGuardado);

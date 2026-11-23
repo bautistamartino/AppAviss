@@ -59,7 +59,6 @@ public class MovimientosViewModelTests
         var cmd = Assert.Single(b.Campo.Deshaceres);
         Assert.Equal(esperado, cmd.Tipo);
         Assert.Equal(movimiento.RegistroId, cmd.Id);   // en un alta es el id del animal
-        Assert.Equal(Datos.UsuarioId, cmd.UsuarioId);
         Assert.Equal(2, b.Campo.ConsultasDeMovimientos);   // recargó
         Assert.True(b.Vm.HayMensajeInfo);
     }
@@ -256,7 +255,7 @@ public class MovimientosViewModelTests
         await b.Vm.GuardarEdicionCommand.ExecuteAsync(null);
 
         var cmd = Assert.Single(b.Campo.RegistrosCorregidos);
-        Assert.Equal((tacto.Dto.RegistroId, Vacia.Id, "Se secó", Datos.UsuarioId), (cmd.RegistroId, cmd.Evento, cmd.Observaciones, cmd.UsuarioId));
+        Assert.Equal((tacto.Dto.RegistroId, Vacia.Id, "Se secó"), (cmd.RegistroId, cmd.Evento, cmd.Observaciones));
         Assert.False(b.Vm.HayEdicion);
         Assert.Equal("Se corrigió el registro.", b.Vm.MensajeInfo);
         Assert.Equal(consultas + 1, b.Campo.ConsultasDeMovimientos);

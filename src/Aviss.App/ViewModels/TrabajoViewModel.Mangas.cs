@@ -316,7 +316,7 @@ public sealed partial class TrabajoViewModel
         try
         {
             var numero = NumeroManga;
-            var resultado = await EnCampoAsync(() => _campo.FinalizarMangaAsync(new FinalizarMangaCommand(rodeo.RodeoId, null, _sesion.UsuarioId)));
+            var resultado = await EnCampoAsync(() => _campo.FinalizarMangaAsync(new FinalizarMangaCommand(rodeo.RodeoId, null)));
             if (!resultado.EsCorrecto)
             {
                 MensajeInfo = resultado.Mensaje;
@@ -339,7 +339,7 @@ public sealed partial class TrabajoViewModel
         if (_sesion.Rodeo is not { } rodeo) return;
         try
         {
-            var resultado = await EnCampoAsync(() => _campo.FinalizarMangaAsync(new FinalizarMangaCommand(rodeo.RodeoId, _cantidadRealConfirmada, _sesion.UsuarioId)));
+            var resultado = await EnCampoAsync(() => _campo.FinalizarMangaAsync(new FinalizarMangaCommand(rodeo.RodeoId, _cantidadRealConfirmada)));
             if (!resultado.EsCorrecto)
             {
                 MensajeCuadro = resultado.Mensaje;   // se queda en el cuadro con el motivo
@@ -368,7 +368,7 @@ public sealed partial class TrabajoViewModel
         if (Cuadro != CuadroTrabajo.SegundaConfirmacion || _sesion.Rodeo is not { } rodeo) return;
         try
         {
-            var resultado = await EnCampoAsync(() => _campo.TerminarElTactoAsync(new TerminarElTactoCommand(rodeo.RodeoId, _cantidadRealConfirmada, _sesion.UsuarioId)));
+            var resultado = await EnCampoAsync(() => _campo.TerminarElTactoAsync(new TerminarElTactoCommand(rodeo.RodeoId, _cantidadRealConfirmada)));
             if (!resultado.EsCorrecto)
             {
                 MensajeCuadro = resultado.Mensaje;

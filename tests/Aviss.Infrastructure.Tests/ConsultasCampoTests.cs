@@ -76,10 +76,10 @@ public sealed class ConsultasCampoTests : IDisposable
         var ninguna = _e.AnimalImportado("4");
         var anulada = _e.Base.Animal(_e.RodeoId, "5", "AltaEnCampo", anulado: true);
 
-        var manga = _e.Base.Manga(_e.RodeoId, 1, _e.UsuarioId);
-        _e.Base.MarcaPasada(conMarca, manga, _e.UsuarioId, fechaHora: _e.Reloj.UtcAhora.AddHours(-1));
-        _e.Base.Tacto(conTacto, _e.UsuarioId, _e.EstadoPrenada, fechaHora: _e.Reloj.UtcAhora.AddHours(-1));
-        _e.Base.Tacto(deAyer, _e.UsuarioId, _e.EstadoPrenada, fechaHora: _e.Reloj.UtcAhora.AddDays(-1));
+        var manga = _e.Base.Manga(_e.RodeoId, 1);
+        _e.Base.MarcaPasada(conMarca, manga, fechaHora: _e.Reloj.UtcAhora.AddHours(-1));
+        _e.Base.Tacto(conTacto, _e.EstadoPrenada, fechaHora: _e.Reloj.UtcAhora.AddHours(-1));
+        _e.Base.Tacto(deAyer, _e.EstadoPrenada, fechaHora: _e.Reloj.UtcAhora.AddDays(-1));
         _ = ninguna; _ = anulada;
 
         var avance = (await _e.EstadoAsync()).Avance;
@@ -104,9 +104,9 @@ public sealed class ConsultasCampoTests : IDisposable
     {
         var a = _e.AnimalImportado("1");
         var b = _e.AnimalImportado("2", _e.EstadoSeca);
-        var manga = _e.Base.Manga(_e.RodeoId, 1, _e.UsuarioId);
-        _e.Base.MarcaPasada(a, manga, _e.UsuarioId, anulada: true);
-        _e.Base.Tacto(b, _e.UsuarioId, _e.EstadoPrenada, anulado: true);
+        var manga = _e.Base.Manga(_e.RodeoId, 1);
+        _e.Base.MarcaPasada(a, manga, anulada: true);
+        _e.Base.Tacto(b, _e.EstadoPrenada, anulado: true);
 
         Assert.Equal(0, (await _e.EstadoAsync()).Avance.Procesadas);
     }
@@ -157,9 +157,9 @@ public sealed class ConsultasCampoTests : IDisposable
     {
         var ayer = _e.AnimalImportado("1");
         var anulada = _e.AnimalImportado("2");
-        var manga = _e.Base.Manga(_e.RodeoId, 1, _e.UsuarioId);
-        _e.Base.MarcaPasada(ayer, manga, _e.UsuarioId, fechaHora: _e.Reloj.UtcAhora.AddDays(-1));
-        _e.Base.MarcaPasada(anulada, manga, _e.UsuarioId, fechaHora: _e.Reloj.UtcAhora.AddMinutes(-30), anulada: true);
+        var manga = _e.Base.Manga(_e.RodeoId, 1);
+        _e.Base.MarcaPasada(ayer, manga, fechaHora: _e.Reloj.UtcAhora.AddDays(-1));
+        _e.Base.MarcaPasada(anulada, manga, fechaHora: _e.Reloj.UtcAhora.AddMinutes(-30), anulada: true);
 
         var avance = (await _e.EstadoAsync()).Avance;
 
@@ -176,7 +176,7 @@ public sealed class ConsultasCampoTests : IDisposable
         _e.Reloj.Avanzar(TimeSpan.FromMinutes(7));
         var terminar = _e.Reloj.UtcAhora;
 
-        var cierre = await _e.Campo.TerminarElTactoAsync(new TerminarElTactoCommand(_e.RodeoId, null, _e.UsuarioId));
+        var cierre = await _e.Campo.TerminarElTactoAsync(new TerminarElTactoCommand(_e.RodeoId, null));
         Assert.True(cierre.EsCorrecto, cierre.Mensaje);
 
         var avance = (await _e.EstadoAsync()).Avance;
@@ -189,7 +189,7 @@ public sealed class ConsultasCampoTests : IDisposable
     {
         await _e.VacaMarcadaAsync("1");
         _e.Reloj.Avanzar(TimeSpan.FromMinutes(5));
-        await _e.Campo.TerminarElTactoAsync(new TerminarElTactoCommand(_e.RodeoId, null, _e.UsuarioId));
+        await _e.Campo.TerminarElTactoAsync(new TerminarElTactoCommand(_e.RodeoId, null));
         _e.Reloj.Avanzar(TimeSpan.FromMinutes(5));
         var nueva = _e.Reloj.UtcAhora;
         await _e.VacaMarcadaAsync("2");
@@ -206,7 +206,7 @@ public sealed class ConsultasCampoTests : IDisposable
         await _e.VacaMarcadaAsync("1");
         var ultimaVaca = _e.Reloj.UtcAhora;
         _e.Reloj.Avanzar(TimeSpan.FromMinutes(5));
-        var cierre = (await _e.Campo.TerminarElTactoAsync(new TerminarElTactoCommand(_e.RodeoId, null, _e.UsuarioId))).Valor.Cierre!;
+        var cierre = (await _e.Campo.TerminarElTactoAsync(new TerminarElTactoCommand(_e.RodeoId, null))).Valor.Cierre!;
 
         await _e.DeshacerAsync(TipoDeshacer.Cierre, cierre.CierreId);
 
@@ -219,10 +219,10 @@ public sealed class ConsultasCampoTests : IDisposable
     public async Task Un_cambio_de_zona_horaria_cambia_que_se_cuenta_como_hoy_sin_tocar_lo_guardado()
     {
         var animal = _e.AnimalImportado("1");
-        var manga = _e.Base.Manga(_e.RodeoId, 1, _e.UsuarioId);
+        var manga = _e.Base.Manga(_e.RodeoId, 1);
         // Marca a las 01:00 UTC; "ahora" son las 12:00 UTC del mismo día.
-        _e.Base.MarcaPasada(animal, manga, _e.UsuarioId, fechaHora: new DateTime(2026, 11, 16, 1, 0, 0, DateTimeKind.Utc));
-        _e.Base.CierreManga(manga, _e.UsuarioId, fechaHora: new DateTime(2026, 11, 16, 2, 0, 0, DateTimeKind.Utc)); // manga cerrada: la lectura de hoy abre otra
+        _e.Base.MarcaPasada(animal, manga, fechaHora: new DateTime(2026, 11, 16, 1, 0, 0, DateTimeKind.Utc));
+        _e.Base.CierreManga(manga, fechaHora: new DateTime(2026, 11, 16, 2, 0, 0, DateTimeKind.Utc)); // manga cerrada: la lectura de hoy abre otra
         var antes = _e.FotoCampo();
 
         Assert.Equal(1, (await _e.EstadoAsync()).Avance.Procesadas);   // en UTC es el mismo día
@@ -344,7 +344,7 @@ public sealed class ConsultasCampoTests : IDisposable
         var animal = _e.AnimalImportado("100", _e.EstadoSeca, json: """{"ID":"100","CVET":"PRE"}""");
         await _e.LeerAsync("100");
         _e.Reloj.Avanzar(TimeSpan.FromSeconds(1));
-        var r = await _e.Campo.RegistrarTactoAsync(new Aviss.Application.Comandos.RegistrarTactoCommand(animal, _e.EstadoPrenada, null, "Cojera", _e.UsuarioId));
+        var r = await _e.Campo.RegistrarTactoAsync(new Aviss.Application.Comandos.RegistrarTactoCommand(animal, _e.EstadoPrenada, null, "Cojera"));
         Assert.True(r.EsCorrecto, r.Mensaje);
         var sinCvet = _e.AnimalImportado("200", _e.EstadoSeca);
         await _e.LeerAsync("200");

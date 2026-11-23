@@ -14,13 +14,10 @@ public sealed class Espera : EntidadEditable
 {
     public Guid AnimalId { get; private set; }
     public DateTime FechaHoraUtc { get; private set; }
-    public Guid UsuarioId { get; private set; }
-    public Guid DispositivoId { get; private set; }
     public EstadoEspera Estado { get; private set; }
 
-    /// <summary>Cuándo y quién la resolvió o salteó; nulos mientras está pendiente.</summary>
+    /// <summary>Cuándo la resolvió o salteó; nulos mientras está pendiente.</summary>
     public DateTime? ResueltaEnUtc { get; private set; }
-    public Guid? ResueltaPorUsuarioId { get; private set; }
 
     /// <summary>Id del tacto o del rechazo que la resolvió (sin clave foránea: apunta a dos tablas). Nulo si se salteó.</summary>
     public Guid? RegistroResolucionId { get; private set; }
@@ -28,29 +25,27 @@ public sealed class Espera : EntidadEditable
     private Espera() { }
     private Espera(DateTime ahoraUtc) : base(ahoraUtc) { }
 
-    public static Espera Crear(Guid animalId, DateTime fechaHoraUtc, Guid usuarioId, Guid dispositivoId, DateTime ahoraUtc)
+    public static Espera Crear(Guid animalId, DateTime fechaHoraUtc, DateTime ahoraUtc)
         => new(ahoraUtc)
         {
             AnimalId = Validar.IdObligatorio(animalId, "El animal"),
             FechaHoraUtc = Validar.Utc(fechaHoraUtc, nameof(fechaHoraUtc)),
-            UsuarioId = Validar.IdObligatorio(usuarioId, "El usuario"),
-            DispositivoId = Validar.IdObligatorio(dispositivoId, "El dispositivo"),
             Estado = EstadoEspera.Pendiente
         };
 
     /// <summary>La espera se resolvió porque se guardó un tacto o un rechazo (<paramref name="registroId"/>).</summary>
-    public void Resolver(Guid registroId, Guid usuarioId, DateTime ahoraUtc)
+    public void Resolver(Guid registroId, DateTime ahoraUtc)
     {
         ExigirPendiente();
         RegistroResolucionId = Validar.IdObligatorio(registroId, "El registro");
-        Cerrar(EstadoEspera.Resuelta, usuarioId, ahoraUtc);
+        Cerrar(EstadoEspera.Resuelta, ahoraUtc);
     }
 
     /// <summary>La espera se saltó: no hacía falta cargar ningún evento. No guarda registro.</summary>
-    public void Saltear(Guid usuarioId, DateTime ahoraUtc)
+    public void Saltear(DateTime ahoraUtc)
     {
         ExigirPendiente();
-        Cerrar(EstadoEspera.Salteada, usuarioId, ahoraUtc);
+        Cerrar(EstadoEspera.Salteada, ahoraUtc);
     }
 
     private void ExigirPendiente()
@@ -59,9 +54,8 @@ public sealed class Espera : EntidadEditable
             throw new DominioException("La espera ya no está pendiente.");
     }
 
-    private void Cerrar(EstadoEspera nuevo, Guid usuarioId, DateTime ahoraUtc)
+    private void Cerrar(EstadoEspera nuevo, DateTime ahoraUtc)
     {
-        ResueltaPorUsuarioId = Validar.IdObligatorio(usuarioId, "El usuario");
         ResueltaEnUtc = Validar.Utc(ahoraUtc, nameof(ahoraUtc));
         Estado = nuevo;
         Tocar(ahoraUtc);

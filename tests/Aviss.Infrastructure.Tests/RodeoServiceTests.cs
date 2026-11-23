@@ -81,14 +81,12 @@ public sealed class RodeoServiceTests : IDisposable
     {
         var est = NuevoEstablecimiento();
         var rodeo = (await _e.Servicio<IRodeoService>().CrearAsync(Comando(est))).Valor;
-        var vet = _e.Base.Usuario();
         _e.Base.Animal(rodeo, "1", "Importado");
         _e.Base.Animal(rodeo, "2", "Importado");
         _e.Base.Animal(rodeo, "3", "AltaEnCampo");
         _e.Base.Animal(rodeo, "4", "AltaEnCampo", anulado: true);
         Assert.Equal(3, await _e.Servicio<IRodeoService>().ContarAnimalesAsync(rodeo));
         Assert.Equal(0, await _e.Servicio<IRodeoService>().ContarAnimalesAsync(Guid.NewGuid()));
-        _ = vet;
     }
 
     [Fact]
@@ -109,7 +107,6 @@ public sealed class RodeoServiceTests : IDisposable
     {
         var est = NuevoEstablecimiento();
         var rodeo = (await _e.Servicio<IRodeoService>().CrearAsync(Comando(est))).Valor;
-        var vet = _e.Base.Usuario();
         var estado = _e.Base.Estado("SECA", "SECA", "SECA");
 
         // Lo marca como exportado el dominio (lo hará la función de exportación): se prueba directo con el contexto.
@@ -120,9 +117,9 @@ public sealed class RodeoServiceTests : IDisposable
         }
         Assert.Equal("Exportado", _e.Col("Rodeo", rodeo, "Estado"));
 
-        var alta = await _e.Servicio<IAnimalService>().AltaEnCampoAsync(new AltaEnCampoCommand(rodeo, "9", null, null, vet));
+        var alta = await _e.Servicio<IAnimalService>().AltaEnCampoAsync(new AltaEnCampoCommand(rodeo, "9", null, null));
         Assert.True(alta.EsCorrecto, alta.Mensaje);
-        var tacto = await _e.Servicio<ITrabajoCampoService>().RegistrarTactoAsync(new RegistrarTactoCommand(alta.Valor, estado, null, null, vet));
+        var tacto = await _e.Servicio<ITrabajoCampoService>().RegistrarTactoAsync(new RegistrarTactoCommand(alta.Valor, estado, null, null));
         Assert.True(tacto.EsCorrecto, tacto.Mensaje);
     }
 }

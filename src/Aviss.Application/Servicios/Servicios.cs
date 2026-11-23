@@ -24,13 +24,6 @@ public interface IRodeoService
     Task<int> ContarAnimalesAsync(Guid rodeoId, CancellationToken ct = default);
 }
 
-public interface IUsuarioService
-{
-    Task<Resultado<Guid>> CrearAsync(string nombre, string? matricula, CancellationToken ct = default);
-    Task<Resultado> DarDeBajaAsync(Guid id, CancellationToken ct = default);
-    Task<Resultado> ReactivarAsync(Guid id, CancellationToken ct = default);
-}
-
 public interface ICatalogoEstadosService
 {
     Task<Resultado<Guid>> CrearAsync(string codigo, string nombre, string codigoDairyComp, CancellationToken ct = default);
@@ -107,7 +100,7 @@ public interface ICampoService
 
     // ---- Mangas (RF-4 a RF-10) ----
     /// <summary>Empieza a trabajar un rodeo: cierra como automática la manga abierta de un día anterior y devuelve el estado.</summary>
-    Task<Resultado<EstadoTrabajoDto>> IniciarTrabajoAsync(Guid rodeoId, Guid usuarioId, CancellationToken ct = default);
+    Task<Resultado<EstadoTrabajoDto>> IniciarTrabajoAsync(Guid rodeoId, CancellationToken ct = default);
     /// <summary>Manga actual, contador y avance de hoy (se vuelve a pedir cada 60 s y al volver de segundo plano).</summary>
     Task<Resultado<EstadoTrabajoDto>> ObtenerEstadoTrabajoAsync(Guid rodeoId, CancellationToken ct = default);
     /// <summary>Contador y caravanas de la manga abierta, para la verificación de "Finalizar manga". Sin manga abierta: <c>NoHayMangaAbierta</c>.</summary>

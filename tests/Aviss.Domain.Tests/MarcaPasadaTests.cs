@@ -7,13 +7,13 @@ public class MarcaPasadaTests
     private static readonly DateTime Ahora = new(2026, 11, 16, 12, 0, 0, DateTimeKind.Utc);
 
     private static MarcaPasada Nueva()
-        => MarcaPasada.Registrar(Guid.NewGuid(), Guid.NewGuid(), Ahora, 7, Guid.NewGuid(), Guid.NewGuid(), Ahora);
+        => MarcaPasada.Registrar(Guid.NewGuid(), Guid.NewGuid(), Ahora, 7, Ahora);
 
     [Fact]
     public void Registrar_guarda_los_datos_y_nace_vigente()
     {
         var animal = Guid.NewGuid(); var manga = Guid.NewGuid();
-        var m = MarcaPasada.Registrar(animal, manga, Ahora, 7, Guid.NewGuid(), Guid.NewGuid(), Ahora);
+        var m = MarcaPasada.Registrar(animal, manga, Ahora, 7, Ahora);
         Assert.Equal(animal, m.AnimalId);
         Assert.Equal(manga, m.MangaId);
         Assert.Equal(7, m.OrdenInsercion);
@@ -24,11 +24,9 @@ public class MarcaPasadaTests
     [Fact]
     public void Rechaza_ids_vacios_y_fecha_no_utc()
     {
-        Assert.Throws<DominioException>(() => MarcaPasada.Registrar(Guid.Empty, Guid.NewGuid(), Ahora, 1, Guid.NewGuid(), Guid.NewGuid(), Ahora));
-        Assert.Throws<DominioException>(() => MarcaPasada.Registrar(Guid.NewGuid(), Guid.Empty, Ahora, 1, Guid.NewGuid(), Guid.NewGuid(), Ahora));
-        Assert.Throws<DominioException>(() => MarcaPasada.Registrar(Guid.NewGuid(), Guid.NewGuid(), Ahora, 1, Guid.Empty, Guid.NewGuid(), Ahora));
-        Assert.Throws<DominioException>(() => MarcaPasada.Registrar(Guid.NewGuid(), Guid.NewGuid(), Ahora, 1, Guid.NewGuid(), Guid.Empty, Ahora));
-        Assert.Throws<DominioException>(() => MarcaPasada.Registrar(Guid.NewGuid(), Guid.NewGuid(), DateTime.SpecifyKind(Ahora, DateTimeKind.Unspecified), 1, Guid.NewGuid(), Guid.NewGuid(), Ahora));
+        Assert.Throws<DominioException>(() => MarcaPasada.Registrar(Guid.Empty, Guid.NewGuid(), Ahora, 1, Ahora));
+        Assert.Throws<DominioException>(() => MarcaPasada.Registrar(Guid.NewGuid(), Guid.Empty, Ahora, 1, Ahora));
+        Assert.Throws<DominioException>(() => MarcaPasada.Registrar(Guid.NewGuid(), Guid.NewGuid(), DateTime.SpecifyKind(Ahora, DateTimeKind.Unspecified), 1, Ahora));
     }
 
     [Fact]

@@ -28,7 +28,6 @@ public sealed class DeshacerTests : IDisposable
         Assert.Equal(0, r.Valor.ContadorManga);
         Assert.Equal("1", _e.Col("MarcaPasada", lectura.MarcaId.Value, "Anulado"));
         Assert.Equal(1, _e.Cuenta("Historial", "Accion = 'AnulacionMarca'"));
-        Assert.Equal(T(_e.UsuarioId), _e.Base.Escalar("SELECT UsuarioId FROM Historial WHERE Accion = 'AnulacionMarca'"));
 
         var estado = await _e.EstadoAsync();
         Assert.Equal(0, estado.Contador);
@@ -68,27 +67,13 @@ public sealed class DeshacerTests : IDisposable
     }
 
     [Fact]
-    public async Task Un_veterinario_de_baja_no_puede_deshacer()
+    public async Task Cualquiera_puede_deshacer_lo_de_otro()
     {
         var (_, lectura) = await _e.VacaMarcadaAsync("100");
-        var baja = _e.Base.Usuario("De baja", activo: false);
 
-        var r = await _e.DeshacerAsync(TipoDeshacer.Marca, lectura.MarcaId!.Value, baja);
-
-        Assert.Equal(CodigoError.UsuarioDeBaja, r.Codigo);
-        Assert.Equal("0", _e.Col("MarcaPasada", lectura.MarcaId.Value, "Anulado"));
-    }
-
-    [Fact]
-    public async Task Cualquier_veterinario_activo_puede_deshacer_lo_de_otro()
-    {
-        var (_, lectura) = await _e.VacaMarcadaAsync("100");
-        var otro = _e.Base.Usuario("Vet Dos");
-
-        var r = await _e.DeshacerAsync(TipoDeshacer.Marca, lectura.MarcaId!.Value, otro);
+        var r = await _e.DeshacerAsync(TipoDeshacer.Marca, lectura.MarcaId!.Value);
 
         Assert.True(r.EsCorrecto, r.Mensaje);
-        Assert.Equal(T(otro), _e.Base.Escalar("SELECT UsuarioId FROM Historial WHERE Accion = 'AnulacionMarca'"));
     }
 
     // ---------- "El último registro de cualquier tipo" ----------
@@ -118,9 +103,9 @@ public sealed class DeshacerTests : IDisposable
     {
         // Se arma por SQL: un tacto viejo (hace 30 horas) y una marca posterior (hace 2 horas) en una manga abierta.
         var animal = _e.AnimalImportado("100", _e.EstadoSeca);
-        var tacto = _e.Base.Tacto(animal, _e.UsuarioId, _e.EstadoPrenada, fechaHora: _e.Reloj.UtcAhora.AddHours(-30));
-        var manga = _e.Base.Manga(_e.RodeoId, 1, _e.UsuarioId);
-        _e.Base.MarcaPasada(animal, manga, _e.UsuarioId, fechaHora: _e.Reloj.UtcAhora.AddHours(-2));
+        var tacto = _e.Base.Tacto(animal, _e.EstadoPrenada, fechaHora: _e.Reloj.UtcAhora.AddHours(-30));
+        var manga = _e.Base.Manga(_e.RodeoId, 1);
+        _e.Base.MarcaPasada(animal, manga, fechaHora: _e.Reloj.UtcAhora.AddHours(-2));
 
         var r = await _e.DeshacerAsync(TipoDeshacer.Tacto, tacto);
 

@@ -103,7 +103,7 @@ public class TrabajoViewModelEsperaTests
         await b.Vm.PonerEnEsperaCommand.ExecuteAsync(null);
 
         var cmd = Assert.Single(b.Campo.EsperasPuestas);
-        Assert.Equal((animal, Datos.UsuarioId), (cmd.AnimalId, cmd.UsuarioId));
+        Assert.Equal(animal, cmd.AnimalId);
         Assert.Empty(b.Campo.Tactos);
         Assert.False(b.Vm.HayFicha);
         Assert.Null(b.Vm.EventoElegido);
@@ -323,7 +323,7 @@ public class TrabajoViewModelEsperaTests
         await b.Vm.CerrarFichaCommand.ExecuteAsync(null);
 
         var cmd = Assert.Single(b.Campo.EsperasSalteadas);
-        Assert.Equal((animal, Datos.UsuarioId), (cmd.AnimalId, cmd.UsuarioId));
+        Assert.Equal(animal, cmd.AnimalId);
         Assert.False(b.Vm.HayFicha);
         Assert.Empty(b.Campo.Tactos);
         Assert.Empty(b.Campo.Rechazos);
@@ -495,7 +495,7 @@ public class TrabajoViewModelEsperaTests
         await b.Vm.EntrarCommand.ExecuteAsync(null);
 
         var cmd = Assert.Single(b.Campo.Rechazos);
-        Assert.Equal((animal, "Pata", Datos.UsuarioId), (cmd.AnimalId, cmd.Observaciones, cmd.UsuarioId));
+        Assert.Equal((animal, "Pata"), (cmd.AnimalId, cmd.Observaciones));
         Assert.Empty(b.Campo.Tactos);
         Assert.False(b.Vm.HayFicha);
         Assert.Equal("1001: Rechazo", b.Vm.UltimoGuardado);

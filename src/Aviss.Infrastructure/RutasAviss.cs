@@ -14,6 +14,9 @@ public sealed record RutasAviss(string DirectorioDatos)
     public string DirectorioBackups => Path.Combine(DirectorioDatos, "backups");
     public string DirectorioDanadas => Path.Combine(DirectorioDatos, "danadas");
 
-    /// <summary>Identificador de esta tablet (RF-23). Está fuera de la base a propósito.</summary>
-    public string ArchivoDispositivo => Path.Combine(DirectorioDatos, "dispositivo.id");
+    /// <summary>
+    /// Archivo que una versión anterior dejó con el identificador de la tablet. Ya no se usa (spec 006): solo se conserva
+    /// la ruta para borrarlo al abrir la app.
+    /// </summary>
+    public string ArchivoDispositivoObsoleto => Path.Combine(DirectorioDatos, "dispositivo.id");
 }

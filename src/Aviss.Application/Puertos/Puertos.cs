@@ -14,12 +14,6 @@ public interface IRelojService
     DateTime UtcAhora { get; }
 }
 
-/// <summary>Identificador de esta tablet, generado la primera vez y guardado fuera de la base (RF-23).</summary>
-public interface IDispositivoService
-{
-    Guid ObtenerId();
-}
-
 /// <summary>
 /// Ejecuta una operación completa dentro de UNA transacción: si termina bien confirma todo, si lanza una excepción
 /// revierte todo (RF-8, RF-13). Un contexto y una transacción por operación.
@@ -49,20 +43,6 @@ public interface IRodeoRepository
     /// </summary>
     Task<IReadOnlyList<RodeoImportadoResumen>> BuscarPorHashAsync(string hash, CancellationToken ct = default);
     void Agregar(Rodeo rodeo);
-}
-
-public interface IUsuarioRepository
-{
-    Task<Usuario?> ObtenerAsync(Guid id, CancellationToken ct = default);
-    Task<IReadOnlyList<Usuario>> ListarAsync(CancellationToken ct = default);
-    /// <summary>Cuántos usuarios activos hay, sin contar el indicado (para proteger a "Sin asignar").</summary>
-    Task<int> ContarActivosExceptoAsync(Guid usuarioId, CancellationToken ct = default);
-    /// <summary>
-    /// True si ya hay un usuario (activo o de baja, incluido "Sin asignar") con ese nombre, sin distinguir mayúsculas
-    /// ni espacios de los extremos (RF-1). Usa la misma clave que el índice único de la base.
-    /// </summary>
-    Task<bool> ExisteNombreAsync(string nombre, CancellationToken ct = default);
-    void Agregar(Usuario usuario);
 }
 
 public interface IEstadoReproductivoRepository

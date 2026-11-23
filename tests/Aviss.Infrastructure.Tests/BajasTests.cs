@@ -15,7 +15,6 @@ public sealed class BajasTests : IDisposable
     [Theory]
     [InlineData("Establecimiento")]
     [InlineData("Rodeo")]
-    [InlineData("Usuario")]
     [InlineData("EstadoReproductivo")]
     [InlineData("Animal")]
     public void El_borrado_directo_aborta_y_no_cambia_nada(string tabla)
@@ -34,9 +33,7 @@ public sealed class BajasTests : IDisposable
         var antes = _e.Foto();
 
         await _e.Servicio<IEstablecimientoService>().DarDeBajaAsync(_e.EstablecimientoId);
-        await _e.Servicio<IRodeoService>().DarDeBajaAsync(_e.RodeoId);
-        await _e.Servicio<IUsuarioService>().DarDeBajaAsync(_e.UsuarioId);
-        await _e.Servicio<ICatalogoEstadosService>().DesactivarAsync(_e.EstadoPrenada);
+        await _e.Servicio<IRodeoService>().DarDeBajaAsync(_e.RodeoId);        await _e.Servicio<ICatalogoEstadosService>().DesactivarAsync(_e.EstadoPrenada);
 
         Assert.Equal(antes, _e.Foto());
         Assert.Equal(1, _e.Cuenta("Tacto"));
@@ -49,9 +46,9 @@ public sealed class BajasTests : IDisposable
         var animal = _e.AnimalCampo("1");
         await _e.Servicio<IRodeoService>().DarDeBajaAsync(_e.RodeoId);
 
-        var alta = await _e.Servicio<IAnimalService>().AltaEnCampoAsync(new AltaEnCampoCommand(_e.RodeoId, "2", null, null, _e.UsuarioId));
+        var alta = await _e.Servicio<IAnimalService>().AltaEnCampoAsync(new AltaEnCampoCommand(_e.RodeoId, "2", null, null));
         Assert.Equal(CodigoError.RodeoDeBaja, alta.Codigo);
-        var tacto = await _e.Servicio<ITrabajoCampoService>().RegistrarTactoAsync(new RegistrarTactoCommand(animal, _e.EstadoSeca, null, null, _e.UsuarioId));
+        var tacto = await _e.Servicio<ITrabajoCampoService>().RegistrarTactoAsync(new RegistrarTactoCommand(animal, _e.EstadoSeca, null, null));
         Assert.Equal(CodigoError.RodeoDeBaja, tacto.Codigo);
 
         await _e.Servicio<IRodeoService>().DarDeBajaAsync(_e.RodeoId); // idempotente
@@ -62,24 +59,17 @@ public sealed class BajasTests : IDisposable
     }
 
     [Fact]
-    public async Task Usuario_o_estado_de_baja_no_se_eligen_pero_siguen_figurando_en_lo_anterior()
+    public async Task Estado_de_baja_no_se_elige_pero_sigue_figurando_en_lo_anterior()
     {
         var animal = _e.AnimalCampo("1");
         var tacto = await _e.TactoAsync(animal, _e.EstadoSeca);
 
-        await _e.Servicio<IUsuarioService>().CrearAsync("Otro", null);
-        await _e.Servicio<IUsuarioService>().DarDeBajaAsync(_e.UsuarioId);
         await _e.Servicio<ICatalogoEstadosService>().DesactivarAsync(_e.EstadoSeca);
 
-        var conUsuarioBaja = await _e.Servicio<ITrabajoCampoService>().RegistrarTactoAsync(new RegistrarTactoCommand(animal, _e.EstadoPrenada, null, null, _e.UsuarioId));
-        Assert.Equal(CodigoError.UsuarioDeBaja, conUsuarioBaja.Codigo);
-
-        var vivo = _e.Base.Usuario("Vivo");
-        var conEstadoBaja = await _e.Servicio<ITrabajoCampoService>().RegistrarTactoAsync(new RegistrarTactoCommand(animal, _e.EstadoSeca, null, null, vivo));
+        var conEstadoBaja = await _e.Servicio<ITrabajoCampoService>().RegistrarTactoAsync(new RegistrarTactoCommand(animal, _e.EstadoSeca, null, null));
         Assert.Equal(CodigoError.EstadoDeBaja, conEstadoBaja.Codigo);
 
-        // Lo ya guardado sigue apuntando al usuario y al estado dados de baja.
-        Assert.Equal(EscenarioConServicios.Texto(_e.UsuarioId), _e.Col("Tacto", tacto, "UsuarioId"));
+        // Lo ya guardado sigue apuntando al estado dado de baja.
         Assert.Equal(EscenarioConServicios.Texto(_e.EstadoSeca), _e.Col("Tacto", tacto, "EstadoNuevoId"));
     }
 }

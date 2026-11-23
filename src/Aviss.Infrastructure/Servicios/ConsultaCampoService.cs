@@ -10,7 +10,7 @@ using Microsoft.EntityFrameworkCore;
 namespace Aviss.Infrastructure.Servicios;
 
 /// <summary>
-/// Consultas de solo lectura del trabajo de campo: ficha, últimos movimientos, rodeos para trabajar, veterinarios,
+/// Consultas de solo lectura del trabajo de campo: ficha, últimos movimientos, rodeos para trabajar,
 /// estados y la caravana de muestra del simulador (RF-1, RF-2, RF-13, RF-14, RF-28, RF-30). No guardan nada, así que
 /// no abren transacción. Las que mezclan varias tablas (movimientos, muestras) leen directo del contexto, sin seguimiento.
 /// </summary>

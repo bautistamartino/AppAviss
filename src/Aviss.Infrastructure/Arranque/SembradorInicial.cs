@@ -43,12 +43,4 @@ public sealed class SembradorInicial
         }
         await ctx.SaveChangesAsync(ct);
     }
-
-    /// <summary>Crea el usuario "Sin asignar" (Id fijo) si no existe. Solo se llama al crear la base.</summary>
-    public async Task SembrarUsuarioSinAsignarAsync(AvissDbContext ctx, CancellationToken ct = default)
-    {
-        if (await ctx.Usuarios.AnyAsync(u => u.Id == Usuario.SinAsignarId, ct)) return;
-        ctx.Usuarios.Add(Usuario.CrearSinAsignar(_reloj.UtcAhora));
-        await ctx.SaveChangesAsync(ct);
-    }
 }

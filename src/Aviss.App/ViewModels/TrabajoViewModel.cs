@@ -246,7 +246,7 @@ public sealed partial class TrabajoViewModel : ObservableObject
             // Solo la primera vez: volver de "Últimos movimientos" no debe cerrar la manga si ya cruzó la medianoche (RF-10).
             if (_rodeoIniciado != rodeo.RodeoId)
             {
-                var inicio = await EnCampoAsync(() => _campo.IniciarTrabajoAsync(rodeo.RodeoId, _sesion.UsuarioId));
+                var inicio = await EnCampoAsync(() => _campo.IniciarTrabajoAsync(rodeo.RodeoId));
                 if (!inicio.EsCorrecto)
                 {
                     MensajeError = inicio.Mensaje;
@@ -381,7 +381,7 @@ public sealed partial class TrabajoViewModel : ObservableObject
             MensajeError = null;
             MensajeInfo = null;
 
-            var resultado = await EnCampoAsync(() => _campo.ProcesarLecturaAsync(new ProcesarLecturaCommand(rodeo.RodeoId, lectura.Codigo, _sesion.UsuarioId)));
+            var resultado = await EnCampoAsync(() => _campo.ProcesarLecturaAsync(new ProcesarLecturaCommand(rodeo.RodeoId, lectura.Codigo)));
             if (!resultado.EsCorrecto)
             {
                 // Rechazo (por ejemplo reloj mal puesto): no se guardó nada ni se muestra la ficha como procesada (RF-12).

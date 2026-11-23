@@ -141,7 +141,7 @@ public sealed partial class TrabajoViewModel
     private async Task<Resultado<ResultadoDeshacerDto>> DeshacerAsync(TipoDeshacer tipo, Guid id)
     {
 
-        var resultado = await EnCampoAsync(() => _campo.DeshacerAsync(new DeshacerCommand(tipo, id, _sesion.UsuarioId)));
+        var resultado = await EnCampoAsync(() => _campo.DeshacerAsync(new DeshacerCommand(tipo, id)));
         if (!resultado.EsCorrecto) return resultado;
 
         var deshecho = resultado.Valor;

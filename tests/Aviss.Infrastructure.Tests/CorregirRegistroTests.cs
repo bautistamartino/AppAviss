@@ -17,7 +17,7 @@ public sealed class CorregirRegistroTests : IDisposable
     private static string T(Guid? id) => EscenarioConServicios.Texto(id);
 
     private Task<Resultado<Guid>> CorregirAsync(Guid registro, Guid evento, string? obs = null)
-        => _e.Campo.CorregirRegistroAsync(new CorregirRegistroCommand(registro, evento, obs, _e.UsuarioId));
+        => _e.Campo.CorregirRegistroAsync(new CorregirRegistroCommand(registro, evento, obs));
 
     private async Task<(Guid Animal, Guid Tacto)> VacaConTactoAsync()
     {
@@ -32,7 +32,7 @@ public sealed class CorregirRegistroTests : IDisposable
     {
         var (animal, _) = await _e.VacaMarcadaAsync("100", _e.EstadoSeca);
         _e.Reloj.Avanzar(TimeSpan.FromSeconds(1));
-        var r = await _e.Campo.RegistrarRechazoAsync(new RegistrarRechazoCommand(animal, motivo, _e.UsuarioId));
+        var r = await _e.Campo.RegistrarRechazoAsync(new RegistrarRechazoCommand(animal, motivo));
         Assert.True(r.EsCorrecto, r.Mensaje);
         _e.Reloj.Avanzar(TimeSpan.FromSeconds(1));
         return (animal, r.Valor);
@@ -157,7 +157,7 @@ public sealed class CorregirRegistroTests : IDisposable
     public async Task Corregir_un_registro_resuelve_la_espera_pendiente_de_la_vaca_en_la_misma_transaccion()
     {
         var (animal, tacto) = await VacaConTactoAsync();
-        var espera = (await _e.Campo.PonerEnEsperaAsync(new PonerEnEsperaCommand(animal, _e.UsuarioId))).Valor;
+        var espera = (await _e.Campo.PonerEnEsperaAsync(new PonerEnEsperaCommand(animal))).Valor;
 
         var r = await CorregirAsync(tacto, EventosCampo.Rechazo, "x");
 
