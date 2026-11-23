@@ -178,6 +178,41 @@ public sealed class BaseDeDatosDePrueba : IDisposable
         return id;
     }
 
+    // ---- Esperas y rechazos por SQL crudo (spec 004) ----
+
+    /// <summary>
+    /// Una espera. "Pendiente" (por defecto) no lleva datos de resolución; "Resuelta" lleva el registro que la resolvió;
+    /// "Salteada" no lleva registro (así lo exige CK_Espera_Resolucion).
+    /// </summary>
+    public Guid Espera(Guid animalId, Guid usuarioId, string estado = "Pendiente", Guid? registroResolucionId = null,
+        DateTime? fechaHora = null)
+    {
+        var id = Guid.NewGuid();
+        var cerrada = estado != "Pendiente";
+        Ejecutar(@"INSERT INTO Espera (Id, AnimalId, FechaHoraUtc, UsuarioId, DispositivoId, Estado, ResueltaEnUtc,
+                       ResueltaPorUsuarioId, RegistroResolucionId, CreadoEnUtc, ActualizadoEnUtc)
+                   VALUES ($id, $a, $fh, $u, $d, $e, $re, $rp, $rr, $f, $f)",
+            ("$id", id), ("$a", animalId), ("$fh", Fecha(fechaHora ?? Reloj.UtcAhora)), ("$u", usuarioId),
+            ("$d", Guid.NewGuid()), ("$e", estado), ("$re", cerrada ? Fecha(Reloj.UtcAhora) : null),
+            ("$rp", cerrada ? usuarioId : null), ("$rr", estado == "Resuelta" ? registroResolucionId ?? Guid.NewGuid() : null),
+            ("$f", Fecha(Reloj.UtcAhora)));
+        return id;
+    }
+
+    public Guid Rechazo(Guid animalId, Guid usuarioId, string? observaciones = null, DateTime? fechaHora = null,
+        long? orden = null, bool anulado = false)
+    {
+        var id = Guid.NewGuid();
+        Ejecutar(@"INSERT INTO Rechazo (Id, AnimalId, FechaHoraUtc, OrdenInsercion, Observaciones, UsuarioId, DispositivoId,
+                       Anulado, AnuladoEnUtc, AnuladoPorUsuarioId, CreadoEnUtc, ActualizadoEnUtc)
+                   VALUES ($id, $a, $fh, $o, $ob, $u, $d, $an, $ae, $ap, $f, $f)",
+            ("$id", id), ("$a", animalId), ("$fh", Fecha(fechaHora ?? Reloj.UtcAhora)), ("$o", orden ?? ++_orden),
+            ("$ob", observaciones), ("$u", usuarioId), ("$d", Guid.NewGuid()), ("$an", anulado ? 1 : 0),
+            ("$ae", anulado ? Fecha(Reloj.UtcAhora) : null), ("$ap", anulado ? usuarioId : null),
+            ("$f", Fecha(Reloj.UtcAhora)));
+        return id;
+    }
+
     public bool ExisteTrigger(string nombre)
         => Contar("SELECT COUNT(*) FROM sqlite_master WHERE type = 'trigger' AND name = $n", ("$n", nombre)) == 1;
 

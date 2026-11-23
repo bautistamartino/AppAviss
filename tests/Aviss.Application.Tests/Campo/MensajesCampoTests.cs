@@ -12,7 +12,10 @@ public class MensajesCampoTests
         CodigoError.NoHayMangaAbierta, CodigoError.CantidadInvalida, CodigoError.MarcaYaAnulada, CodigoError.MarcaNoEsLaUltima,
         CodigoError.AnimalConMarcasVigentes, CodigoError.CierreYaAnulado, CodigoError.CierreNoEsElUltimo,
         CodigoError.CierreAutomaticoNoSeDeshace, CodigoError.CierreDeOtroDia, CodigoError.HayOtraMangaAbierta,
-        CodigoError.FechaAnteriorAlUltimoRegistro
+        CodigoError.FechaAnteriorAlUltimoRegistro,
+        // spec 004
+        CodigoError.VacaYaEnEspera, CodigoError.VacaNoEntraEnTacto, CodigoError.EsperaNoPendiente, CodigoError.VacaEnEspera,
+        CodigoError.RechazoYaAnulado, CodigoError.RechazoNoEsElUltimo
     ];
 
     // Datos que jamás deben aparecer en un mensaje fijo.
@@ -24,6 +27,8 @@ public class MensajesCampoTests
             yield return new object[] { $"CodigoError.{c}", MensajesCampo.Para(c) };
         foreach (var m in Enum.GetValues<MotivoRechazoMarca>())
             yield return new object[] { $"MotivoRechazoMarca.{m}", MensajesCampo.Para(m).Mensaje };
+        foreach (var m in Enum.GetValues<MotivoRechazoMarca>())
+            yield return new object[] { $"ParaRechazo.{m}", MensajesCampo.ParaRechazo(m).Mensaje };
         foreach (var m in Enum.GetValues<MotivoNoReabrir>())
             yield return new object[] { $"MotivoNoReabrir.{m}", MensajesCampo.Para(m).Mensaje };
     }
@@ -35,7 +40,7 @@ public class MensajesCampoTests
         Assert.False(string.IsNullOrWhiteSpace(mensaje), origen);
         Assert.True(mensaje.Length > 15, origen);
         Assert.EndsWith(".", mensaje, StringComparison.Ordinal);
-        Assert.Matches(@"(?i)\b(no|el|la|los|las|se|un|una|ya|de|del|con|sin)\b", mensaje);
+        Assert.Matches(@"(?i)\b(no|el|la|los|las|se|un|una|ya|de|del|con|sin|en)\b", mensaje);
         foreach (var dato in DatosProhibidos)
             Assert.DoesNotContain(dato, mensaje, StringComparison.OrdinalIgnoreCase);
     }

@@ -53,6 +53,10 @@ Todas con `Guid Id`, `CreadoEnUtc`, `ActualizadoEnUtc`.
 - **CierreManga** (spec 003): `MangaId`, `Tipo` (Manual / TerminoElTacto / Automatico), `FechaHoraUtc`, `CantidadAviss`, `CantidadConfirmada?`, `Diferencia?`, `UsuarioId`, `Anulado`. Una manga está cerrada si tiene un cierre con `Anulado = 0` (un índice único parcial garantiza uno solo). Reabrir = anular el cierre; nunca se modifica ni se borra.
 - **MarcaPasada** (spec 003): `AnimalId`, `MangaId`, `FechaHoraUtc`, `OrdenInsercion`, `UsuarioId`, `Anulado`. Una marca vigente por vaca y manga (índice único parcial); un trigger impide marcar una vaca en la manga de otro rodeo. Comparte con `Tacto` el **orden de guardado** (`OrdenInsercion` = máximo entre ambas tablas + 1, dentro de la transacción).
 - **Día local** (spec 003): "hoy" es el día calendario de la zona horaria del dispositivo (`DiaLocal`, convierte a un rango UTC; maneja días de 23 o 25 horas). No se guarda ningún "día": el avance y el contador se calculan por consulta. Una manga abierta no se cierra a medianoche: se cierra sola (tipo `Automatico`) al volver a entrar a trabajar un día posterior.
+- **Espera** (spec 004): `AnimalId`, `FechaHoraUtc`, `UsuarioId`, `DispositivoId`, `Estado` (Pendiente / Resuelta / Salteada), `ResueltaEnUtc?`, `ResueltaPorUsuarioId?`, `RegistroResolucionId?`. Una vaca en espera mientras se tacta a otra; **sin temporizador ni vencimiento**. Un índice único parcial impide dos pendientes de la misma vaca; un trigger solo deja pasar Pendiente → Resuelta o Salteada (una vez) y no deja borrar. Se resuelve en la misma transacción que el tacto o el rechazo que la cierra. Sobrevive a cerrar la app.
+- **Rechazo** (spec 004): `AnimalId`, `FechaHoraUtc`, `OrdenInsercion`, `Observaciones` (el motivo, escrito a mano, tope 300), `UsuarioId`, `DispositivoId`, `Anulado`, `AnuladoEnUtc?`, `AnuladoPorUsuarioId?`. Marca de "no se pasó por el tacto"; **no cambia el estado de la vaca ni su fecha de último tacto**. Solo se agrega: un trigger permite únicamente Anulado de 0 a 1 y no deja borrar. Comparte el orden de guardado con `Tacto` y `MarcaPasada`.
+- **Historial** suma cinco acciones (poner en espera, resolver, saltear, registrar y anular rechazo); el CHECK de `Accion` se reescribió a mano en la migración `EsperaYRechazo` (recreando los triggers de inmutabilidad).
+- **Eventos de la ficha** (spec 004): la lista que ve el veterinario es `Eventos` (los estados activos del catálogo más el evento fijo **Rechazo**, `EventosCampo.Rechazo`); no es lo mismo que `Estados` (solo estados reproductivos). Elegir Rechazo guarda un `Rechazo`; cualquier otro, un `Tacto`.
 
 ## 4. DTOs
 
@@ -66,6 +70,8 @@ Todas con `Guid Id`, `CreadoEnUtc`, `ActualizadoEnUtc`.
 Servicios (Application): `IImportacionService`, `ITrabajoCampoService` (`ProcesarLecturaAsync`, `RegistrarTactoAsync`; es el corazón), `IAnimalService`, `IRodeoService`, `IHistorialService`, `IExportacionService`, `IBackupService`, `IRelojService`, `IUsuarioActualService`.
 
 **Fachada de campo (spec 003):** los ViewModels solo conocen `ICampoService` (en `Application`). Es un singleton que abre un scope (un `DbContext` y una transacción) por operación y delega en servicios internos (`MarcaPasadaService`, `MangaService`, `AltaCampoService`, `ConsultaCampoService`, `TrabajoCampoService`); las escrituras se serializan porque SQLite admite un solo escritor. Cubre iniciar trabajo, procesar lecturas (marca automática), ficha, tacto, alta con marca, deshacer, cierre y reapertura de mangas, movimientos y avance.
+
+**Espera y rechazo (spec 004):** `ICampoService` suma `PonerEnEsperaAsync`, `SaltearEsperaAsync`, `ListarEsperasAsync` y `RegistrarRechazoAsync`; `CorregirRegistroAsync` ("Editar" un movimiento) cambia un tacto por un rechazo y al revés, y anula el original, en una sola transacción. `DeshacerAsync` también deshace rechazos. Se quitó `CorregirTactoAsync`.
 
 Repositorios: `IEstablecimientoRepository`, `IRodeoRepository`, `IAnimalRepository` (por caravana e ID electrónico), `ITactoRepository`, `IHistorialRepository`. Un `IUnitOfWork` abre una transacción por caso de uso; no hay repositorios genéricos.
 
@@ -151,8 +157,8 @@ Cada tablet es independiente: varios establecimientos, varios veterinarios (se e
 1. Dominio, SQLite y migraciones, con tests.
 2. Importación del `.xls` con vista previa.
 3. Flujo de campo con `FakeRfidReader` en emulador.
-4. Exportación con validación (según sección 14).
-5. Integración real del XRS2.
+4. Exportación con validación (según sección 14) (spec 006; la 004 es En Espera y Rechazo y la 005 eventos del catálogo).
+5. Integración real del XRS2 (spec 007).
 6. Pulido de UX, backups, empaquetado y distribución.
 
 ## 14. Pendientes de validar

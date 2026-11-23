@@ -16,8 +16,13 @@ public enum TipoTacto { Normal, Anulacion }
 public enum AccionHistorial
 {
     Alta, Edicion, Tacto, AnulacionTacto, AnulacionAlta,
-    MarcaPasada, AnulacionMarca, MangaAbierta, MangaCerrada, AnulacionCierre
+    MarcaPasada, AnulacionMarca, MangaAbierta, MangaCerrada, AnulacionCierre,
+    // Spec 004: espera y rechazo.
+    EsperaCreada, EsperaResuelta, EsperaSalteada, RechazoCreado, RechazoAnulado
 }
+
+/// <summary>En qué quedó una espera (spec 004, RF-13): pendiente, o resuelta (con un tacto o rechazo) o salteada.</summary>
+public enum EstadoEspera { Pendiente, Resuelta, Salteada }
 
 /// <summary>Cómo se cerró una manga (spec 003, RF-6, RF-7, RF-10).</summary>
 public enum TipoCierreManga

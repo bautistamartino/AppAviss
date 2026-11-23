@@ -155,6 +155,63 @@ namespace Aviss.Infrastructure.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Aviss.Domain.Entidades.Espera", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ActualizadoEnUtc")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("AnimalId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("CreadoEnUtc")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("DispositivoId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Estado")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("FechaHoraUtc")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("RegistroResolucionId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ResueltaEnUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("ResueltaPorUsuarioId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("UsuarioId")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AnimalId")
+                        .IsUnique()
+                        .HasFilter("Estado = 'Pendiente'");
+
+                    b.HasIndex("ResueltaPorUsuarioId");
+
+                    b.HasIndex("UsuarioId");
+
+                    b.ToTable("Espera", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Espera_Estado", "Estado IN ('Pendiente','Resuelta','Salteada')");
+
+                            t.HasCheckConstraint("CK_Espera_Resolucion", "(Estado = 'Pendiente' AND ResueltaEnUtc IS NULL AND ResueltaPorUsuarioId IS NULL AND RegistroResolucionId IS NULL) OR (Estado = 'Resuelta' AND ResueltaEnUtc IS NOT NULL AND ResueltaPorUsuarioId IS NOT NULL AND RegistroResolucionId IS NOT NULL) OR (Estado = 'Salteada' AND ResueltaEnUtc IS NOT NULL AND ResueltaPorUsuarioId IS NOT NULL AND RegistroResolucionId IS NULL)");
+                        });
+                });
+
             modelBuilder.Entity("Aviss.Domain.Entidades.Establecimiento", b =>
                 {
                     b.Property<Guid>("Id")
@@ -283,7 +340,7 @@ namespace Aviss.Infrastructure.Migrations
 
                     b.ToTable("Historial", null, t =>
                         {
-                            t.HasCheckConstraint("CK_Historial_Accion", "Accion IN ('Alta','Edicion','Tacto','AnulacionTacto','AnulacionAlta','MarcaPasada','AnulacionMarca','MangaAbierta','MangaCerrada','AnulacionCierre')");
+                            t.HasCheckConstraint("CK_Historial_Accion", "Accion IN ('Alta','Edicion','Tacto','AnulacionTacto','AnulacionAlta','MarcaPasada','AnulacionMarca','MangaAbierta','MangaCerrada','AnulacionCierre','EsperaCreada','EsperaResuelta','EsperaSalteada','RechazoCreado','RechazoAnulado')");
                         });
                 });
 
@@ -374,6 +431,66 @@ namespace Aviss.Infrastructure.Migrations
                     b.ToTable("MarcaPasada", null, t =>
                         {
                             t.HasCheckConstraint("CK_MarcaPasada_Anulado", "Anulado IN (0,1)");
+                        });
+                });
+
+            modelBuilder.Entity("Aviss.Domain.Entidades.Rechazo", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ActualizadoEnUtc")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("AnimalId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("Anulado")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("AnuladoEnUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("AnuladoPorUsuarioId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("CreadoEnUtc")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("DispositivoId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("FechaHoraUtc")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Observaciones")
+                        .HasColumnType("TEXT");
+
+                    b.Property<long>("OrdenInsercion")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<Guid>("UsuarioId")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AnuladoPorUsuarioId");
+
+                    b.HasIndex("OrdenInsercion")
+                        .IsUnique();
+
+                    b.HasIndex("UsuarioId");
+
+                    b.HasIndex("AnimalId", "FechaHoraUtc", "OrdenInsercion");
+
+                    b.ToTable("Rechazo", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Rechazo_Anulacion", "(Anulado = 0 AND AnuladoEnUtc IS NULL AND AnuladoPorUsuarioId IS NULL) OR (Anulado = 1 AND AnuladoEnUtc IS NOT NULL AND AnuladoPorUsuarioId IS NOT NULL)");
+
+                            t.HasCheckConstraint("CK_Rechazo_Anulado", "Anulado IN (0,1)");
                         });
                 });
 
@@ -586,6 +703,26 @@ namespace Aviss.Infrastructure.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Aviss.Domain.Entidades.Espera", b =>
+                {
+                    b.HasOne("Aviss.Domain.Entidades.Animal", null)
+                        .WithMany()
+                        .HasForeignKey("AnimalId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Aviss.Domain.Entidades.Usuario", null)
+                        .WithMany()
+                        .HasForeignKey("ResueltaPorUsuarioId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Aviss.Domain.Entidades.Usuario", null)
+                        .WithMany()
+                        .HasForeignKey("UsuarioId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Aviss.Domain.Entidades.Historial", b =>
                 {
                     b.HasOne("Aviss.Domain.Entidades.Usuario", null)
@@ -623,6 +760,26 @@ namespace Aviss.Infrastructure.Migrations
                         .HasForeignKey("MangaId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.HasOne("Aviss.Domain.Entidades.Usuario", null)
+                        .WithMany()
+                        .HasForeignKey("UsuarioId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Aviss.Domain.Entidades.Rechazo", b =>
+                {
+                    b.HasOne("Aviss.Domain.Entidades.Animal", null)
+                        .WithMany()
+                        .HasForeignKey("AnimalId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Aviss.Domain.Entidades.Usuario", null)
+                        .WithMany()
+                        .HasForeignKey("AnuladoPorUsuarioId")
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("Aviss.Domain.Entidades.Usuario", null)
                         .WithMany()

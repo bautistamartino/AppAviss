@@ -124,13 +124,47 @@ public class FakeCampoService : ICampoService
             ?? Resultado.Ok(new ResultadoDeshacerDto(comando.Tipo, null, null, 1, 0)));
     }
 
-    public List<Aviss.Application.Comandos.CorregirTactoCommand> Correcciones { get; } = [];
-    public Func<Aviss.Application.Comandos.CorregirTactoCommand, Resultado<Guid>>? OnCorregir { get; set; }
 
-    public Task<Resultado<Guid>> CorregirTactoAsync(Aviss.Application.Comandos.CorregirTactoCommand comando, CancellationToken ct = default)
+    // ---- En Espera y Rechazo (spec 004) ----
+    public IReadOnlyList<EsperaDto> Esperas { get; set; } = [];
+    public List<PonerEnEsperaCommand> EsperasPuestas { get; } = [];
+    public List<SaltearEsperaCommand> EsperasSalteadas { get; } = [];
+    public List<RegistrarRechazoCommand> Rechazos { get; } = [];
+    public List<CorregirRegistroCommand> RegistrosCorregidos { get; } = [];
+    public Func<PonerEnEsperaCommand, Resultado<Guid>>? OnPonerEnEspera { get; set; }
+    public Func<SaltearEsperaCommand, Resultado>? OnSaltearEspera { get; set; }
+    public Func<RegistrarRechazoCommand, Resultado<Guid>>? OnRegistrarRechazo { get; set; }
+    public Func<CorregirRegistroCommand, Resultado<Guid>>? OnCorregirRegistro { get; set; }
+    public int ConsultasDeEsperas { get; private set; }
+
+    public Task<Resultado<Guid>> CorregirRegistroAsync(CorregirRegistroCommand comando, CancellationToken ct = default)
     {
-        Correcciones.Add(comando);
-        return Task.FromResult(OnCorregir?.Invoke(comando) ?? Resultado.Ok(Guid.NewGuid()));
+        RegistrosCorregidos.Add(comando);
+        return Task.FromResult(OnCorregirRegistro?.Invoke(comando) ?? Resultado.Ok(Guid.NewGuid()));
+    }
+
+    public Task<Resultado<Guid>> PonerEnEsperaAsync(PonerEnEsperaCommand comando, CancellationToken ct = default)
+    {
+        EsperasPuestas.Add(comando);
+        return Task.FromResult(OnPonerEnEspera?.Invoke(comando) ?? Resultado.Ok(Guid.NewGuid()));
+    }
+
+    public Task<Resultado> SaltearEsperaAsync(SaltearEsperaCommand comando, CancellationToken ct = default)
+    {
+        EsperasSalteadas.Add(comando);
+        return Task.FromResult(OnSaltearEspera?.Invoke(comando) ?? Resultado.Ok());
+    }
+
+    public Task<IReadOnlyList<EsperaDto>> ListarEsperasAsync(Guid rodeoId, CancellationToken ct = default)
+    {
+        ConsultasDeEsperas++;
+        return Task.FromResult(Esperas);
+    }
+
+    public Task<Resultado<Guid>> RegistrarRechazoAsync(RegistrarRechazoCommand comando, CancellationToken ct = default)
+    {
+        Rechazos.Add(comando);
+        return Task.FromResult(OnRegistrarRechazo?.Invoke(comando) ?? Resultado.Ok(Guid.NewGuid()));
     }
 
     public List<Guid> Reseteados { get; } = [];
@@ -166,8 +200,16 @@ public static class Datos
     public static RodeoParaTrabajarDto Rodeo(string establecimiento = "Tambo Norte", string rodeo = "Rodeo 1", Guid? establecimientoId = null, Guid? rodeoId = null)
         => new(establecimientoId ?? Guid.NewGuid(), establecimiento, rodeoId ?? RodeoId, rodeo, new DateTime(2026, 11, 1, 0, 0, 0, DateTimeKind.Utc), EstadoRodeo.Abierto, Avance());
 
-    public static FichaAnimalDto Ficha(Guid? animalId = null, string caravana = "1001", string? idElectronico = null, string cvet = "", bool entraEnTacto = true)
-        => new(animalId ?? Guid.NewGuid(), caravana, idElectronico, null, null, null, [], "", "", [], cvet, entraEnTacto);
+    public static FichaAnimalDto Ficha(Guid? animalId = null, string caravana = "1001", string? idElectronico = null, string cvet = "", bool entraEnTacto = true,
+        bool enEspera = false, RechazoVigenteDto? rechazoVigente = null)
+        => new(animalId ?? Guid.NewGuid(), caravana, idElectronico, null, null, null, [], "", "", [], cvet, entraEnTacto, null, enEspera, rechazoVigente);
+
+    /// <summary>La lectura de una vaca que está en espera: trae su ficha (con el cartel) y no marca ni suma.</summary>
+    public static ResultadoLecturaDto EnEspera(Guid animalId, string caravana)
+        => new(TipoResultadoLectura.EnEspera, caravana, animalId, caravana, Ficha(animalId, caravana, cvet: "PRE", enEspera: true), null, null, null, null, null, false);
+
+    public static EsperaDto Espera(string caravana, Guid? animalId = null, DateTime? desdeUtc = null, string cvet = "PRE")
+        => new(Guid.NewGuid(), animalId ?? Guid.NewGuid(), caravana, cvet, desdeUtc ?? new DateTime(2026, 11, 17, 13, 0, 0, DateTimeKind.Utc));
 
     public static ResultadoLecturaDto Marcada(Guid animalId, string caravana, Guid? marcaId = null, int manga = 1, int contador = 1)
         => new(TipoResultadoLectura.Marcada, caravana, animalId, caravana, Ficha(animalId, caravana), marcaId ?? Guid.NewGuid(), manga, contador, null, null, false);

@@ -1,6 +1,6 @@
 # 004 — En Espera y Rechazo (nuevos registros de campo)
 
-Estado: **aprobada** (2026-11-21)
+Estado: **implementada** (2026-11-23; falta el criterio de la tablet y el revisor)
 Fecha: 2026-11-16 (reescrita: 2026-11-21)
 
 > **Spec hermana de `specs/003-flujo-de-tacto/spec.md`, que ya está implementada.** Esta amplía la ficha, el "último registro vigente" y la lista de últimos movimientos de la 003 (ver sus RF-39 a RF-52). Al aprobarse como 004, la exportación pasa a 005 y el bastón a 006 (`docs/plan.md`). 
@@ -76,19 +76,19 @@ Todo debe seguir siendo muy rápido y pensado para una mano, en vertical.
 - **Rechazo repetido en la misma vaca:** válido; la ficha muestra el más reciente (RF-6).
 
 ## Criterios de aceptación
-- [ ] Desde una ficha con CVET distinto de 0, "En espera" guarda la espera, cierra la ficha sin tacto y deja leer la siguiente enseguida; la botonera muestra la caravana; con CVET 0 no hay botón (RF-1, RF-2).
-- [ ] La botonera muestra la caravana de cada vaca en espera (hasta 4, con "+N" para el resto) y un toque abre su ficha con el cartel "en espera" sin sumar al conteo; la lista completa muestra caravana, CVET, hora y tiempo esperando; no hay temporizador (RF-2, RF-3, RF-4).
-- [ ] Guardar con Entrar un tacto o un rechazo desde una espera la deja **resuelta** en la misma operación; si el registro se rechaza, sigue pendiente (RF-3).
-- [ ] **Saltar** en una ficha que viene de una espera la deja **salteada** sin guardar registros; en una ficha normal solo cierra (RF-3).
-- [ ] Ninguna otra acción saca una vaca de la espera: ni el tiempo, ni el cambio de día, ni "Terminar el tacto" (que solo avisa cuántas hay), ni desmarcar (que se rechaza con el motivo) (RF-4, RF-9, RF-10).
-- [ ] Leer o buscar una vaca en espera abre su ficha directo, sin "Animal repetido" (RF-5).
-- [ ] "Rechazo" aparece siempre en la lista de eventos; el motivo se escribe a mano en la observación; con Entrar guarda el rechazo sin cambiar el estado ni la fecha de último tacto; se muestra en la ficha, el historial y los movimientos; se deshace y se edita (RF-6, RF-7, RF-8, RF-11).
-- [ ] Se puede cambiar un tacto por un rechazo y al revés con Editar, en una sola transacción (RF-8).
-- [ ] **Pruebas de la base:** la espera no se borra ni se modifica salvo pendiente→resuelta o salteada (una vez); no puede haber dos pendientes de la misma vaca en un rodeo; el rechazo no se borra ni se modifica salvo "Anulado" de "no" a "sí"; el historial nuevo no se modifica ni se borra (RF-12, RF-13, RF-6).
-- [ ] Las esperas pendientes sobreviven a cerrar y reabrir la app (RF-14).
-- [ ] Con 20.000 vacas, poner en espera, listar y resolver cumple los tiempos de la 003 RF-37 (menos de 300 ms).
+- [x] Desde una ficha con CVET distinto de 0, "En espera" guarda la espera, cierra la ficha sin tacto y deja leer la siguiente enseguida; la botonera muestra la caravana; con CVET 0 no hay botón (RF-1, RF-2).
+- [x] La botonera muestra la caravana de cada vaca en espera (hasta 4, con "+N" para el resto) y un toque abre su ficha con el cartel "en espera" sin sumar al conteo; la lista completa muestra caravana, CVET, hora y tiempo esperando; no hay temporizador (RF-2, RF-3, RF-4).
+- [x] Guardar con Entrar un tacto o un rechazo desde una espera la deja **resuelta** en la misma operación; si el registro se rechaza, sigue pendiente (RF-3).
+- [x] **Saltar** en una ficha que viene de una espera la deja **salteada** sin guardar registros; en una ficha normal solo cierra (RF-3).
+- [x] Ninguna otra acción saca una vaca de la espera: ni el tiempo, ni el cambio de día, ni "Terminar el tacto" (que solo avisa cuántas hay), ni desmarcar (que se rechaza con el motivo) (RF-4, RF-9, RF-10).
+- [x] Leer o buscar una vaca en espera abre su ficha directo, sin "Animal repetido" (RF-5).
+- [x] "Rechazo" aparece siempre en la lista de eventos; el motivo se escribe a mano en la observación; con Entrar guarda el rechazo sin cambiar el estado ni la fecha de último tacto; se muestra en la ficha, el historial y los movimientos; se deshace y se edita (RF-6, RF-7, RF-8, RF-11).
+- [x] Se puede cambiar un tacto por un rechazo y al revés con Editar, en una sola transacción (RF-8).
+- [x] **Pruebas de la base:** la espera no se borra ni se modifica salvo pendiente→resuelta o salteada (una vez); no puede haber dos pendientes de la misma vaca en un rodeo; el rechazo no se borra ni se modifica salvo "Anulado" de "no" a "sí"; el historial nuevo no se modifica ni se borra (RF-12, RF-13, RF-6).
+- [x] Las esperas pendientes sobreviven a cerrar y reabrir la app (RF-14).
+- [x] Con 20.000 vacas, poner en espera, listar y resolver cumple los tiempos de la 003 RF-37 (menos de 300 ms).
 - [ ] **A verificar en la tablet** (no con tests): el botón "En espera" y la botonera se alcanzan con una mano y se leen de un vistazo (constitución §9).
-- [ ] `dotnet build` y `dotnet test` en verde.
+- [x] `dotnet build` y `dotnet test` en verde.
 
 ## Decisiones
 **Del usuario (2026-11-21):**

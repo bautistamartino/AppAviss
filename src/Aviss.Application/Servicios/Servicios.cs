@@ -81,11 +81,14 @@ public interface ITrabajoCampoService
     /// <summary>Anula el último tacto vigente de un animal con otro registro (RF-13, RF-14). Devuelve el Id del tacto de anulación.</summary>
     Task<Resultado<Guid>> AnularTactoAsync(AnularTactoCommand comando, CancellationToken ct = default);
 
-    /// <summary>
-    /// Corrige un tacto ("Editar" un movimiento): anula el tacto y registra uno nuevo con el evento y la observación elegidos, en UNA sola
-    /// transacción (si algo falla no queda nada a medias). Solo vale para el último registro vigente del animal. Devuelve el Id del tacto nuevo.
-    /// </summary>
-    Task<Resultado<Guid>> CorregirTactoAsync(CorregirTactoCommand comando, CancellationToken ct = default);
+    /// <summary>Registra la marca de rechazo de una vaca (spec 004, RF-6); si tenía una espera pendiente, la resuelve en la misma transacción.</summary>
+    Task<Resultado<Guid>> RegistrarRechazoAsync(RegistrarRechazoCommand comando, CancellationToken ct = default);
+
+    /// <summary>Deshace un rechazo (lo marca anulado). Solo vale para el último registro vigente de la vaca.</summary>
+    Task<Resultado> AnularRechazoAsync(AnularRechazoCommand comando, CancellationToken ct = default);
+
+    /// <summary>"Editar" un tacto o un rechazo: lo anula y guarda otro (tacto o rechazo, según el evento), en UNA transacción. Devuelve el Id del registro nuevo.</summary>
+    Task<Resultado<Guid>> CorregirRegistroAsync(CorregirRegistroCommand comando, CancellationToken ct = default);
 }
 
 /// <summary>
@@ -122,8 +125,21 @@ public interface ICampoService
     // ---- Deshacer y movimientos (RF-26 a RF-28) ----
     Task<Resultado<ResultadoDeshacerDto>> DeshacerAsync(DeshacerCommand comando, CancellationToken ct = default);
 
-    /// <summary>"Editar" un movimiento de tacto: lo anula y registra uno nuevo con el evento y la observación elegidos (una sola transacción).</summary>
-    Task<Resultado<Guid>> CorregirTactoAsync(CorregirTactoCommand comando, CancellationToken ct = default);
+    /// <summary>"Editar" un movimiento (tacto o rechazo, en ambas direcciones): anula el registro y guarda uno nuevo en una sola transacción (spec 004, RF-8).</summary>
+    Task<Resultado<Guid>> CorregirRegistroAsync(CorregirRegistroCommand comando, CancellationToken ct = default);
+
+    // ---- En Espera y Rechazo (spec 004) ----
+    /// <summary>Pone en espera a una vaca que entra en tacto (RF-1). Devuelve el Id de la espera.</summary>
+    Task<Resultado<Guid>> PonerEnEsperaAsync(PonerEnEsperaCommand comando, CancellationToken ct = default);
+
+    /// <summary>Saltea la espera pendiente de la vaca sin guardar ningún registro de campo (RF-3).</summary>
+    Task<Resultado> SaltearEsperaAsync(SaltearEsperaCommand comando, CancellationToken ct = default);
+
+    /// <summary>Las vacas en espera del rodeo, de la más antigua a la más reciente (RF-2).</summary>
+    Task<IReadOnlyList<EsperaDto>> ListarEsperasAsync(Guid rodeoId, CancellationToken ct = default);
+
+    /// <summary>Guarda la marca de rechazo de una vaca con el motivo escrito a mano (RF-6). Si estaba en espera, la resuelve.</summary>
+    Task<Resultado<Guid>> RegistrarRechazoAsync(RegistrarRechazoCommand comando, CancellationToken ct = default);
 
     /// <summary>Resetear un rodeo (para pruebas): lo reimporta desde su Excel original como rodeo nuevo y da de baja el viejo. Devuelve el Id del nuevo.</summary>
     Task<Resultado<Guid>> ResetearRodeoAsync(Guid rodeoId, CancellationToken ct = default);

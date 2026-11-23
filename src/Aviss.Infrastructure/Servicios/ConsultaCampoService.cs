@@ -31,15 +31,16 @@ internal sealed class ConsultaCampoService
     private readonly IZonaHoraria _zona;
     private readonly CalculadorAvance _avance;
     private readonly ArmadorFicha _ficha;
+    private readonly IEsperaRepository _esperas;
 
     public ConsultaCampoService(AvissDbContext db, IAnimalRepository animales, IEstablecimientoRepository establecimientos,
         IRodeoRepository rodeos, IUsuarioRepository usuarios, IEstadoReproductivoRepository estados, IMangaRepository mangas,
         IMarcaPasadaRepository marcas, IRegistroCampoRepository registros, IRelojService reloj, IZonaHoraria zona,
-        CalculadorAvance avance, ArmadorFicha ficha)
+        CalculadorAvance avance, ArmadorFicha ficha, IEsperaRepository esperas)
     {
         _db = db; _animales = animales; _establecimientos = establecimientos; _rodeos = rodeos; _usuarios = usuarios;
         _estados = estados; _mangas = mangas; _marcas = marcas; _registros = registros; _reloj = reloj; _zona = zona;
-        _avance = avance; _ficha = ficha;
+        _avance = avance; _ficha = ficha; _esperas = esperas;
     }
 
     // ------------------------------------------------------------------ Ficha
@@ -50,6 +51,12 @@ internal sealed class ConsultaCampoService
         if (animal is null) return Resultado.Error<FichaAnimalDto>(CodigoError.NoEncontrado, "El animal no existe.");
         return Resultado.Ok(await _ficha.ArmarAsync(animal, ct));
     }
+
+    // ------------------------------------------------------------------ En espera (spec 004)
+
+    /// <summary>Las vacas en espera del rodeo, de la más antigua a la más reciente (RF-2).</summary>
+    public async Task<IReadOnlyList<EsperaDto>> ListarEsperasAsync(Guid rodeoId, CancellationToken ct)
+        => await _esperas.ListarPendientesAsync(rodeoId, ct);
 
     // ------------------------------------------------------------------ Preparar el trabajo
 
@@ -121,6 +128,25 @@ internal sealed class ConsultaCampoService
                 m.OrdenInsercion + 1));
         }
 
+        // Los rechazos (spec 004, RF-7): "Detalle" dice "Rechazo" y el motivo va en Observaciones.
+        // Se parte de los rechazos (pocos) y no de los animales del rodeo: con 20.000 vacas, unir primero por animal cuesta una
+        // pasada por todo el rodeo aunque casi no haya rechazos. Los datos de las vacas se piden aparte, solo de las 50 elegidas.
+        var rechazos = await _db.Rechazos.AsNoTracking()
+            .Where(r => _db.Animales.Any(a => a.Id == r.AnimalId && a.RodeoId == rodeoId))
+            .OrderByDescending(r => r.FechaHoraUtc).ThenByDescending(r => r.OrdenInsercion)
+            .Take(MaximoMovimientos).ToListAsync(ct);
+        var idsRechazados = rechazos.Select(r => r.AnimalId).Distinct().ToList();
+        var animalesRechazados = idsRechazados.Count == 0
+            ? []
+            : await _db.Animales.AsNoTracking().Where(a => idsRechazados.Contains(a.Id))
+                .ToDictionaryAsync(a => a.Id, a => (a.NumeroCaravana, a.DatosOriginalesJson), ct);
+        foreach (var r in rechazos)
+        {
+            var (caravana, json) = animalesRechazados.GetValueOrDefault(r.AnimalId);
+            candidatos.Add((new MovimientoDto(TipoMovimiento.Rechazo, r.Id, r.AnimalId, caravana, null, "Rechazo",
+                r.FechaHoraUtc, Veterinario(r.UsuarioId), r.Anulado, false, null, null, null,
+                ConstructorFicha.LeerCvet(json), r.Observaciones), r.OrdenInsercion + 1));
+        }
 
         var cierres = await (from c in _db.CierresManga.AsNoTracking()
                              join m in _db.Mangas on c.MangaId equals m.Id
@@ -164,12 +190,18 @@ internal sealed class ConsultaCampoService
             {
                 case TipoMovimiento.Tacto:
                 case TipoMovimiento.Marca:
+                case TipoMovimiento.Rechazo:
                 {
                     // Solo el último registro vigente de la vaca, de cualquier tipo.
                     var animalId = m.AnimalId!.Value;
                     if (!ultimosPorAnimal.TryGetValue(animalId, out var ultimo))
                         ultimosPorAnimal[animalId] = ultimo = await _registros.ObtenerUltimoVigenteAsync(animalId, ct);
-                    var tipo = m.Tipo == TipoMovimiento.Tacto ? TipoRegistroCampo.Tacto : TipoRegistroCampo.Marca;
+                    var tipo = m.Tipo switch
+                    {
+                        TipoMovimiento.Tacto => TipoRegistroCampo.Tacto,
+                        TipoMovimiento.Rechazo => TipoRegistroCampo.Rechazo,
+                        _ => TipoRegistroCampo.Marca
+                    };
                     puede = !m.Anulado && ultimo is not null && ultimo.Tipo == tipo && ultimo.Id == m.RegistroId;
                     break;
                 }

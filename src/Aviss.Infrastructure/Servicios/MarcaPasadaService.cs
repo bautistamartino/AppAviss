@@ -28,15 +28,17 @@ internal sealed class MarcaPasadaService
     private readonly IZonaHoraria _zona;
     private readonly Marcador _marcador;
     private readonly ArmadorFicha _ficha;
+    private readonly IEsperaRepository _esperas;
 
     public MarcaPasadaService(IUnitOfWork uow, IAnimalRepository animales, IRodeoRepository rodeos,
         IEstablecimientoRepository establecimientos, IUsuarioRepository usuarios, IEstadoReproductivoRepository estados,
         IMangaRepository mangas, IMarcaPasadaRepository marcas, IRegistroCampoRepository registros,
-        IHistorialRepository historial, IRelojService reloj, IZonaHoraria zona, Marcador marcador, ArmadorFicha ficha)
+        IHistorialRepository historial, IRelojService reloj, IZonaHoraria zona, Marcador marcador, ArmadorFicha ficha,
+        IEsperaRepository esperas)
     {
         _uow = uow; _animales = animales; _rodeos = rodeos; _establecimientos = establecimientos; _usuarios = usuarios;
         _estados = estados; _mangas = mangas; _marcas = marcas; _registros = registros; _historial = historial;
-        _reloj = reloj; _zona = zona; _marcador = marcador; _ficha = ficha;
+        _reloj = reloj; _zona = zona; _marcador = marcador; _ficha = ficha; _esperas = esperas;
     }
 
     public Task<Resultado<ResultadoLecturaDto>> ProcesarLecturaAsync(ProcesarLecturaCommand c, CancellationToken ct)
@@ -57,6 +59,15 @@ internal sealed class MarcaPasadaService
                 // No existe en este rodeo: no se guarda nada; la pantalla ofrece alta o búsqueda manual (RF-24).
                 return Resultado.Ok(new ResultadoLecturaDto(TipoResultadoLectura.NoEncontrada, codigo,
                     null, null, null, null, null, null, null, null, false));
+            }
+
+            // Una vaca en espera abre directo su ficha (spec 004, RF-5): sin aviso de repetida, sin marcarla otra vez ni sumarla al conteo.
+            // Va antes que cualquier otra cosa: una vaca pendiente de veredicto siempre se abre.
+            if (await _esperas.ObtenerPendienteAsync(animal.Id, ct) is not null)
+            {
+                var fichaEspera = await _ficha.ArmarAsync(animal, ct);
+                return Resultado.Ok(new ResultadoLecturaDto(TipoResultadoLectura.EnEspera, codigo, animal.Id, animal.NumeroCaravana,
+                    fichaEspera, null, null, null, null, null, false));
             }
 
             // Un único "ahora" para todo: el día local, la validación y la hora de la marca.
@@ -119,6 +130,10 @@ internal sealed class MarcaPasadaService
             var errorUsuario = await Ayudas.ValidarUsuarioAsync(_usuarios, usuarioId, ct);
             if (errorUsuario is not null) return Resultado.Error<ResultadoDeshacerDto>(errorUsuario.Codigo!.Value, errorUsuario.Mensaje!);
 
+            // Una vaca en espera no se desmarca: primero hay que resolver o saltear la espera (spec 004, RF-9).
+            if (!ReglasEspera.PuedeDesmarcarse(await _esperas.ObtenerPendienteAsync(marca.AnimalId, ct) is not null))
+                return Resultado.Error<ResultadoDeshacerDto>(CodigoError.VacaEnEspera, MensajesCampo.Para(CodigoError.VacaEnEspera));
+
             // Solo se desmarca si la marca es el último registro vigente de la vaca, de cualquier tipo (RF-26).
             var ultimo = await _registros.ObtenerUltimoVigenteAsync(marca.AnimalId, ct);
             if (ultimo is null || ultimo.Tipo != TipoRegistroCampo.Marca || ultimo.Id != marca.Id)
@@ -167,7 +182,7 @@ internal sealed class MarcaPasadaService
             if (ultimo.EstadoId is Guid estadoId)
                 estado = (await _estados.ObtenerAsync(estadoId, ct))?.Nombre;
             var veterinario = (await _usuarios.ObtenerAsync(ultimo.UsuarioId, ct))?.Nombre ?? "";
-            ultimoDto = new UltimoRegistroDto(ultimo.Tipo, ultimo.Id, ultimo.FechaHoraUtc, estado, veterinario, numeroManga);
+            ultimoDto = new UltimoRegistroDto(ultimo.Tipo, ultimo.Id, ultimo.FechaHoraUtc, estado, veterinario, numeroManga, ultimo.Observaciones);
         }
 
         var tipo = aviso == TipoAviso.Repetido ? TipoResultadoLectura.Repetido : TipoResultadoLectura.YaPaso;

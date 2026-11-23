@@ -7,7 +7,7 @@ namespace Aviss.Application.Campo;
 // hora local porque algunas son fechas sin hora (las del Excel).
 
 /// <summary>Los tipos de registro de campo (la spec 004 agrega tratamiento y rechazo).</summary>
-public enum TipoRegistroCampo { Tacto, Marca }
+public enum TipoRegistroCampo { Tacto, Marca, Rechazo }
 
 /// <summary>Qué se hace con una lectura (RF-11, RF-12, RF-22, RF-24).</summary>
 public enum TipoResultadoLectura
@@ -21,16 +21,18 @@ public enum TipoResultadoLectura
     /// <summary>La vaca quedó marcada y suma al conteo, pero su CVET es 0: no entra en tacto. No trae ficha y suena la chicharra.</summary>
     SinTacto,
     /// <summary>No existe en el rodeo: se ofrece buscar a mano; no se guardó nada.</summary>
-    NoEncontrada
+    NoEncontrada,
+    /// <summary>La vaca está en espera (spec 004, RF-5): se devuelve su ficha, sin marcarla ni sumarla al conteo.</summary>
+    EnEspera
 }
 
 /// <summary>Cómo se presenta el aviso de una vaca ya procesada (lo decide <see cref="ReglasAviso"/>).</summary>
 public enum TipoAviso { Repetido, YaPasoOtraManga, YaPasoSinManga }
 
 /// <summary>Qué se deshace (RF-26 a RF-28). El <c>Id</c> del comando es el del registro.</summary>
-public enum TipoDeshacer { Tacto, Marca, Cierre }
+public enum TipoDeshacer { Tacto, Marca, Cierre, Rechazo }
 
-public enum TipoMovimiento { Tacto, Marca, Cierre }
+public enum TipoMovimiento { Tacto, Marca, Cierre, Rechazo }
 
 /// <summary>Para el panel del simulador (solo desarrollo): qué caravana de muestra pedir.</summary>
 public enum MuestraCaravana { Existente, YaLeida }
@@ -63,11 +65,20 @@ public sealed record FichaAnimalDto(
     IReadOnlyList<EventoFichaDto> Historial,
     string Cvet = "",
     bool EntraEnTacto = true,
-    IReadOnlyList<CampoFichaDto>? Extras = null);
+    IReadOnlyList<CampoFichaDto>? Extras = null,
+    bool EnEspera = false,
+    RechazoVigenteDto? RechazoVigente = null);
 
-/// <summary>El último registro vigente de una vaca, para el aviso "Ya pasó / Animal repetido" (RF-22).</summary>
+/// <summary>La marca de rechazo vigente más reciente de la vaca (spec 004, RF-11). <see cref="Observaciones"/> es el motivo, si lo hay.</summary>
+public sealed record RechazoVigenteDto(Guid RechazoId, string? Observaciones, DateTime FechaHoraUtc);
+
+/// <summary>Una vaca en espera, para la botonera y la lista de espera (spec 004, RF-2). El tiempo esperado lo calcula la pantalla con <see cref="FechaHoraUtc"/>.</summary>
+public sealed record EsperaDto(Guid EsperaId, Guid AnimalId, string Caravana, string Cvet, DateTime FechaHoraUtc);
+
+/// <summary>El último registro vigente de una vaca, para el aviso "Ya pasó / Animal repetido" (RF-22). <see cref="Observaciones"/>: el motivo, si es un rechazo.</summary>
 public sealed record UltimoRegistroDto(
-    TipoRegistroCampo Tipo, Guid RegistroId, DateTime FechaHoraUtc, string? EstadoNombre, string Veterinario, int? NumeroManga);
+    TipoRegistroCampo Tipo, Guid RegistroId, DateTime FechaHoraUtc, string? EstadoNombre, string Veterinario, int? NumeroManga,
+    string? Observaciones = null);
 
 /// <summary>Lo que devuelve el procesamiento de una lectura (RF-11, RF-12, RF-22, RF-24).</summary>
 /// <param name="Ficha">La ficha, solo cuando la vaca quedó marcada. En un aviso se pide con <c>ObtenerFichaAsync</c> ("Ver ficha").</param>

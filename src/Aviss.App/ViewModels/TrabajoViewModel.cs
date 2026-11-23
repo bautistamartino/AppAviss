@@ -41,6 +41,7 @@ public sealed partial class TrabajoViewModel : ObservableObject
     private readonly INavegacion _navegacion;
     private readonly SesionTrabajo _sesion;
     private readonly ISimuladorLecturas? _simulador;   // nulo en la versión que se distribuye (RF-31)
+    private readonly IRelojService? _reloj;               // para el "hace cuánto" de las esperas; sin reloj usa la hora del sistema
 
     private readonly ColaDeLecturas _cola;
     // Las operaciones de campo se hacen de a una: dos transacciones en el mismo archivo no deben correr en paralelo.
@@ -58,7 +59,7 @@ public sealed partial class TrabajoViewModel : ObservableObject
     public TrabajoViewModel(
         ICampoService campo, IRfidReader lector, IPreferenciasDispositivo preferencias, IAvisosCampo avisos,
         IPantalla pantalla, ITemporizador temporizador, INavegacion navegacion, SesionTrabajo sesion,
-        ISimuladorLecturas? simulador = null)
+        ISimuladorLecturas? simulador = null, IRelojService? reloj = null)
     {
         _campo = campo;
         _lector = lector;
@@ -69,6 +70,7 @@ public sealed partial class TrabajoViewModel : ObservableObject
         _navegacion = navegacion;
         _sesion = sesion;
         _simulador = simulador;
+        _reloj = reloj;
         _cola = new ColaDeLecturas(ProcesarLecturaAsync);
         CargarPreferenciasDelEstablecimiento();
     }
@@ -133,13 +135,13 @@ public sealed partial class TrabajoViewModel : ObservableObject
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HayFicha), nameof(HayResumenTerminado), nameof(EstaEsperando), nameof(TituloBarra), nameof(HayVerFichaSinTacto))]
-    [NotifyPropertyChangedFor(nameof(HayMotivoTacto), nameof(NoEntraEnTacto), nameof(PuedeAgregarEventos))]
+    [NotifyPropertyChangedFor(nameof(HayMotivoTacto), nameof(NoEntraEnTacto), nameof(PuedeAgregarEventos), nameof(PuedePonerEnEspera), nameof(EsEsperaAbierta))]
     [NotifyCanExecuteChangedFor(nameof(EntrarCommand))]
     private EtapaTrabajo _etapa = EtapaTrabajo.Esperando;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HayFicha))]
-    [NotifyPropertyChangedFor(nameof(HayMotivoTacto), nameof(TextoMotivoTacto), nameof(NoEntraEnTacto), nameof(PuedeAgregarEventos), nameof(TituloFicha), nameof(FilasDatos), nameof(TituloBarra))]
+    [NotifyPropertyChangedFor(nameof(HayMotivoTacto), nameof(TextoMotivoTacto), nameof(NoEntraEnTacto), nameof(PuedeAgregarEventos), nameof(TituloFicha), nameof(FilasDatos), nameof(TituloBarra), nameof(PuedePonerEnEspera), nameof(EsEsperaAbierta), nameof(HayRechazoVigente), nameof(TextoRechazoVigente))]
     [NotifyCanExecuteChangedFor(nameof(EntrarCommand))]
     private FichaAnimalDto? _ficha;
 
@@ -174,6 +176,8 @@ public sealed partial class TrabajoViewModel : ObservableObject
         OnPropertyChanged(nameof(TextoMetaVerificacion));
         OnPropertyChanged(nameof(HayObservacion));
         OnPropertyChanged(nameof(HayCuadro));
+        OnPropertyChanged(nameof(PuedePonerEnEspera));
+        OnPropertyChanged(nameof(HayListaEspera));
         OnPropertyChanged(nameof(TextoSegundaConfirmacion));
         OnPropertyChanged(nameof(HayAdvertenciaMangaAbierta));
         OnPropertyChanged(nameof(AdvertenciaMangaAbierta));
@@ -183,7 +187,8 @@ public sealed partial class TrabajoViewModel : ObservableObject
     private static bool Bloquea(CuadroTrabajo cuadro) => cuadro is
         CuadroTrabajo.ConfirmarCorregir or CuadroTrabajo.Verificacion
         or CuadroTrabajo.CantidadReal or CuadroTrabajo.SegundaConfirmacion
-        or CuadroTrabajo.Eventos or CuadroTrabajo.Observacion or CuadroTrabajo.CantidadManga or CuadroTrabajo.Configuracion;
+        or CuadroTrabajo.Eventos or CuadroTrabajo.Observacion or CuadroTrabajo.CantidadManga or CuadroTrabajo.Configuracion
+        or CuadroTrabajo.ListaEspera;
 
     /// <summary>Abre o cierra un cuadro y avisa a la cola de lecturas: al cerrar uno que bloqueaba, se procesa la pendiente.</summary>
     private async Task CambiarCuadroAsync(CuadroTrabajo nuevo)
@@ -258,6 +263,9 @@ public sealed partial class TrabajoViewModel : ObservableObject
             {
                 await RecalcularAsync();
             }
+
+            // Las esperas viven en la base: se leen al entrar (también al volver de "Últimos movimientos").
+            await CargarEsperasAsync();
         }
         catch (Exception)
         {
@@ -345,6 +353,7 @@ public sealed partial class TrabajoViewModel : ObservableObject
             {
                 await _temporizador.EsperarAsync(IntervaloRefresco, ct);
                 await RecalcularAsync();
+                await CargarEsperasAsync();   // actualiza el "hace cuánto" de la botonera
             }
         }
         catch (OperationCanceledException) { }
@@ -433,6 +442,19 @@ public sealed partial class TrabajoViewModel : ObservableObject
                 await CambiarCuadroAsync(CuadroTrabajo.Aviso);
                 break;
 
+            case TipoResultadoLectura.EnEspera:
+                // Vaca en espera (RF-5): se abre su ficha para ponerle el evento, sin aviso de repetida, sin marcar y sin sumar.
+                if (r.AnimalId is null || Ficha?.AnimalId == r.AnimalId) return;
+                var fichaEspera = r.Ficha;
+                if (fichaEspera is null)
+                {
+                    var pedida = await EnCampoAsync(() => _campo.ObtenerFichaAsync(r.AnimalId.Value));
+                    if (!pedida.EsCorrecto) { MensajeError = pedida.Mensaje; return; }
+                    fichaEspera = pedida.Valor;
+                }
+                MostrarFicha(fichaEspera);
+                break;
+
             default:   // NoEncontrada
                 CodigoNoEncontrado = r.CodigoLeido;
                 MensajeCuadro = null;
@@ -458,9 +480,7 @@ public sealed partial class TrabajoViewModel : ObservableObject
         if (Etapa == EtapaTrabajo.Ficha) Etapa = EtapaTrabajo.Esperando;
     }
 
-    /// <summary>Cierra la ficha sin hacer nada (todo lo que importa ya quedó guardado).</summary>
-    [RelayCommand]
-    private void CerrarFicha() => CerrarFichaInterno();
+    // "Saltar" (CerrarFichaCommand) está en TrabajoViewModel.Espera.cs: en una ficha de espera la saltea.
 
     // ---- Búsqueda manual (RF-23)
 

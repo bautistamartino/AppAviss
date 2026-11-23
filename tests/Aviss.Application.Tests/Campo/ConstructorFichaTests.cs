@@ -155,6 +155,62 @@ public class ConstructorFichaTests
         Assert.Equal([("DDUC", "34"), ("DCC", "0"), ("LECHE", "24")], f.Extras!.Select(c => (c.Nombre, c.Valor)));
     }
 
+    // ---- Rechazos (spec 004, RF-11) ----
+
+    private static RechazoParaFicha Rechazo(int dia, string? motivo, bool anulado = false, long orden = 1, int hora = 10)
+        => new(Guid.NewGuid(), new DateTime(2026, 11, dia, hora, 0, 0, DateTimeKind.Utc), orden, motivo, anulado);
+
+    private static FichaArmada ArmarConRechazos(params RechazoParaFicha[] rechazos)
+        => ConstructorFicha.Armar(null, [], Ahora, TimeZoneInfo.Utc, rechazos);
+
+    [Fact]
+    public void Sin_rechazos_no_hay_rechazo_vigente_ni_lineas_de_rechazo()
+    {
+        var f = Armar(null, Tacto(10));
+        Assert.Null(f.RechazoVigente);
+        Assert.DoesNotContain(f.Historial, e => e.Titulo.StartsWith("Rechazo"));
+    }
+
+    [Fact]
+    public void Los_rechazos_entran_al_historial_con_su_motivo_y_los_anulados_van_marcados()
+    {
+        var f = ArmarConRechazos(Rechazo(10, "pata", anulado: true), Rechazo(12, null, orden: 2));
+
+        Assert.Equal(["Rechazo: pata", "Rechazo"], f.Historial.Select(e => e.Titulo));
+        Assert.Equal([true, false], f.Historial.Select(e => e.Anulado));
+        Assert.All(f.Historial, e => Assert.Equal(OrigenEvento.Aviss, e.Origen));
+        Assert.Equal([6, 4], f.Historial.Select(e => e.DiasTranscurridos)); // 16 - 10 y 16 - 12
+    }
+
+    [Fact]
+    public void El_rechazo_vigente_es_el_no_anulado_mas_reciente_y_con_empate_el_guardado_despues()
+    {
+        var viejo = Rechazo(10, "viejo");
+        var empateA = Rechazo(12, "a", orden: 5);
+        var empateB = Rechazo(12, "b", orden: 6);
+        var anuladoNuevo = Rechazo(14, "anulado", anulado: true, orden: 7);
+
+        var f = ArmarConRechazos(viejo, empateA, empateB, anuladoNuevo);
+
+        Assert.Equal(empateB.Id, f.RechazoVigente!.RechazoId);
+        Assert.Equal("b", f.RechazoVigente.Observaciones);
+    }
+
+    [Fact]
+    public void Si_todos_los_rechazos_estan_anulados_no_hay_vigente_pero_siguen_en_el_historial()
+    {
+        var f = ArmarConRechazos(Rechazo(10, "x", anulado: true));
+        Assert.Null(f.RechazoVigente);
+        Assert.Single(f.Historial);
+    }
+
+    [Fact]
+    public void Los_rechazos_se_mezclan_en_orden_cronologico_con_los_tactos()
+    {
+        var f = ConstructorFicha.Armar(null, [Tacto(10), Tacto(14)], Ahora, TimeZoneInfo.Utc, [Rechazo(12, "pata")]);
+        Assert.Equal(["Tacto: PREÑADA", "Rechazo: pata", "Tacto: PREÑADA"], f.Historial.Select(e => e.Titulo));
+    }
+
     [Fact]
     public void Sin_columnas_extra_la_lista_queda_vacia()
         => Assert.Empty(Armar("""{"ID":"1","CVET":"0","RPRO":"SECA","LACT":"1"}""").Extras!);

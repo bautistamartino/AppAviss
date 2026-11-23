@@ -26,6 +26,12 @@ public static class MensajesCampo
         CodigoError.HayOtraMangaAbierta => "Ya se empezó otra manga en este rodeo: no se puede reabrir la anterior.",
         CodigoError.FechaAnteriorAlUltimoRegistro =>
             "La hora de la tablet es anterior al último registro de este animal. " + AvisoDeHora,
+        CodigoError.VacaYaEnEspera => "Esa vaca ya está en espera.",
+        CodigoError.VacaNoEntraEnTacto => "Esa vaca no entra en tacto (CVET 0): no se puede poner en espera.",
+        CodigoError.EsperaNoPendiente => "Esa vaca no tiene una espera pendiente.",
+        CodigoError.VacaEnEspera => "Está en espera: primero resolvela o saltala.",
+        CodigoError.RechazoYaAnulado => "Ese rechazo ya se había deshecho.",
+        CodigoError.RechazoNoEsElUltimo => "Solo se puede deshacer lo último que se hizo con la vaca; antes hay que deshacer lo posterior.",
         _ => throw new ArgumentOutOfRangeException(nameof(codigo), "Ese código no es del flujo de campo.")
     };
 
@@ -39,6 +45,15 @@ public static class MensajesCampo
         MotivoRechazoMarca.FechaAnteriorAlUltimoRegistro =>
             (CodigoError.FechaAnteriorAlUltimoRegistro, Para(CodigoError.FechaAnteriorAlUltimoRegistro)),
         _ => throw new ArgumentOutOfRangeException(nameof(motivo))
+    };
+
+    /// <summary>Igual que <see cref="Para(MotivoRechazoMarca)"/>, pero con los textos del rechazo (spec 004, RF-6): son las mismas reglas.</summary>
+    public static (CodigoError Codigo, string Mensaje) ParaRechazo(MotivoRechazoMarca motivo) => motivo switch
+    {
+        MotivoRechazoMarca.AnimalAnulado => (CodigoError.AnimalAnulado, "El animal está anulado y no admite rechazos."),
+        MotivoRechazoMarca.RodeoDeBaja => (CodigoError.RodeoDeBaja, "El rodeo está dado de baja y no admite rechazos."),
+        MotivoRechazoMarca.EstablecimientoDeBaja => (CodigoError.EstablecimientoDeBaja, "El establecimiento está dado de baja y no admite rechazos."),
+        _ => Para(motivo)
     };
 
     /// <summary>De la regla pura de reapertura al código y mensaje (RF-9).</summary>

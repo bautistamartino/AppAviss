@@ -74,7 +74,7 @@ public sealed class FechasUtcTests : IDisposable
             while (r.Read()) tablas.Add(r.GetString(0));
         }
 
-        Assert.Equal(10, tablas.Count);
+        Assert.Equal(12, tablas.Count); // spec 004 suma Espera y Rechazo
         foreach (var tabla in tablas)
         {
             Assert.Equal(1, _db.Contar($"SELECT COUNT(*) FROM pragma_table_info('{tabla}') WHERE name = 'CreadoEnUtc'"));

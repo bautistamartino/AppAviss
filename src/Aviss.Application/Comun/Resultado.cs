@@ -61,7 +61,15 @@ public enum CodigoError
     CierreAutomaticoNoSeDeshace,
     CierreDeOtroDia,
     HayOtraMangaAbierta,
-    FechaAnteriorAlUltimoRegistro
+    FechaAnteriorAlUltimoRegistro,
+
+    // En Espera y Rechazo (spec 004); los mensajes fijos están en MensajesCampo
+    VacaYaEnEspera,
+    VacaNoEntraEnTacto,
+    EsperaNoPendiente,
+    VacaEnEspera,
+    RechazoYaAnulado,
+    RechazoNoEsElUltimo
 }
 
 /// <summary>Resultado de una operación sin valor de retorno. El mensaje está en español y nunca lleva datos de animales ni de tambos.</summary>

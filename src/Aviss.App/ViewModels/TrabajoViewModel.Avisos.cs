@@ -39,9 +39,12 @@ public sealed partial class TrabajoViewModel
 
     public string TextoCorregir => Aviso?.UltimoRegistro is { } u ? $"¿Deshacer lo último de esta vaca: {DescribirRegistro(u)}?" : "";
 
-    private static string DescribirRegistro(UltimoRegistroDto u) => u.Tipo == TipoRegistroCampo.Tacto
-        ? (string.IsNullOrEmpty(u.EstadoNombre) ? "Tacto" : $"Tacto {u.EstadoNombre}")
-        : "Marca de pasada";
+    private static string DescribirRegistro(UltimoRegistroDto u) => u.Tipo switch
+    {
+        TipoRegistroCampo.Tacto => string.IsNullOrEmpty(u.EstadoNombre) ? "Tacto" : $"Tacto {u.EstadoNombre}",
+        TipoRegistroCampo.Rechazo => string.IsNullOrWhiteSpace(u.Observaciones) ? "Rechazo" : $"Rechazo · {u.Observaciones}",
+        _ => "Marca de pasada"
+    };
 
 
     // ================================================================== aviso "Animal repetido" / "Ya pasó" (RF-22)
@@ -84,7 +87,12 @@ public sealed partial class TrabajoViewModel
         if (Cuadro != CuadroTrabajo.ConfirmarCorregir || Aviso is not { UltimoRegistro: { } ultimo, AnimalId: { } animalId }) return;
         try
         {
-            var tipo = ultimo.Tipo == TipoRegistroCampo.Tacto ? TipoDeshacer.Tacto : TipoDeshacer.Marca;
+            var tipo = ultimo.Tipo switch
+            {
+                TipoRegistroCampo.Tacto => TipoDeshacer.Tacto,
+                TipoRegistroCampo.Rechazo => TipoDeshacer.Rechazo,
+                _ => TipoDeshacer.Marca
+            };
             var resultado = await DeshacerAsync(tipo, ultimo.RegistroId);
             if (!resultado.EsCorrecto)
             {
@@ -146,6 +154,7 @@ public sealed partial class TrabajoViewModel
         {
             TipoDeshacer.Marca => "Se desmarcó la vaca.",
             TipoDeshacer.Cierre => "Se reabrió la manga.",
+            TipoDeshacer.Rechazo => "Se deshizo el rechazo.",
             _ => "Se deshizo el tacto."
         };
         await RecalcularAsync();

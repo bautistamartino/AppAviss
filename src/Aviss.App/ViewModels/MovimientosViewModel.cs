@@ -18,6 +18,7 @@ public sealed class MovimientoItem
     public MovimientoDto Dto { get; }
 
     public bool EsCierre => Dto.Tipo == TipoMovimiento.Cierre;
+    public bool EsRechazo => Dto.Tipo == TipoMovimiento.Rechazo;
     public bool Anulado => Dto.Anulado;
     public bool PuedeDeshacer => Dto.PuedeDeshacer;
 
@@ -25,13 +26,14 @@ public sealed class MovimientoItem
     /// Solo un tacto que todavía se puede deshacer (el último registro vigente de la vaca) se puede editar: editar es anularlo y
     /// registrar uno nuevo, y eso vale en las mismas condiciones.
     /// </summary>
-    public bool PuedeEditar => Dto.Tipo == TipoMovimiento.Tacto && !Dto.Anulado && Dto.PuedeDeshacer;
+    public bool PuedeEditar => Dto.Tipo is TipoMovimiento.Tacto or TipoMovimiento.Rechazo && !Dto.Anulado && Dto.PuedeDeshacer;
 
     /// <summary>Qué se hizo: "Marca", "Tacto" o "Cierre de manga".</summary>
     public string Tipo => Dto.Tipo switch
     {
         TipoMovimiento.Tacto => "Tacto",
         TipoMovimiento.Marca => "Marca",
+        TipoMovimiento.Rechazo => "Rechazo",
         _ => "Cierre de manga"
     };
 
@@ -47,9 +49,10 @@ public sealed class MovimientoItem
     public bool HayCvet => TextoCvet.Length > 0;
 
     /// <summary>El evento que se agregó (el estado del tacto) o, en un cierre, su tipo.</summary>
-    public string Detalle => Dto.Detalle ?? "";
+    public string Detalle => EsRechazo ? "" : Dto.Detalle ?? "";
 
-    public string Observacion => Dto.Observaciones ?? "";
+    /// <summary>La observación del tacto. En un rechazo es el motivo y ya va en <see cref="TextoTipoDetalle"/> ("Rechazo · pata"): no se repite.</summary>
+    public string Observacion => EsRechazo ? "" : Dto.Observaciones ?? "";
     public bool HayObservacion => Observacion.Length > 0;
 
     /// <summary>
@@ -67,7 +70,9 @@ public sealed class MovimientoItem
     public bool HayDetalle => Detalle.Length > 0 || HayObservacion || HayTextoCierre;
 
     /// <summary>El segundo renglón de la fila, junto: "Tacto · PREÑADA", "Marca" o "Cierre de manga · Manual".</summary>
-    public string TextoTipoDetalle => Detalle.Length > 0 ? $"{Tipo} · {Detalle}" : Tipo;
+    public string TextoTipoDetalle => EsRechazo
+        ? (string.IsNullOrWhiteSpace(Dto.Observaciones) ? "Rechazo" : $"Rechazo · {Dto.Observaciones.Trim()}")
+        : Detalle.Length > 0 ? $"{Tipo} · {Detalle}" : Tipo;
 }
 
 /// <summary>Lógica de "Últimos movimientos" del rodeo en trabajo, con deshacer y editar (spec 003, RF-28, RF-29).</summary>
@@ -134,6 +139,7 @@ public sealed partial class MovimientosViewModel : ObservableObject
             {
                 TipoMovimiento.Tacto => TipoDeshacer.Tacto,
                 TipoMovimiento.Marca => TipoDeshacer.Marca,
+                TipoMovimiento.Rechazo => TipoDeshacer.Rechazo,
                 _ => TipoDeshacer.Cierre
             };
             var resultado = await _campo.DeshacerAsync(new DeshacerCommand(tipo, item.Dto.RegistroId, vet.Id));
@@ -156,11 +162,11 @@ public sealed partial class MovimientosViewModel : ObservableObject
         }
     }
 
-    // ================================================================== editar un tacto
-    // Los tactos solo se agregan: editar es anular el tacto y registrar uno nuevo con el evento y la observación elegidos, todo junto
+    // ================================================================== editar un tacto o un rechazo
+    // Los registros solo se agregan: editar es anular el tacto o el rechazo y registrar uno nuevo con el evento y la observación elegidos, todo junto
     // (si el nuevo se rechaza, el original sigue como estaba).
 
-    /// <summary>Los eventos entre los que se puede elegir al editar.</summary>
+    /// <summary>Los eventos entre los que se puede elegir al editar: los estados activos y "Rechazo" al final (se puede pasar de tacto a rechazo y al revés).</summary>
     public ObservableCollection<EstadoActivoDto> EstadosParaEditar { get; } = [];
 
     [ObservableProperty]
@@ -183,7 +189,7 @@ public sealed partial class MovimientosViewModel : ObservableObject
 
     public bool HayEdicion => Editando is not null;
     public bool HayMensajeEdicion => !string.IsNullOrEmpty(MensajeEdicion);
-    public string TituloEdicion => Editando is { } e ? $"Editar el tacto de {e.Titulo}" : "";
+    public string TituloEdicion => Editando is { } e ? $"Editar el {(e.EsRechazo ? "rechazo" : "tacto")} de {e.Titulo}" : "";
     public string TextoEventoEditado => EventoEditado?.Nombre ?? "Elegí un evento";
 
     /// <summary>Abre la edición con el evento y la observación actuales ya cargados.</summary>
@@ -199,8 +205,11 @@ public sealed partial class MovimientosViewModel : ObservableObject
             var estados = await _campo.ListarEstadosActivosAsync();
             EstadosParaEditar.Clear();
             foreach (var e in estados) EstadosParaEditar.Add(e);
+            EstadosParaEditar.Add(TrabajoViewModel.EventoRechazo);
 
-            EventoEditado = estados.FirstOrDefault(e => string.Equals(e.Nombre, item.Dto.Detalle, StringComparison.OrdinalIgnoreCase));
+            EventoEditado = item.EsRechazo
+                ? TrabajoViewModel.EventoRechazo
+                : estados.FirstOrDefault(e => string.Equals(e.Nombre, item.Dto.Detalle, StringComparison.OrdinalIgnoreCase));
             ObservacionEditada = item.Dto.Observaciones ?? "";
             Editando = item;
         }
@@ -240,7 +249,7 @@ public sealed partial class MovimientosViewModel : ObservableObject
         try
         {
             var observacion = string.IsNullOrWhiteSpace(ObservacionEditada) ? null : ObservacionEditada.Trim();
-            var resultado = await _campo.CorregirTactoAsync(new CorregirTactoCommand(item.Dto.RegistroId, evento.Id, observacion, vet.Id));
+            var resultado = await _campo.CorregirRegistroAsync(new CorregirRegistroCommand(item.Dto.RegistroId, evento.Id, observacion, vet.Id));
             if (!resultado.EsCorrecto)
             {
                 MensajeEdicion = resultado.Mensaje;
@@ -248,7 +257,7 @@ public sealed partial class MovimientosViewModel : ObservableObject
             }
 
             CancelarEdicion();
-            MensajeInfo = "Se corrigió el tacto.";
+            MensajeInfo = "Se corrigió el registro.";
             await CargarAsync();
         }
         catch (Exception)

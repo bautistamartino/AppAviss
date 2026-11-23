@@ -39,6 +39,8 @@ public static class DependencyInjection
         servicios.AddScoped<IMangaRepository, MangaRepository>();
         servicios.AddScoped<IMarcaPasadaRepository, MarcaPasadaRepository>();
         servicios.AddScoped<IRegistroCampoRepository, RegistroCampoRepository>();
+        servicios.AddScoped<IEsperaRepository, EsperaRepository>();
+        servicios.AddScoped<IRechazoRepository, RechazoRepository>();
 
         servicios.AddScoped<IEstablecimientoService, EstablecimientoService>();
         servicios.AddScoped<IRodeoService, RodeoService>();
@@ -54,6 +56,7 @@ public static class DependencyInjection
         servicios.AddScoped<ArmadorFicha>();
         servicios.AddScoped<Marcador>();
         servicios.AddScoped<MarcaPasadaService>();
+        servicios.AddScoped<EsperaService>();
         servicios.AddScoped<MangaService>();
         servicios.AddScoped<ConsultaCampoService>();
         servicios.AddSingleton<ICampoService, CampoService>();

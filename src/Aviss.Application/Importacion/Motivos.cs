@@ -53,7 +53,7 @@ public static class MensajesImportacion
     {
         MotivoRechazoArchivo.Vacio => "El archivo está vacío.",
         MotivoRechazoArchivo.Excede25Mb => "El archivo pesa más de 25 MB y no se puede importar.",
-        MotivoRechazoArchivo.FormatoNoSoportado => "El archivo no es un Excel .xls de Dairy Comp. Los archivos .xlsx todavía no se pueden importar.",
+        MotivoRechazoArchivo.FormatoNoSoportado => "El archivo no es un listado de Dairy Comp (.xls, .csv o .txt con una columna ID). Los archivos .xlsx todavía no se pueden importar.",
         MotivoRechazoArchivo.Protegido => "El archivo está protegido con contraseña y no se puede leer.",
         MotivoRechazoArchivo.Corrupto => "El archivo está dañado y no se puede leer.",
         MotivoRechazoArchivo.SinHojas => "El archivo no tiene ninguna hoja.",

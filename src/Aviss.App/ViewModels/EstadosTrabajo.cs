@@ -42,7 +42,9 @@ public enum CuadroTrabajo
     /// <summary>"Agregar observación": un texto opcional que viaja con el próximo evento.</summary>
     Observacion,
     /// <summary>"¿Terminar el tacto?" (RF-7).</summary>
-    SegundaConfirmacion
+    SegundaConfirmacion,
+    /// <summary>"Vacas en espera": la lista completa, con el botón "+N" (spec 004, RF-2). Frena las lecturas como los demás cuadros.</summary>
+    ListaEspera
 }
 
 /// <summary>Con qué botón se llegó a la verificación de cierre.</summary>
