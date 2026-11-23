@@ -10,6 +10,7 @@ namespace Aviss.Infrastructure.Tests;
 /// Actualizar una base que ya tiene datos de la migración "IndiceTactoFecha" a "EsperaYRechazo" (spec 004). El peligro es el
 /// mismo que en "Mangas": la tabla Historial se reconstruye para ampliar su CHECK y no debe perder datos ni triggers.
 /// </summary>
+[Collection("Migraciones")] // comparten ClearAllPools y archivos: de a una
 public sealed class MigracionEsperaYRechazoTests : IDisposable
 {
     private readonly BaseDeDatosDePrueba _db = new(migrar: false);
@@ -27,17 +28,18 @@ public sealed class MigracionEsperaYRechazoTests : IDisposable
     public void Actualizar_desde_IndiceTactoFecha_con_datos_conserva_todo_y_los_triggers()
     {
         MigrarHasta("IndiceTactoFecha");
-        var vet = _db.Usuario("Dra. Pérez");
+        var old = new EsquemaAnterior(_db);
+        var vet = old.Usuario("Dra. Pérez");
         var rodeo = _db.Rodeo();
-        var manga = _db.Manga(rodeo, 1, vet);
+        var manga = old.Manga(rodeo, 1, vet);
         var estado = _db.Estado("SECA", "SECA", "SECA");
         var animal = _db.Animal(rodeo, "100", estadoId: estado);
-        var tacto = _db.Tacto(animal, vet, estado, diasPrenez: 40);
-        var marca = _db.MarcaPasada(animal, manga, vet);
-        var historial = _db.Historial(vet, "MarcaPasada");
-        Assert.Throws<SqliteException>(() => _db.Historial(vet, "EsperaCreada")); // el esquema viejo no la conocía
+        var tacto = old.Tacto(animal, vet, estado, diasPrenez: 40);
+        var marca = old.MarcaPasada(animal, manga, vet);
+        var historial = old.Historial(vet, "MarcaPasada");
+        Assert.Throws<SqliteException>(() => old.Historial(vet, "EsperaCreada")); // el esquema viejo no la conocía
 
-        MigrarHasta(null);
+        MigrarHasta("EsperaYRechazo");
 
         // Los datos siguen.
         Assert.Equal(40L, _db.Escalar("SELECT DiasPrenez FROM Tacto WHERE Id = $id", ("$id", tacto)));
@@ -52,9 +54,9 @@ public sealed class MigracionEsperaYRechazoTests : IDisposable
 
         // Las acciones nuevas entran y las tablas nuevas funcionan.
         foreach (var a in new[] { "EsperaCreada", "EsperaResuelta", "EsperaSalteada", "RechazoCreado", "RechazoAnulado" })
-            _db.Historial(vet, a);
-        _db.Espera(animal, vet);
-        _db.Rechazo(animal, vet, "motivo");
+            old.Historial(vet, a);
+        old.Espera(animal, vet);
+        old.Rechazo(animal, vet, "motivo");
         Assert.Equal(1, _db.Contar("SELECT COUNT(*) FROM Espera"));
         Assert.Equal(1, _db.Contar("SELECT COUNT(*) FROM Rechazo"));
     }

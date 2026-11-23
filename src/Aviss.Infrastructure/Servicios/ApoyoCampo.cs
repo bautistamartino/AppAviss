@@ -95,32 +95,30 @@ internal sealed class Marcador
     private readonly IMarcaPasadaRepository _marcas;
     private readonly IRegistroCampoRepository _registros;
     private readonly IHistorialRepository _historial;
-    private readonly IDispositivoService _dispositivo;
 
     public Marcador(IMangaRepository mangas, IMarcaPasadaRepository marcas, IRegistroCampoRepository registros,
-        IHistorialRepository historial, IDispositivoService dispositivo)
-        => (_mangas, _marcas, _registros, _historial, _dispositivo) = (mangas, marcas, registros, historial, dispositivo);
+        IHistorialRepository historial)
+        => (_mangas, _marcas, _registros, _historial) = (mangas, marcas, registros, historial);
 
-    public async Task<MarcaPreparada> MarcarAsync(Guid animalId, Guid rodeoId, DateTime ahora, Guid usuarioId, CancellationToken ct)
+    public async Task<MarcaPreparada> MarcarAsync(Guid animalId, Guid rodeoId, DateTime ahora, CancellationToken ct)
     {
         var manga = await _mangas.ObtenerAbiertaAsync(rodeoId, ct);
         var yaMarcadas = manga is null ? 0 : await _mangas.ContarVacasAsync(manga.Id, ct);
-        var dispositivo = _dispositivo.ObtenerId();
 
         if (manga is null)
         {
             // Manga por empezar: esta marca la abre, en la misma transacción.
-            manga = Manga.Abrir(rodeoId, await _mangas.SiguienteNumeroAsync(rodeoId, ct), usuarioId, dispositivo, ahora);
+            manga = Manga.Abrir(rodeoId, await _mangas.SiguienteNumeroAsync(rodeoId, ct), ahora);
             _mangas.Agregar(manga);
             _historial.Agregar(Historial.Crear("Manga", manga.Id, "Numero", null,
-                manga.Numero.ToString(CultureInfo.InvariantCulture), ahora, usuarioId, AccionHistorial.MangaAbierta));
+                manga.Numero.ToString(CultureInfo.InvariantCulture), ahora, AccionHistorial.MangaAbierta));
         }
 
         var orden = await _registros.SiguienteOrdenAsync(ct);
-        var marca = MarcaPasada.Registrar(animalId, manga.Id, ahora, orden, usuarioId, dispositivo, ahora);
+        var marca = MarcaPasada.Registrar(animalId, manga.Id, ahora, orden, ahora);
         _marcas.Agregar(marca);
         _historial.Agregar(Historial.Crear("MarcaPasada", marca.Id, "Manga", null, Ayudas.IdATexto(manga.Id),
-            ahora, usuarioId, AccionHistorial.MarcaPasada));
+            ahora, AccionHistorial.MarcaPasada));
 
         // La marca todavía no está en la base: el contador es lo que ya había más esta.
         return new MarcaPreparada(marca, manga, yaMarcadas + 1);

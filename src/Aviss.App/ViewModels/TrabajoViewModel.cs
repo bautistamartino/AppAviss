@@ -21,7 +21,7 @@ namespace Aviss.App.ViewModels;
 /// </summary>
 public sealed partial class TrabajoViewModel : ObservableObject
 {
-    // Mensajes fijos: nunca llevan caravanas, nombres de tambos ni de veterinarios (RF-33).
+    // Mensajes fijos: nunca llevan caravanas ni nombres de tambos (RF-33).
     public const string MensajeFalla = "Algo falló y no se guardó nada. Probá de nuevo.";
     public const string MensajeLectorNoConecta = "No se pudo conectar el lector. Podés buscar la caravana a mano.";
     public const string MensajeSinMuestra = "No hay ninguna caravana de ese tipo para simular.";
@@ -34,7 +34,7 @@ public sealed partial class TrabajoViewModel : ObservableObject
 
     private readonly ICampoService _campo;
     private readonly IRfidReader _lector;
-    private readonly IPreferenciasDispositivo _preferencias;
+    private readonly IPreferenciasMangas _preferencias;
     private readonly IAvisosCampo _avisos;
     private readonly IPantalla _pantalla;
     private readonly ITemporizador _temporizador;
@@ -57,7 +57,7 @@ public sealed partial class TrabajoViewModel : ObservableObject
     private int? _cantidadRealConfirmada;
 
     public TrabajoViewModel(
-        ICampoService campo, IRfidReader lector, IPreferenciasDispositivo preferencias, IAvisosCampo avisos,
+        ICampoService campo, IRfidReader lector, IPreferenciasMangas preferencias, IAvisosCampo avisos,
         IPantalla pantalla, ITemporizador temporizador, INavegacion navegacion, SesionTrabajo sesion,
         ISimuladorLecturas? simulador = null, IRelojService? reloj = null)
     {
@@ -80,7 +80,6 @@ public sealed partial class TrabajoViewModel : ObservableObject
 
     public string NombreRodeo => _sesion.Rodeo?.RodeoNombre ?? "";
     public string NombreEstablecimiento => _sesion.Rodeo?.EstablecimientoNombre ?? "";
-    public string NombreVeterinario => _sesion.Veterinario?.Nombre ?? "";
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(TextoManga), nameof(TextoSegundaConfirmacion), nameof(MetaManga), nameof(HayMeta), nameof(MangaCompleta), nameof(MangaExcedida))]
@@ -119,7 +118,7 @@ public sealed partial class TrabajoViewModel : ObservableObject
 
     // ---- Cabecera contraíble: una barra siempre visible con la flechita, y debajo los datos del trabajo
 
-    /// <summary>Los datos de arriba (rodeo, avance, horarios, veterinario y botones de cierre) están a la vista.</summary>
+    /// <summary>Los datos de arriba (rodeo, avance, horarios y botones de cierre) están a la vista.</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(TextoFlecha))]
     private bool _cabeceraAbierta = true;
@@ -227,11 +226,11 @@ public sealed partial class TrabajoViewModel : ObservableObject
     /// <summary>
     /// La página lo llama al aparecer. La primera vez empieza el trabajo (retoma la manga abierta o deja la siguiente por
     /// empezar; cierra como automática la de un día anterior) y carga los estados; siempre arranca el lector, el refresco
-    /// y mantiene la pantalla encendida. Si no hay veterinario y rodeo elegidos, vuelve a la elección.
+    /// y mantiene la pantalla encendida. Si no hay rodeo elegido, vuelve a la elección.
     /// </summary>
     public async Task IniciarAsync()
     {
-        if (_sesion.Veterinario is not { } vet || _sesion.Rodeo is not { } rodeo)
+        if (_sesion.Rodeo is not { } rodeo)
         {
             await _navegacion.IrAEleccionTrabajoAsync();
             return;
@@ -241,7 +240,6 @@ public sealed partial class TrabajoViewModel : ObservableObject
         OnPropertyChanged(nameof(NombreRodeo));
         OnPropertyChanged(nameof(TituloBarra));
         OnPropertyChanged(nameof(NombreEstablecimiento));
-        OnPropertyChanged(nameof(NombreVeterinario));
         _pantalla.MantenerEncendida(true);
 
         try
@@ -249,7 +247,7 @@ public sealed partial class TrabajoViewModel : ObservableObject
             // Solo la primera vez: volver de "Últimos movimientos" no debe cerrar la manga si ya cruzó la medianoche (RF-10).
             if (_rodeoIniciado != rodeo.RodeoId)
             {
-                var inicio = await EnCampoAsync(() => _campo.IniciarTrabajoAsync(rodeo.RodeoId, vet.Id));
+                var inicio = await EnCampoAsync(() => _campo.IniciarTrabajoAsync(rodeo.RodeoId));
                 if (!inicio.EsCorrecto)
                 {
                     MensajeError = inicio.Mensaje;
@@ -374,7 +372,7 @@ public sealed partial class TrabajoViewModel : ObservableObject
 
     private async Task ProcesarLecturaAsync(Lectura lectura)
     {
-        if (_sesion.Veterinario is not { } vet || _sesion.Rodeo is not { } rodeo) return;
+        if (_sesion.Rodeo is not { } rodeo) return;
         if (Etapa == EtapaTrabajo.Terminado) return;   // el trabajo ya se terminó: no se marca nada
 
         try
@@ -384,7 +382,7 @@ public sealed partial class TrabajoViewModel : ObservableObject
             MensajeError = null;
             MensajeInfo = null;
 
-            var resultado = await EnCampoAsync(() => _campo.ProcesarLecturaAsync(new ProcesarLecturaCommand(rodeo.RodeoId, lectura.Codigo, vet.Id)));
+            var resultado = await EnCampoAsync(() => _campo.ProcesarLecturaAsync(new ProcesarLecturaCommand(rodeo.RodeoId, lectura.Codigo)));
             if (!resultado.EsCorrecto)
             {
                 // Rechazo (por ejemplo reloj mal puesto): no se guardó nada ni se muestra la ficha como procesada (RF-12).
@@ -494,22 +492,7 @@ public sealed partial class TrabajoViewModel : ObservableObject
         await EncolarLecturaAsync(texto, esManual: true);
     }
 
-    // ================================================================== veterinario y navegación
-
-    /// <summary>Los veterinarios activos, para cambiar el activo sin salir del rodeo ni de la manga (RF-1).</summary>
-    public async Task<IReadOnlyList<VeterinarioDto>> ListarVeterinariosAsync()
-        => await EnCampoAsync(() => _campo.ListarVeterinariosActivosAsync());
-
-    /// <summary>El cambio no toca los registros anteriores ni cierra la manga: solo cambia quién firma de acá en más.</summary>
-    [RelayCommand]
-    private void CambiarVeterinario(VeterinarioDto? veterinario)
-    {
-        if (veterinario is null) return;
-        _sesion.CambiarVeterinario(veterinario);
-        _preferencias.GuardarVeterinarioRecordado(veterinario.Id);
-        OnPropertyChanged(nameof(NombreVeterinario));
-    }
-
+    // ================================================================== navegación
     [RelayCommand]
     private Task MostrarMovimientosAsync() => _navegacion.IrAMovimientosAsync();
 

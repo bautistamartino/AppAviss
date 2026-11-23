@@ -25,8 +25,6 @@ public sealed class Tacto : EntidadEditable
 
     public int? DiasPrenez { get; private set; }
     public string? Observaciones { get; private set; }
-    public Guid UsuarioId { get; private set; }
-    public Guid DispositivoId { get; private set; }
     public TipoTacto Tipo { get; private set; }
 
     /// <summary>En un tacto de anulación, el tacto que anula.</summary>
@@ -39,7 +37,7 @@ public sealed class Tacto : EntidadEditable
 
     public static Tacto Registrar(
         Guid animalId, DateTime fechaHoraUtc, long ordenInsercion, Guid? estadoAnteriorId, Guid estadoNuevoId,
-        int? diasPrenez, string? observaciones, Guid usuarioId, Guid dispositivoId, DateTime ahoraUtc)
+        int? diasPrenez, string? observaciones, DateTime ahoraUtc)
     {
         if (diasPrenez is int d && (d < ReglasTacto.DiasPrenezMinimo || d > ReglasTacto.DiasPrenezMaximo))
             throw new DominioException("Los días de preñez deben estar entre 0 y 300.");
@@ -52,8 +50,6 @@ public sealed class Tacto : EntidadEditable
             EstadoNuevoId = Validar.IdObligatorio(estadoNuevoId, "El estado nuevo"),
             DiasPrenez = diasPrenez,
             Observaciones = Validar.TextoOpcional(observaciones),
-            UsuarioId = Validar.IdObligatorio(usuarioId, "El usuario"),
-            DispositivoId = Validar.IdObligatorio(dispositivoId, "El dispositivo"),
             Tipo = TipoTacto.Normal
         };
     }
@@ -63,8 +59,7 @@ public sealed class Tacto : EntidadEditable
     /// del tacto anulado, sin días de preñez. No se puede anular un tacto ya anulado ni otra anulación (RF-14).
     /// </summary>
     public static Tacto CrearAnulacion(
-        Tacto anulado, Guid? estadoActualDelAnimalId, DateTime fechaHoraUtc, long ordenInsercion,
-        Guid usuarioId, Guid dispositivoId, DateTime ahoraUtc)
+        Tacto anulado, Guid? estadoActualDelAnimalId, DateTime fechaHoraUtc, long ordenInsercion, DateTime ahoraUtc)
     {
         if (anulado.Tipo == TipoTacto.Anulacion)
             throw new DominioException("Un tacto de anulación no puede anularse.");
@@ -79,8 +74,6 @@ public sealed class Tacto : EntidadEditable
             EstadoNuevoId = anulado.EstadoAnteriorId,
             DiasPrenez = null,
             Observaciones = null,
-            UsuarioId = Validar.IdObligatorio(usuarioId, "El usuario"),
-            DispositivoId = Validar.IdObligatorio(dispositivoId, "El dispositivo"),
             Tipo = TipoTacto.Anulacion,
             TactoAnuladoId = anulado.Id
         };

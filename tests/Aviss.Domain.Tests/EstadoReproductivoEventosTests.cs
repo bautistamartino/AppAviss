@@ -86,10 +86,8 @@ public class EstadoReproductivoEventosTests
     public void Un_rechazo_puede_llevar_evento_y_por_defecto_no()
     {
         var animal = Guid.NewGuid();
-        var vet = Guid.NewGuid();
-        var disp = Guid.NewGuid();
         var evento = Guid.NewGuid();
-        Assert.Null(Rechazo.Registrar(animal, Ahora, 1, null, vet, disp, Ahora).EventoId);
-        Assert.Equal(evento, Rechazo.Registrar(animal, Ahora, 2, null, vet, disp, Ahora, evento).EventoId);
+        Assert.Null(Rechazo.Registrar(animal, Ahora, 1, null, Ahora).EventoId);
+        Assert.Equal(evento, Rechazo.Registrar(animal, Ahora, 2, null, Ahora, evento).EventoId);
     }
 }

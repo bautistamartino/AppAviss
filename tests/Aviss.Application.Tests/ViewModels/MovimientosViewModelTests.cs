@@ -15,7 +15,7 @@ public class MovimientosViewModelTests
 
         public Banco()
         {
-            Sesion.Empezar(Datos.Vet, Datos.Rodeo());
+            Sesion.Empezar(Datos.Rodeo());
             Vm = new MovimientosViewModel(Campo, Sesion);
         }
     }
@@ -59,7 +59,6 @@ public class MovimientosViewModelTests
         var cmd = Assert.Single(b.Campo.Deshaceres);
         Assert.Equal(esperado, cmd.Tipo);
         Assert.Equal(movimiento.RegistroId, cmd.Id);   // en un alta es el id del animal
-        Assert.Equal(Datos.Vet.Id, cmd.UsuarioId);
         Assert.Equal(2, b.Campo.ConsultasDeMovimientos);   // recargó
         Assert.True(b.Vm.HayMensajeInfo);
     }
@@ -147,6 +146,14 @@ public class MovimientosViewModelTests
         Assert.True(item.HayDetalle);
         Assert.Equal(item.Dto.FechaHoraUtc.ToLocalTime().ToString("HH:mm"), item.Hora);
         Assert.DoesNotContain("Manga", item.Detalle);
+    }
+
+    [Fact]
+    public void Las_filas_y_el_DTO_del_movimiento_no_traen_el_nombre_de_nadie()
+    {
+        // Spec 006, RF-5: ni el DTO ni la fila tienen un campo con el nombre de quien lo hizo.
+        var miembros = typeof(MovimientoDto).GetProperties().Select(p => p.Name).Concat(typeof(MovimientoItem).GetProperties().Select(p => p.Name));
+        Assert.DoesNotContain(miembros, n => n.Contains("Veterinario", StringComparison.OrdinalIgnoreCase));
     }
 
     [Fact]
@@ -249,7 +256,7 @@ public class MovimientosViewModelTests
         await b.Vm.GuardarEdicionCommand.ExecuteAsync(null);
 
         var cmd = Assert.Single(b.Campo.RegistrosCorregidos);
-        Assert.Equal((tacto.Dto.RegistroId, Vacia.Id, "Se secó", Datos.Vet.Id), (cmd.RegistroId, cmd.Evento, cmd.Observaciones, cmd.UsuarioId));
+        Assert.Equal((tacto.Dto.RegistroId, Vacia.Id, "Se secó"), (cmd.RegistroId, cmd.Evento, cmd.Observaciones));
         Assert.False(b.Vm.HayEdicion);
         Assert.Equal("Se corrigió el registro.", b.Vm.MensajeInfo);
         Assert.Equal(consultas + 1, b.Campo.ConsultasDeMovimientos);

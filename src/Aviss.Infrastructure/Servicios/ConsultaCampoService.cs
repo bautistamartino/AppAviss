@@ -10,7 +10,7 @@ using Microsoft.EntityFrameworkCore;
 namespace Aviss.Infrastructure.Servicios;
 
 /// <summary>
-/// Consultas de solo lectura del trabajo de campo: ficha, últimos movimientos, rodeos para trabajar, veterinarios,
+/// Consultas de solo lectura del trabajo de campo: ficha, últimos movimientos, rodeos para trabajar,
 /// estados y la caravana de muestra del simulador (RF-1, RF-2, RF-13, RF-14, RF-28, RF-30). No guardan nada, así que
 /// no abren transacción. Las que mezclan varias tablas (movimientos, muestras) leen directo del contexto, sin seguimiento.
 /// </summary>
@@ -22,7 +22,6 @@ internal sealed class ConsultaCampoService
     private readonly IAnimalRepository _animales;
     private readonly IEstablecimientoRepository _establecimientos;
     private readonly IRodeoRepository _rodeos;
-    private readonly IUsuarioRepository _usuarios;
     private readonly IEstadoReproductivoRepository _estados;
     private readonly IMangaRepository _mangas;
     private readonly IMarcaPasadaRepository _marcas;
@@ -34,11 +33,11 @@ internal sealed class ConsultaCampoService
     private readonly IEsperaRepository _esperas;
 
     public ConsultaCampoService(AvissDbContext db, IAnimalRepository animales, IEstablecimientoRepository establecimientos,
-        IRodeoRepository rodeos, IUsuarioRepository usuarios, IEstadoReproductivoRepository estados, IMangaRepository mangas,
+        IRodeoRepository rodeos, IEstadoReproductivoRepository estados, IMangaRepository mangas,
         IMarcaPasadaRepository marcas, IRegistroCampoRepository registros, IRelojService reloj, IZonaHoraria zona,
         CalculadorAvance avance, ArmadorFicha ficha, IEsperaRepository esperas)
     {
-        _db = db; _animales = animales; _establecimientos = establecimientos; _rodeos = rodeos; _usuarios = usuarios;
+        _db = db; _animales = animales; _establecimientos = establecimientos; _rodeos = rodeos;
         _estados = estados; _mangas = mangas; _marcas = marcas; _registros = registros; _reloj = reloj; _zona = zona;
         _avance = avance; _ficha = ficha; _esperas = esperas;
     }
@@ -77,13 +76,6 @@ internal sealed class ConsultaCampoService
         return resultado;
     }
 
-    /// <summary>Veterinarios activos para elegir: "Sin asignar" no se ofrece para trabajar (RF-1).</summary>
-    public async Task<IReadOnlyList<VeterinarioDto>> ListarVeterinariosActivosAsync(CancellationToken ct)
-        => (await _usuarios.ListarAsync(ct))
-            .Where(u => u.Activo && u.Id != Usuario.SinAsignarId)
-            .Select(u => new VeterinarioDto(u.Id, u.Nombre, u.Matricula))
-            .ToList();
-
     /// <summary>La lista de eventos de dos niveles (spec 005): solo los activos, armada por la función pura.</summary>
     public async Task<ListaEventosDto> ListarEventosAsync(CancellationToken ct)
         => ArmadorListaEventos.Armar(await _estados.ListarAsync(ct));
@@ -92,10 +84,8 @@ internal sealed class ConsultaCampoService
 
     public async Task<IReadOnlyList<MovimientoDto>> ListarMovimientosAsync(Guid rodeoId, CancellationToken ct)
     {
-        var usuarios = (await _usuarios.ListarAsync(ct)).ToDictionary(u => u.Id, u => u.Nombre);
         var estados = (await _estados.ListarAsync(ct)).ToDictionary(e => e.Id, e => e.Nombre);
         var numerosManga = await _db.Mangas.AsNoTracking().Where(m => m.RodeoId == rodeoId).ToDictionaryAsync(m => m.Id, m => m.Numero, ct);
-        string Veterinario(Guid id) => usuarios.TryGetValue(id, out var n) ? n : "";
 
         // Cada tipo trae sus 50 más recientes; después se mezclan y se quedan los 50 más recientes en total.
         // La clave de desempate ordena el cierre, el tacto y la marca cuando comparten el mismo instante.
@@ -105,13 +95,13 @@ internal sealed class ConsultaCampoService
                             join a in _db.Animales on t.AnimalId equals a.Id
                             where a.RodeoId == rodeoId && t.Tipo == TipoTacto.Normal
                             orderby t.FechaHoraUtc descending, t.OrdenInsercion descending
-                            select new { t.Id, t.AnimalId, a.NumeroCaravana, a.DatosOriginalesJson, t.Observaciones, t.FechaHoraUtc, t.OrdenInsercion, t.UsuarioId, t.EstadoNuevoId, t.Anulado })
+                            select new { t.Id, t.AnimalId, a.NumeroCaravana, a.DatosOriginalesJson, t.Observaciones, t.FechaHoraUtc, t.OrdenInsercion, t.EstadoNuevoId, t.Anulado })
             .Take(MaximoMovimientos).ToListAsync(ct);
         foreach (var t in tactos)
         {
             var estado = t.EstadoNuevoId is Guid e && estados.TryGetValue(e, out var nombre) ? nombre : null;
             candidatos.Add((new MovimientoDto(TipoMovimiento.Tacto, t.Id, t.AnimalId, t.NumeroCaravana, null, estado,
-                t.FechaHoraUtc, Veterinario(t.UsuarioId), t.Anulado, false, null, null, null,
+                t.FechaHoraUtc, t.Anulado, false, null, null, null,
                 ConstructorFicha.LeerCvet(t.DatosOriginalesJson), t.Observaciones, t.EstadoNuevoId), t.OrdenInsercion + 1));
         }
 
@@ -119,12 +109,12 @@ internal sealed class ConsultaCampoService
                             join a in _db.Animales on m.AnimalId equals a.Id
                             where a.RodeoId == rodeoId
                             orderby m.FechaHoraUtc descending, m.OrdenInsercion descending
-                            select new { m.Id, m.AnimalId, a.NumeroCaravana, a.DatosOriginalesJson, m.MangaId, m.FechaHoraUtc, m.OrdenInsercion, m.UsuarioId, m.Anulado })
+                            select new { m.Id, m.AnimalId, a.NumeroCaravana, a.DatosOriginalesJson, m.MangaId, m.FechaHoraUtc, m.OrdenInsercion, m.Anulado })
             .Take(MaximoMovimientos).ToListAsync(ct);
         foreach (var m in marcas)
         {
             candidatos.Add((new MovimientoDto(TipoMovimiento.Marca, m.Id, m.AnimalId, m.NumeroCaravana,
-                numerosManga.GetValueOrDefault(m.MangaId), null, m.FechaHoraUtc, Veterinario(m.UsuarioId), m.Anulado, false, null, null, null,
+                numerosManga.GetValueOrDefault(m.MangaId), null, m.FechaHoraUtc, m.Anulado, false, null, null, null,
                 ConstructorFicha.LeerCvet(m.DatosOriginalesJson)),
                 m.OrdenInsercion + 1));
         }
@@ -147,7 +137,7 @@ internal sealed class ConsultaCampoService
             // Un solo evento del catálogo muestra su nombre (aunque esté desactivado: salen de todo el catálogo); el Rechazo fijo, "Rechazo".
             var nombreEvento = r.EventoId is Guid ev && estados.TryGetValue(ev, out var nombreEv) ? nombreEv : "Rechazo";
             candidatos.Add((new MovimientoDto(TipoMovimiento.Rechazo, r.Id, r.AnimalId, caravana, null, nombreEvento,
-                r.FechaHoraUtc, Veterinario(r.UsuarioId), r.Anulado, false, null, null, null,
+                r.FechaHoraUtc, r.Anulado, false, null, null, null,
                 ConstructorFicha.LeerCvet(json), r.Observaciones, r.EventoId ?? EventosCampo.Rechazo), r.OrdenInsercion + 1));
         }
 
@@ -160,7 +150,7 @@ internal sealed class ConsultaCampoService
         {
             var contador = await _mangas.ContarVacasAsync(c.MangaId, ct);
             candidatos.Add((new MovimientoDto(TipoMovimiento.Cierre, c.Id, null, null, numerosManga.GetValueOrDefault(c.MangaId),
-                c.Tipo.ToString(), c.FechaHoraUtc, Veterinario(c.UsuarioId), c.Anulado, false,
+                c.Tipo.ToString(), c.FechaHoraUtc, c.Anulado, false,
                 c.CantidadAviss, c.CantidadConfirmada, contador), long.MaxValue));
         }
 

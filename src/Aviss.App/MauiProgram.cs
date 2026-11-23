@@ -30,6 +30,12 @@ public static class MauiProgram
 		// ANTES de AddAvissInfrastructure, que usa TryAdd y por eso no lo pisa.
 		builder.Services.AddSingleton<Aviss.Infrastructure.Sistema.IEspacioLibreProvider, EspacioLibreAndroid>();
 
+		// Preferencias de la tablet (SharedPreferences): una sola instancia con dos puertos, la de mangas y la limpieza de la
+		// clave vieja del veterinario (spec 006, RF-21). La limpieza se registra ANTES de AddAvissInfrastructure, que usa
+		// TryAdd con una versión que no hace nada y por eso no pisa esta.
+		builder.Services.AddSingleton<PreferenciasMaui>();
+		builder.Services.AddSingleton<ILimpiezaPreferencias>(sp => sp.GetRequiredService<PreferenciasMaui>());
+
 		// Todo lo de datos vive en el almacenamiento privado de la app (en Android, /data/data/com.aviss.app/files).
 		// Infrastructure no conoce MAUI: acá se le pasa la carpeta.
 		builder.Services.AddAvissInfrastructure(new RutasAviss(FileSystem.AppDataDirectory));
@@ -40,7 +46,7 @@ public static class MauiProgram
 		builder.Services.AddSingleton<INavegacion, NavegacionShell>();
 
 		// Flujo de campo (spec 003): lo propio de la tablet detrás de los puertos de Application.
-		builder.Services.AddSingleton<IPreferenciasDispositivo, PreferenciasMaui>();
+		builder.Services.AddSingleton<IPreferenciasMangas>(sp => sp.GetRequiredService<PreferenciasMaui>());
 		builder.Services.AddSingleton<IPantalla, PantallaMaui>();
 		builder.Services.AddSingleton<ITemporizador, TemporizadorReal>();
 		builder.Services.AddSingleton<IAvisosCampo, AvisosAndroid>();
@@ -60,7 +66,7 @@ public static class MauiProgram
 		// (La vista previa sobrevive a rotar y a pasar a segundo plano porque la pantalla sigue abierta.)
 		builder.Services.AddTransient<InicioViewModel>();
 		builder.Services.AddTransient<ImportarViewModel>();
-		// La sesión (veterinario y rodeo elegidos) es única y vive mientras la app esté viva (RF-36).
+		// La sesión (el rodeo elegido) es única y vive mientras la app esté viva (RF-36).
 		builder.Services.AddSingleton<SesionTrabajo>();
 		builder.Services.AddTransient<EleccionTrabajoViewModel>();
 		builder.Services.AddTransient<TrabajoViewModel>();

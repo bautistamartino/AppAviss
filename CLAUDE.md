@@ -1,6 +1,6 @@
 # Aviss
 
-App Android (tablet) para veterinarios que hacen **tacto reproductivo** en tambos. Funciona 100 % sin conexión: importa un Excel exportado de Dairy Comp, trabaja sobre SQLite leyendo las caravanas con el bastón RFID Tru-Test XRS2, guarda todo el historial y exporta un Excel para volver a Dairy Comp. Pensada para varias tablets, varios veterinarios y varios tambos, para no pagar una licencia de Dairy Comp por tablet.
+App Android (tablet) para veterinarios que hacen **tacto reproductivo** en tambos. Funciona 100 % sin conexión: importa un Excel exportado de Dairy Comp, trabaja sobre SQLite leyendo las caravanas con el bastón RFID Tru-Test XRS2, guarda todo el historial y exporta un Excel para volver a Dairy Comp. Pensada para varias tablets y varios tambos, para no pagar una licencia de Dairy Comp por tablet.
 
 Requisitos: [docs/requerimientos.md](docs/requerimientos.md) · Arquitectura: [docs/arquitectura.md](docs/arquitectura.md) · Plan por etapas: [docs/plan.md](docs/plan.md) · Principios obligatorios: [docs/constitution.md](docs/constitution.md) · Estado y decisiones: [MEMORY.md](MEMORY.md)
 
@@ -42,6 +42,7 @@ Probados el 2026-11-21. Las rutas del JDK 21 y del SDK de Android las pone `Dire
 - El Excel solo se usa para **importar y exportar**; durante el trabajo todo vive en SQLite. El Excel original no se modifica nunca.
 - Los tactos y el historial **solo se agregan**: corregir es anular con otro registro, nunca borrar ni sobrescribir.
 - Cada tacto se guarda al instante, en una transacción (animal + tacto + historial).
+- **La app no registra qué veterinario trabaja ni qué tablet es** (spec 006): no hay `Usuario`, `UsuarioId` ni `DispositivoId`; al abrir solo se elige establecimiento y rodeo. No se vuelven a agregar sin una spec nueva.
 - Dairy Comp crea eventos al importar: el Excel de vuelta debe expresar el tacto como Dairy Comp lo espera (reglas exactas por validar, ver `MEMORY.md`).
 - **CVET** (columna de Dairy Comp): 0 = la vaca no entra en tacto; otro valor = motivo del tacto (`ReglasCvet`). Un CVET ausente no bloquea.
 - Los estados reproductivos son un catálogo con su código de Dairy Comp (PREÑADA, INSEMIN, SECA, VACIA, FRESCA, NOINSEM, …), no un enum fijo.

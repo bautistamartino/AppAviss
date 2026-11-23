@@ -11,8 +11,8 @@ public sealed class EditarAnimalTests : IDisposable
     private readonly EscenarioConServicios _e = new();
     public void Dispose() => _e.Dispose();
 
-    private Task<Resultado> Editar(Guid animal, string caravana, string? idElec, string? obs, Guid? usuario = null)
-        => _e.Servicio<IAnimalService>().EditarAsync(new EditarAnimalCommand(animal, caravana, idElec, obs, usuario ?? _e.UsuarioId));
+    private Task<Resultado> Editar(Guid animal, string caravana, string? idElec, string? obs)
+        => _e.Servicio<IAnimalService>().EditarAsync(new EditarAnimalCommand(animal, caravana, idElec, obs));
 
     [Fact]
     public async Task Edita_observaciones_e_identificador_electronico_con_un_historial_por_campo()
@@ -29,7 +29,7 @@ public sealed class EditarAnimalTests : IDisposable
         Assert.Equal(2, _e.Cuenta("Historial"));
         Assert.Equal(1, _e.Cuenta("Historial", "Accion = 'Edicion' AND Campo = 'IdElectronico' AND ValorAnterior IS NULL AND ValorNuevo = '982'"));
         Assert.Equal(1, _e.Cuenta("Historial", "Accion = 'Edicion' AND Campo = 'Observaciones' AND ValorAnterior IS NULL AND ValorNuevo = 'coja'"));
-        Assert.Equal(2, _e.Cuenta("Historial", $"UsuarioId = '{EscenarioConServicios.Texto(_e.UsuarioId)}' AND EntidadId = '{EscenarioConServicios.Texto(id)}' AND Entidad = 'Animal'"));
+        Assert.Equal(2, _e.Cuenta("Historial", $"EntidadId = '{EscenarioConServicios.Texto(id)}' AND Entidad = 'Animal'"));
     }
 
     [Fact]
@@ -52,7 +52,7 @@ public sealed class EditarAnimalTests : IDisposable
         Assert.Equal(1, _e.Cuenta("Historial", "Campo = 'NumeroCaravana' AND ValorAnterior = '10' AND ValorNuevo = '11'"));
 
         // Otro animal puede ocupar ahora la "10".
-        Assert.True((await _e.Servicio<IAnimalService>().AltaEnCampoAsync(new AltaEnCampoCommand(_e.RodeoId, "10", null, null, _e.UsuarioId))).EsCorrecto);
+        Assert.True((await _e.Servicio<IAnimalService>().AltaEnCampoAsync(new AltaEnCampoCommand(_e.RodeoId, "10", null, null))).EsCorrecto);
     }
 
     [Fact]
@@ -92,12 +92,10 @@ public sealed class EditarAnimalTests : IDisposable
     }
 
     [Fact]
-    public async Task Rechaza_animal_usuario_inexistente_o_de_baja()
+    public async Task Rechaza_animal_inexistente()
     {
         var a = _e.AnimalCampo("1");
         Assert.Equal(CodigoError.NoEncontrado, (await Editar(Guid.NewGuid(), "1", null, null)).Codigo);
-        Assert.Equal(CodigoError.NoEncontrado, (await Editar(a, "1", null, "x", Guid.NewGuid())).Codigo);
-        Assert.Equal(CodigoError.UsuarioDeBaja, (await Editar(a, "1", null, "x", _e.Base.Usuario("B", activo: false))).Codigo);
         Assert.Null(_e.Col("Animal", a, "Observaciones"));
     }
 }

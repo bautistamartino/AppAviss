@@ -56,37 +56,6 @@ internal sealed class RodeoRepository : IRodeoRepository
     public void Agregar(Rodeo rodeo) => _db.Rodeos.Add(rodeo);
 }
 
-internal sealed class UsuarioRepository : IUsuarioRepository
-{
-    private readonly AvissDbContext _db;
-    public UsuarioRepository(AvissDbContext db) => _db = db;
-
-    public Task<Usuario?> ObtenerAsync(Guid id, CancellationToken ct = default)
-        => _db.Usuarios.FirstOrDefaultAsync(u => u.Id == id, ct);
-
-    public async Task<IReadOnlyList<Usuario>> ListarAsync(CancellationToken ct = default)
-        => await _db.Usuarios.AsNoTracking().OrderBy(u => u.Nombre).ToListAsync(ct);
-
-    public Task<int> ContarActivosExceptoAsync(Guid usuarioId, CancellationToken ct = default)
-        => _db.Usuarios.CountAsync(u => u.Activo && u.Id != usuarioId, ct);
-
-    // SQL fijo armado una sola vez (no lleva datos del usuario); el nombre viaja siempre como parámetro {0}.
-    private static readonly string SqlPorClaveDeNombre =
-        "SELECT * FROM Usuario WHERE " + Persistencia.Configuraciones.Comun.ClaveSql("trim(Nombre)") + " = {0}";
-
-    public Task<bool> ExisteNombreAsync(string nombre, CancellationToken ct = default)
-    {
-        // Misma regla que el índice único IX_Usuario_NombreClave de la migración "Mangas": mayúsculas (con ñ y tildes)
-        // sobre el nombre sin espacios de los extremos. El SQL es constante; el nombre viaja como parámetro.
-        var clave = Caravana.CalcularClave((nombre ?? "").Trim());
-        return _db.Usuarios
-            .FromSqlRaw(SqlPorClaveDeNombre, clave)
-            .AnyAsync(ct);
-    }
-
-    public void Agregar(Usuario usuario) => _db.Usuarios.Add(usuario);
-}
-
 internal sealed class EstadoReproductivoRepository : IEstadoReproductivoRepository
 {
     private readonly AvissDbContext _db;
@@ -323,18 +292,18 @@ internal sealed class RegistroCampoRepository : IRegistroCampoRepository
         var tacto = await _db.Tactos.AsNoTracking()
             .Where(t => t.AnimalId == animalId && t.Tipo == TipoTacto.Normal && !t.Anulado)
             .OrderByDescending(t => t.FechaHoraUtc).ThenByDescending(t => t.OrdenInsercion)
-            .Select(t => new RegistroCampoVigente(TipoRegistroCampo.Tacto, t.Id, t.FechaHoraUtc, t.OrdenInsercion, t.UsuarioId, t.EstadoNuevoId, null))
+            .Select(t => new RegistroCampoVigente(TipoRegistroCampo.Tacto, t.Id, t.FechaHoraUtc, t.OrdenInsercion, t.EstadoNuevoId, null))
             .FirstOrDefaultAsync(ct);
         var marca = await _db.MarcasPasada.AsNoTracking()
             .Where(m => m.AnimalId == animalId && !m.Anulado)
             .OrderByDescending(m => m.FechaHoraUtc).ThenByDescending(m => m.OrdenInsercion)
-            .Select(m => new RegistroCampoVigente(TipoRegistroCampo.Marca, m.Id, m.FechaHoraUtc, m.OrdenInsercion, m.UsuarioId, null, m.MangaId))
+            .Select(m => new RegistroCampoVigente(TipoRegistroCampo.Marca, m.Id, m.FechaHoraUtc, m.OrdenInsercion, null, m.MangaId))
             .FirstOrDefaultAsync(ct);
 
         var rechazo = await _db.Rechazos.AsNoTracking()
             .Where(r => r.AnimalId == animalId && !r.Anulado)
             .OrderByDescending(r => r.FechaHoraUtc).ThenByDescending(r => r.OrdenInsercion)
-            .Select(r => new RegistroCampoVigente(TipoRegistroCampo.Rechazo, r.Id, r.FechaHoraUtc, r.OrdenInsercion, r.UsuarioId, null, null, r.Observaciones, r.EventoId))
+            .Select(r => new RegistroCampoVigente(TipoRegistroCampo.Rechazo, r.Id, r.FechaHoraUtc, r.OrdenInsercion, null, null, r.Observaciones, r.EventoId))
             .FirstOrDefaultAsync(ct);
 
         // Gana el de (fecha, orden) más alto entre los tres.

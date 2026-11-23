@@ -58,13 +58,13 @@ public sealed class OrdenCompartidoTests : IDisposable
     {
         var animalMarca = _e.AnimalImportado("1");
         var animalTacto = _e.AnimalImportado("2", _e.EstadoSeca);
-        var manga = _e.Base.Manga(_e.RodeoId, 1, _e.UsuarioId);
-        _e.Base.MarcaPasada(animalMarca, manga, _e.UsuarioId, fechaHora: _e.Reloj.UtcAhora.AddDays(-3), orden: 500);
+        var manga = _e.Base.Manga(_e.RodeoId, 1);
+        _e.Base.MarcaPasada(animalMarca, manga, fechaHora: _e.Reloj.UtcAhora.AddDays(-3), orden: 500);
 
         var tacto = await _e.TactoAsync(animalTacto, _e.EstadoPrenada);
         Assert.Equal(501, Orden("Tacto", tacto));
 
-        _e.Base.Tacto(animalMarca, _e.UsuarioId, _e.EstadoSeca, fechaHora: _e.Reloj.UtcAhora.AddDays(-2), orden: 900);
+        _e.Base.Tacto(animalMarca, _e.EstadoSeca, fechaHora: _e.Reloj.UtcAhora.AddDays(-2), orden: 900);
         _e.AnimalImportado("3");
         var lectura = await _e.LeerAsync("3");
         Assert.Equal(901, Orden("MarcaPasada", lectura.MarcaId!.Value));
@@ -87,12 +87,12 @@ public sealed class OrdenCompartidoTests : IDisposable
         // Spec 004: el rechazo entra en el orden compartido. Con un orden alto ya ocupado por un rechazo, el próximo tacto y la
         // próxima marca (de otras vacas) toman el siguiente.
         var conRechazo = _e.AnimalImportado("1", _e.EstadoSeca);
-        _e.Base.Rechazo(conRechazo, _e.UsuarioId, fechaHora: _e.Reloj.UtcAhora.AddDays(-1), orden: 700);
+        _e.Base.Rechazo(conRechazo, fechaHora: _e.Reloj.UtcAhora.AddDays(-1), orden: 700);
         var animalTacto = _e.AnimalImportado("2", _e.EstadoSeca);
         var tacto = await _e.TactoAsync(animalTacto, _e.EstadoPrenada);
         Assert.Equal(701, Orden("Tacto", tacto));
 
-        var nuevo = await _e.Campo.RegistrarSoloEventoAsync(new RegistrarSoloEventoCommand(animalTacto, EventosCampo.Rechazo, null, _e.UsuarioId));
+        var nuevo = await _e.Campo.RegistrarSoloEventoAsync(new RegistrarSoloEventoCommand(animalTacto, EventosCampo.Rechazo, null));
         Assert.Equal(702, Orden("Rechazo", nuevo.Valor));
 
         _e.AnimalImportado("3");
@@ -105,7 +105,7 @@ public sealed class OrdenCompartidoTests : IDisposable
     {
         // El tacto de ayer es anterior a la marca de hoy: la vaca no cuenta como procesada hoy y la marca se acepta.
         var animal = _e.AnimalImportado("100", _e.EstadoSeca);
-        _e.Base.Tacto(animal, _e.UsuarioId, _e.EstadoSeca, fechaHora: _e.Reloj.UtcAhora.AddDays(-1));
+        _e.Base.Tacto(animal, _e.EstadoSeca, fechaHora: _e.Reloj.UtcAhora.AddDays(-1));
         var lectura = await _e.LeerAsync("100");
         Assert.Equal(TipoResultadoLectura.Marcada, lectura.Tipo);
     }

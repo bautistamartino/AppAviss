@@ -29,7 +29,7 @@ public sealed class SoloEventoTests : IDisposable
     private static string T(Guid? id) => EscenarioConServicios.Texto(id);
 
     private Task<Resultado<Guid>> GuardarAsync(Guid animal, Guid evento, string? obs = null)
-        => _e.Campo.RegistrarSoloEventoAsync(new RegistrarSoloEventoCommand(animal, evento, obs, _e.UsuarioId));
+        => _e.Campo.RegistrarSoloEventoAsync(new RegistrarSoloEventoCommand(animal, evento, obs));
 
     private async Task<Guid> GuardarOkAsync(Guid animal, Guid evento, string? obs = null)
     {
@@ -59,10 +59,8 @@ public sealed class SoloEventoTests : IDisposable
         Assert.Equal(ultimoTacto, _e.Col("Animal", animal, "FechaUltimoTactoUtc"));
         Assert.Equal(actualizado, _e.Col("Animal", animal, "ActualizadoEnUtc"));
         Assert.Equal(tactos, _e.Cuenta("Tacto"));
-        // Observación, usuario, dispositivo y la hora exacta del reloj; el evento queda en EventoId.
+        // Observación y la hora exacta del reloj; el evento queda en EventoId.
         Assert.Equal("nota", _e.Col("Rechazo", id, "Observaciones"));
-        Assert.Equal(T(_e.UsuarioId), _e.Col("Rechazo", id, "UsuarioId"));
-        Assert.Equal(T(_e.DispositivoId), _e.Col("Rechazo", id, "DispositivoId"));
         Assert.Equal(BaseDeDatosDePrueba.Fecha(_e.Reloj.UtcAhora), _e.Col("Rechazo", id, "FechaHoraUtc"));
         Assert.Equal(T(evento), _e.Col("Rechazo", id, "EventoId"));
         // El historial lleva el nombre del evento.
@@ -98,7 +96,7 @@ public sealed class SoloEventoTests : IDisposable
         var animal = _e.AnimalImportado("100", _e.EstadoSeca);
 
         var r = await _e.Servicio<ITrabajoCampoService>()
-            .RegistrarTactoAsync(new RegistrarTactoCommand(animal, _ok, null, null, _e.UsuarioId));
+            .RegistrarTactoAsync(new RegistrarTactoCommand(animal, _ok, null, null));
 
         Assert.False(r.EsCorrecto);
         Assert.Equal(0, _e.Cuenta("Tacto"));
@@ -157,7 +155,7 @@ public sealed class SoloEventoTests : IDisposable
     }
 
     private Task<Resultado<Guid>> CorregirAsync(Guid registro, Guid evento, string? obs = null)
-        => _e.Campo.CorregirRegistroAsync(new CorregirRegistroCommand(registro, evento, obs, _e.UsuarioId));
+        => _e.Campo.CorregirRegistroAsync(new CorregirRegistroCommand(registro, evento, obs));
 
     [Fact]
     public async Task Corregir_un_tacto_por_un_solo_evento_devuelve_el_estado_y_guarda_el_evento()

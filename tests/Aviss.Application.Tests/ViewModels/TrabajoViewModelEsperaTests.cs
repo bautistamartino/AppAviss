@@ -27,7 +27,7 @@ public class TrabajoViewModelEsperaTests
 
         public Banco()
         {
-            Sesion.Empezar(Datos.Vet, Datos.Rodeo());
+            Sesion.Empezar(Datos.Rodeo());
             Campo.Estados = [Prenada];
             var prefs = new FakePreferencias { ControlPorMangaPorDefecto = true };
             Vm = new TrabajoViewModel(Campo, Lector, prefs, Avisos, new FakePantalla(), new FakeTemporizador(), new FakeNavegacion(), Sesion, Lector, new RelojFijo());
@@ -103,7 +103,7 @@ public class TrabajoViewModelEsperaTests
         await b.Vm.PonerEnEsperaCommand.ExecuteAsync(null);
 
         var cmd = Assert.Single(b.Campo.EsperasPuestas);
-        Assert.Equal((animal, Datos.Vet.Id), (cmd.AnimalId, cmd.UsuarioId));
+        Assert.Equal(animal, cmd.AnimalId);
         Assert.Empty(b.Campo.Tactos);
         Assert.False(b.Vm.HayFicha);
         Assert.Null(b.Vm.EventoElegido);
@@ -323,7 +323,7 @@ public class TrabajoViewModelEsperaTests
         await b.Vm.CerrarFichaCommand.ExecuteAsync(null);
 
         var cmd = Assert.Single(b.Campo.EsperasSalteadas);
-        Assert.Equal((animal, Datos.Vet.Id), (cmd.AnimalId, cmd.UsuarioId));
+        Assert.Equal(animal, cmd.AnimalId);
         Assert.False(b.Vm.HayFicha);
         Assert.Empty(b.Campo.Tactos);
         Assert.Empty(b.Campo.Rechazos);
@@ -497,7 +497,7 @@ public class TrabajoViewModelEsperaTests
         await b.Vm.EntrarCommand.ExecuteAsync(null);
 
         var cmd = Assert.Single(b.Campo.Rechazos);
-        Assert.Equal((animal, "Pata", Datos.Vet.Id), (cmd.AnimalId, cmd.Observaciones, cmd.UsuarioId));
+        Assert.Equal((animal, "Pata"), (cmd.AnimalId, cmd.Observaciones));
         Assert.Empty(b.Campo.Tactos);
         Assert.False(b.Vm.HayFicha);
         Assert.Equal("1001: Rechazo", b.Vm.UltimoGuardado);
@@ -572,7 +572,7 @@ public class TrabajoViewModelEsperaTests
         var b = new Banco();
         var animal = Guid.NewGuid();
         var rechazoId = Guid.NewGuid();
-        var ultimo = new UltimoRegistroDto(TipoRegistroCampo.Rechazo, rechazoId, Ahora, null, "Dra. Ana", 1, "Pata");
+        var ultimo = new UltimoRegistroDto(TipoRegistroCampo.Rechazo, rechazoId, Ahora, null, 1, "Pata");
         b.Campo.Lecturas["1001"] = Datos.Repetido(animal, "1001", ultimo, puedeCorregir: true);
         b.Campo.Fichas[animal] = Datos.Ficha(animal, "1001");
         await b.Vm.IniciarAsync();

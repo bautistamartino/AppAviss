@@ -20,23 +20,21 @@ internal sealed class TrabajoCampoService : ITrabajoCampoService
     private readonly IAnimalRepository _animales;
     private readonly IRodeoRepository _rodeos;
     private readonly IEstablecimientoRepository _establecimientos;
-    private readonly IUsuarioRepository _usuarios;
     private readonly IEstadoReproductivoRepository _estados;
     private readonly ITactoRepository _tactos;
     private readonly IRegistroCampoRepository _registros;
     private readonly IHistorialRepository _historial;
     private readonly IRelojService _reloj;
-    private readonly IDispositivoService _dispositivo;
     private readonly IRechazoRepository _rechazos;
     private readonly EsperaService _esperas;
 
     public TrabajoCampoService(IUnitOfWork uow, IAnimalRepository animales, IRodeoRepository rodeos,
-        IEstablecimientoRepository establecimientos, IUsuarioRepository usuarios, IEstadoReproductivoRepository estados,
-        ITactoRepository tactos, IRegistroCampoRepository registros, IHistorialRepository historial, IRelojService reloj, IDispositivoService dispositivo,
+        IEstablecimientoRepository establecimientos, IEstadoReproductivoRepository estados,
+        ITactoRepository tactos, IRegistroCampoRepository registros, IHistorialRepository historial, IRelojService reloj,
         IRechazoRepository rechazos, EsperaService esperas)
     {
-        _uow = uow; _animales = animales; _rodeos = rodeos; _establecimientos = establecimientos; _usuarios = usuarios;
-        _estados = estados; _tactos = tactos; _registros = registros; _historial = historial; _reloj = reloj; _dispositivo = dispositivo;
+        _uow = uow; _animales = animales; _rodeos = rodeos; _establecimientos = establecimientos;
+        _estados = estados; _tactos = tactos; _registros = registros; _historial = historial; _reloj = reloj;
         _rechazos = rechazos; _esperas = esperas;
     }
 
@@ -76,14 +74,14 @@ internal sealed class TrabajoCampoService : ITrabajoCampoService
             if (tacto is not null)
             {
                 animalId = tacto.AnimalId;
-                var anulacion = await AnularNucleoAsync(new AnularTactoCommand(tacto.Id, c.UsuarioId), orden, ct);
+                var anulacion = await AnularNucleoAsync(new AnularTactoCommand(tacto.Id), orden, ct);
                 if (!anulacion.EsCorrecto) return anulacion;
                 orden++; // la anulación del tacto gastó el orden
             }
             else
             {
                 animalId = rechazo!.AnimalId;
-                var anulacion = await AnularRechazoNucleoAsync(new AnularRechazoCommand(rechazo.Id, c.UsuarioId), ct);
+                var anulacion = await AnularRechazoNucleoAsync(new AnularRechazoCommand(rechazo.Id), ct);
                 if (!anulacion.EsCorrecto) return anulacion;
             }
 
@@ -91,8 +89,8 @@ internal sealed class TrabajoCampoService : ITrabajoCampoService
             // un estado = tacto. Un id que no existe cae en el tacto, que responde "el estado elegido no existe" (y la transacción se revierte).
             var elegido = c.Evento == EventosCampo.Rechazo ? null : await _estados.ObtenerAsync(c.Evento, ct);
             return c.Evento == EventosCampo.Rechazo || elegido?.Tipo == TipoEvento.SoloEvento
-                ? await RegistrarSoloEventoNucleoAsync(new RegistrarSoloEventoCommand(animalId, c.Evento, c.Observaciones, c.UsuarioId), orden, ct)
-                : await RegistrarNucleoAsync(new RegistrarTactoCommand(animalId, c.Evento, null, c.Observaciones, c.UsuarioId), orden, ct);
+                ? await RegistrarSoloEventoNucleoAsync(new RegistrarSoloEventoCommand(animalId, c.Evento, c.Observaciones), orden, ct)
+                : await RegistrarNucleoAsync(new RegistrarTactoCommand(animalId, c.Evento, null, c.Observaciones), orden, ct);
         }, ct);
 
     // Núcleo de "registrar un solo evento" (spec 005; el Rechazo de la spec 004 es el caso fijo): mismas validaciones que una marca de
@@ -116,8 +114,6 @@ internal sealed class TrabajoCampoService : ITrabajoCampoService
         var rodeo = await _rodeos.ObtenerAsync(animal.RodeoId, ct);
         var establecimiento = rodeo is null ? null : await _establecimientos.ObtenerAsync(rodeo.EstablecimientoId, ct);
         if (rodeo is null || establecimiento is null) return Resultado.Error<Guid>(CodigoError.NoEncontrado, "El rodeo del animal no existe.");
-        var errorUsuario = await Ayudas.ValidarUsuarioAsync(_usuarios, c.UsuarioId, ct);
-        if (errorUsuario is not null) return Resultado.Error<Guid>(errorUsuario.Codigo!.Value, errorUsuario.Mensaje!);
 
         var ahora = _reloj.UtcAhora;
         var ultimo = await _registros.ObtenerUltimoVigenteAsync(animal.Id, ct);
@@ -133,14 +129,14 @@ internal sealed class TrabajoCampoService : ITrabajoCampoService
         try
         {
             var ordenRechazo = orden ?? await _registros.SiguienteOrdenAsync(ct);
-            var rechazo = Rechazo.Registrar(animal.Id, ahora, ordenRechazo, c.Observaciones, c.UsuarioId, _dispositivo.ObtenerId(), ahora, evento?.Id);
+            var rechazo = Rechazo.Registrar(animal.Id, ahora, ordenRechazo, c.Observaciones, ahora, evento?.Id);
             _rechazos.Agregar(rechazo);
             // El Rechazo fijo historiza su motivo; un evento del catálogo, su nombre (así el historial lo dice aunque después se renombre o desactive).
             _historial.Agregar(evento is null
-                ? Historial.Crear("Rechazo", rechazo.Id, "Observaciones", null, rechazo.Observaciones, ahora, c.UsuarioId, AccionHistorial.RechazoCreado)
-                : Historial.Crear("Rechazo", rechazo.Id, "Evento", null, evento.Nombre, ahora, c.UsuarioId, AccionHistorial.RechazoCreado));
+                ? Historial.Crear("Rechazo", rechazo.Id, "Observaciones", null, rechazo.Observaciones, ahora, AccionHistorial.RechazoCreado)
+                : Historial.Crear("Rechazo", rechazo.Id, "Evento", null, evento.Nombre, ahora, AccionHistorial.RechazoCreado));
             // Si la vaca estaba en espera, queda resuelta en esta misma transacción (RF-3).
-            await _esperas.ResolverSiHayAsync(animal.Id, rechazo.Id, c.UsuarioId, ahora, ct);
+            await _esperas.ResolverSiHayAsync(animal.Id, rechazo.Id, ahora, ct);
             return Resultado.Ok(rechazo.Id);
         }
         catch (DominioException ex) { return Ayudas.DatosInvalidos<Guid>(ex); }
@@ -152,8 +148,6 @@ internal sealed class TrabajoCampoService : ITrabajoCampoService
         var rechazo = await _rechazos.ObtenerAsync(c.RechazoId, ct);
         if (rechazo is null) return Resultado.Error<Guid>(CodigoError.NoEncontrado, "El rechazo no existe.");
         if (rechazo.Anulado) return Resultado.Error<Guid>(CodigoError.RechazoYaAnulado, MensajesCampo.Para(CodigoError.RechazoYaAnulado));
-        var errorUsuario = await Ayudas.ValidarUsuarioAsync(_usuarios, c.UsuarioId, ct);
-        if (errorUsuario is not null) return Resultado.Error<Guid>(errorUsuario.Codigo!.Value, errorUsuario.Mensaje!);
 
         var ultimo = await _registros.ObtenerUltimoVigenteAsync(rechazo.AnimalId, ct);
         if (ultimo is null || ultimo.Tipo != TipoRegistroCampo.Rechazo || ultimo.Id != rechazo.Id)
@@ -162,8 +156,8 @@ internal sealed class TrabajoCampoService : ITrabajoCampoService
         try
         {
             var ahora = _reloj.UtcAhora;
-            rechazo.MarcarAnulado(c.UsuarioId, ahora); // el único cambio que la base permite sobre un rechazo guardado
-            _historial.Agregar(Historial.Crear("Rechazo", rechazo.Id, "Anulado", "0", "1", ahora, c.UsuarioId, AccionHistorial.RechazoAnulado));
+            rechazo.MarcarAnulado(ahora); // el único cambio que la base permite sobre un rechazo guardado
+            _historial.Agregar(Historial.Crear("Rechazo", rechazo.Id, "Anulado", "0", "1", ahora, AccionHistorial.RechazoAnulado));
             return Resultado.Ok(rechazo.Id);
         }
         catch (DominioException ex) { return Ayudas.DatosInvalidos<Guid>(ex); }
@@ -183,8 +177,6 @@ internal sealed class TrabajoCampoService : ITrabajoCampoService
         // Un solo evento (OK, Aborto, Revisar Nuevamente) no cambia el estado: nunca se guarda como tacto (spec 005, RF-16).
         if (estadoNuevo.Tipo == TipoEvento.SoloEvento)
             return Resultado.Error<Guid>(CodigoError.DatosInvalidos, "Ese evento no cambia el estado de la vaca: se guarda como evento, no como tacto.");
-        var errorUsuario = await Ayudas.ValidarUsuarioAsync(_usuarios, c.UsuarioId, ct);
-        if (errorUsuario is not null) return Resultado.Error<Guid>(errorUsuario.Codigo!.Value, errorUsuario.Mensaje!);
 
         // Un único "ahora": es la hora del tacto y la que se usa para validarlo (RF-8b).
         var ahora = _reloj.UtcAhora;
@@ -213,15 +205,15 @@ internal sealed class TrabajoCampoService : ITrabajoCampoService
             var estadoAnterior = animal.EstadoReproductivoId; // se toma antes de cambiarlo
             var ordenTacto = orden ?? await _registros.SiguienteOrdenAsync(ct); // orden compartido con las marcas de pasada
             var tacto = Tacto.Registrar(animal.Id, ahora, ordenTacto, estadoAnterior, c.EstadoNuevoId, c.DiasPrenez,
-                c.Observaciones, c.UsuarioId, _dispositivo.ObtenerId(), ahora);
+                c.Observaciones, ahora);
             animal.AplicarTacto(c.EstadoNuevoId, ahora, ahora);
 
             _tactos.Agregar(tacto);
             // Exactamente un registro de historial por tacto; los estados van por id, no por nombre.
             _historial.Agregar(Historial.Crear("Tacto", tacto.Id, "Estado", Ayudas.IdATextoONulo(estadoAnterior),
-                Ayudas.IdATexto(c.EstadoNuevoId), ahora, c.UsuarioId, AccionHistorial.Tacto));
+                Ayudas.IdATexto(c.EstadoNuevoId), ahora, AccionHistorial.Tacto));
             // Si la vaca estaba en espera, queda resuelta en esta misma transacción (spec 004, RF-3).
-            await _esperas.ResolverSiHayAsync(animal.Id, tacto.Id, c.UsuarioId, ahora, ct);
+            await _esperas.ResolverSiHayAsync(animal.Id, tacto.Id, ahora, ct);
             return Resultado.Ok(tacto.Id);
         }
         catch (DominioException ex) { return Ayudas.DatosInvalidos<Guid>(ex); }
@@ -248,8 +240,6 @@ internal sealed class TrabajoCampoService : ITrabajoCampoService
         if (ultimo is null || ultimo.Tipo != TipoRegistroCampo.Tacto || ultimo.Id != tacto.Id)
             return Resultado.Error<Guid>(CodigoError.TactoNoEsElUltimo, "Solo se puede anular el último registro vigente del animal.");
 
-        var errorUsuario = await Ayudas.ValidarUsuarioAsync(_usuarios, c.UsuarioId, ct);
-        if (errorUsuario is not null) return Resultado.Error<Guid>(errorUsuario.Codigo!.Value, errorUsuario.Mensaje!);
 
         try
         {
@@ -258,14 +248,14 @@ internal sealed class TrabajoCampoService : ITrabajoCampoService
             var estadoActual = animal.EstadoReproductivoId;
             var ordenAnulacion = orden ?? await _registros.SiguienteOrdenAsync(ct);
 
-            var anulacion = Tacto.CrearAnulacion(tacto, estadoActual, ahora, ordenAnulacion, c.UsuarioId, _dispositivo.ObtenerId(), ahora);
+            var anulacion = Tacto.CrearAnulacion(tacto, estadoActual, ahora, ordenAnulacion, ahora);
             // El animal vuelve al estado anterior del tacto anulado y a la fecha del último vigente anterior (o vacía).
             animal.RevertirTacto(tacto.EstadoAnteriorId, anterior?.FechaHoraUtc, ahora);
             tacto.MarcarAnulado(ahora); // el único cambio que la base permite sobre un tacto guardado
 
             _tactos.Agregar(anulacion);
             _historial.Agregar(Historial.Crear("Tacto", anulacion.Id, "Estado", Ayudas.IdATextoONulo(estadoActual),
-                Ayudas.IdATextoONulo(anulacion.EstadoNuevoId), ahora, c.UsuarioId, AccionHistorial.AnulacionTacto));
+                Ayudas.IdATextoONulo(anulacion.EstadoNuevoId), ahora, AccionHistorial.AnulacionTacto));
             return Resultado.Ok(anulacion.Id);
         }
         catch (DominioException ex) { return Ayudas.DatosInvalidos<Guid>(ex); }

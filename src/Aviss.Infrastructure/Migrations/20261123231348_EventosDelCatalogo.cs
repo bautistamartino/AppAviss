@@ -6,7 +6,8 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace Aviss.Infrastructure.Migrations
 {
     /// <summary>
-    /// Spec 005 (eventos del catálogo). El Up está ESCRITO A MANO, no es el que generó EF: el Designer y el snapshot sí son
+    /// Spec 005 (eventos del catálogo). Va DESPUÉS de QuitarVeterinario (spec 006): parte de la base ya sin veterinario, por
+    /// eso el trigger de inmutabilidad de Rechazo que recrea no compara usuario ni dispositivo. El Up está ESCRITO A MANO, no es el que generó EF: el Designer y el snapshot sí son
     /// los de EF (por eso "dotnet ef migrations has-pending-model-changes" dice que no hay cambios). EF habría
     /// reconstruido las tablas para agregar los CHECK y la FK, y en SQLite eso se lleva los triggers de Rechazo; con
     /// ALTER TABLE ... ADD COLUMN nada se reconstruye. Como en "Inicial", "Mangas" y "EsperaYRechazo", este SQL es literal
@@ -73,9 +74,7 @@ WHEN NOT (
     AND OLD.FechaHoraUtc IS NEW.FechaHoraUtc
     AND OLD.OrdenInsercion IS NEW.OrdenInsercion
     AND OLD.EventoId IS NEW.EventoId
-    AND OLD.Observaciones IS NEW.Observaciones
-    AND OLD.UsuarioId IS NEW.UsuarioId
-    AND OLD.DispositivoId IS NEW.DispositivoId)
+    AND OLD.Observaciones IS NEW.Observaciones)
 BEGIN
     SELECT RAISE(ABORT, 'Un rechazo guardado no se puede modificar; solo se puede anular.');
 END;");

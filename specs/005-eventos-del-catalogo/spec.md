@@ -1,9 +1,9 @@
 # 005 — Eventos del catálogo: OK, Aborto, Revisar Nuevamente y "Otro evento"
 
-Estado: implementada (T1 a T5), pendiente de revisor y de la prueba en la tablet
+Estado: implementada (T1 a T5, integrada sobre la 006), pendiente de revisor y de la prueba en la tablet
 Fecha: 2026-11-23
 
-> **Numeración:** esta spec es la 005 (rama `spec/005-eventos-del-catalogo`). La 006 es "sin veterinario" (otra sesión), la exportación pasa a ser la **007** y el bastón la **008**. Al aprobarla hay que actualizar: `docs/plan.md` (las etapas de exportación y bastón), `MEMORY.md` (las menciones a la spec 005 como exportación) y la spec 004 (nombra "exportación 005"; pasa a 006).
+> **Numeración:** esta spec es la 005 (rama `spec/005-eventos-del-catalogo`). La spec 006 (sin veterinario) se implementa **antes** y esta parte de la base que deja: sin `Usuario`, sin `UsuarioId` ni `DispositivoId` en ninguna tabla. La exportación pasa a ser la **007** y el bastón la **008** (renumerado en la spec 006: `docs/plan.md`, `MEMORY.md` y la spec 004 ya están al día).
 
 > **Decisiones del responsable incorporadas:** los códigos de Dairy Comp de OK, Aborto y Revisar Nuevamente arrancan **provisorios** (el nombre en mayúsculas) hasta que el padre del responsable pase los reales; los tres son **solo evento**; principales y orden; sin precarga de eventos del tambo.
 
@@ -60,7 +60,7 @@ Lo usa el veterinario en la manga, de pie y con una mano, en vertical (800x1340)
 - **RF-15** — Mientras está abierta la lista de eventos (principal o secundaria), las lecturas del bastón se tratan como con la ficha abierta (spec 003 RF-19): no se pierden ni cambian de pantalla.
 
 ### Qué hace cada evento al guardarse
-- **RF-16** — Cuando el veterinario guarda con **Entrar** OK, Aborto o Revisar Nuevamente, el sistema deberá registrarlo con observación opcional, veterinario activo, **fecha y hora exactas del reloj** (la hora a la que pasó el animal), dispositivo e historial, en una única operación indivisible, y **no deberá cambiar** el estado reproductivo de la vaca ni su fecha de último tacto. Esto vale también para Aborto; el padre del responsable confirmará cómo lo trata Dairy Comp y, si difiere, será un cambio de esta spec.
+- **RF-16** — Cuando el veterinario guarda con **Entrar** OK, Aborto o Revisar Nuevamente, el sistema deberá registrarlo con observación opcional, **fecha y hora exactas del reloj** (la hora a la que pasó el animal) e historial (sin registrar quién lo hizo ni en qué tablet: spec 006), en una única operación indivisible, y **no deberá cambiar** el estado reproductivo de la vaca ni su fecha de último tacto. Esto vale también para Aborto; el padre del responsable confirmará cómo lo trata Dairy Comp y, si difiere, será un cambio de esta spec.
 - **RF-17** — El comportamiento observable de un evento solo evento es el mismo que el de Rechazo (spec 004): se ve con su nombre en el Historial de la ficha, en "Últimos movimientos" y en el aviso de animal repetido; la ficha se cierra y la vaca cuenta como procesada; puede **deshacerse** (anulándose, sin borrar) y **editarse** (se anula el original y se registra uno nuevo, pudiendo pasar de estado a solo evento y al revés); y respeta el orden por fecha con los demás registros. Cómo se guarda internamente (un tacto sin cambio de estado o un registro aparte) lo decide el plan.
 - **RF-18** — **Rechazo** deberá mantener todo su comportamiento (registro propio, motivo en la observación, sin cambiar el estado). Esta spec solo decide en qué lista aparece.
 - **RF-22** — Todo evento guardado (estado, solo evento o Rechazo, y también el registro nuevo de una edición) deberá conservar su **fecha y hora exactas**, de modo que la exportación (spec 007) pueda agregarlas como columnas. Registrar un evento solo lo guarda con su fecha y hora: **no modifica ni reemplaza ninguna columna del archivo original importado**; el efecto sobre el archivo de vuelta es únicamente el de agregar columnas nuevas (veredicto, fecha, hora), lo define la spec 007. Un evento anulado conserva su fecha y hora originales.
@@ -68,14 +68,14 @@ Lo usa el veterinario en la manga, de pie y con una mano, en vertical (800x1340)
 ### Instalaciones existentes
 - **RF-19** — Cuando la app se abre en una tablet con la base ya creada, el sistema deberá agregar los eventos nuevos (RF-1) y los datos de principal / orden (RF-2) **sin perder ni cambiar nada**: los 6 estados conservan nombre, código, estado activo o desactivado y tactos; los creados a mano se conservan y quedan en "Otro evento", ordenados por nombre; los iniciales desactivados a mano no se reactivan. Todo cambio de estructura es una migración (constitución §7), con **backup previo**, y si falla a medias la base queda **como estaba antes**, sin datos parciales.
 - **RF-20** — Si al agregar un evento estándar ya existe uno con el **mismo nombre o el mismo código** (comparados sin distinguir mayúsculas; ej.: un "Aborto" creado a mano), el sistema deberá **adoptarlo** como ese evento estándar en vez de crear otro: conserva su nombre, su código y si está activo o no (no se reactiva), y pasa a tener la identidad interna, el tipo y la marca de principal / orden del estándar. Así la lista principal no queda con menos botones sin explicación. El arranque no puede fallar por esto.
-- **RF-21** — El sistema deberá seguir funcionando sin conexión y sin usar la red (spec 003 RF-32), y no deberá incluir caravanas, nombres de tambo o de veterinarios en errores ni logs (spec 003 RF-33).
+- **RF-21** — El sistema deberá seguir funcionando sin conexión y sin usar la red (spec 003 RF-32), y no deberá incluir caravanas ni nombres de tambo en errores ni logs (spec 003 RF-33).
 
 ## Casos límite
 - **Sin conexión:** no cambia nada; todo es local (RF-21).
 - **Corte de energía:** durante la migración y el sembrado, la base queda en el estado anterior o en el nuevo, nunca a medias, con backup previo (RF-19). Un evento elegido sin "Entrar" se pierde sin consecuencias; un guardado con "Entrar" está completo o no existe (RF-16).
 - **Excel mal formado / RPRO (solo lectura al importar):** esto afecta únicamente cómo se **lee** el `RPRO` para el estado inicial; al exportar, el `RPRO` original no se reemplaza (RF-22). Un `RPRO` que coincide con el código de un evento (ej. "ABORTO") se interpreta con el mismo catálogo que hoy. Los eventos **solo evento** (OK, Aborto, Revisar Nuevamente, Rechazo) **no son un estado inicial válido**: si el `RPRO` coincide con uno, la vaca entra **sin estado y con advertencia**, como un código desconocido. Un `RPRO` **vacío** nunca se resuelve a un evento: entra sin estado y sin advertencia, como hoy.
 - **Vaca leída varias veces / no encontrada / CVET 0:** sin cambios; solo las vacas que entran en tacto abren la ficha con la lista.
-- **Varios veterinarios o tambos en la misma tablet:** el catálogo es de la tablet; todos ven los mismos principales y los mismos eventos de "Otro evento".
+- **Varios tambos o usuarios en la misma tablet (sin veterinarios registrados, spec 006):** el catálogo es de la tablet; todos ven los mismos principales y los mismos eventos de "Otro evento".
 - **Evento principal desactivado o renombrado a mano:** desactivado, desaparece y la lista es más corta; renombrado, sigue siendo el mismo principal (RF-5).
 - **Todos los principales desactivados:** la lista muestra solo "Otro evento" (RF-11).
 - **Evento creado a mano con el nombre o código de un estándar (antes o después de actualizar):** antes de actualizar se adopta (RF-20); después de actualizar, el nombre y el código del estándar ya están ocupados y la regla de repetidos de la spec 003 RF-39 lo rechaza.
@@ -97,7 +97,7 @@ Lo usa el veterinario en la manga, de pie y con una mano, en vertical (800x1340)
 - [x] Cada evento guardado (estado, solo evento, Rechazo y edición) conserva fecha y hora exactas, también al anularse (RF-22).
 - [x] **Con tests** (ViewModel, catálogo, importación y migración sobre una base con datos): RF-1 a RF-9, RF-11 a RF-13, RF-16 a RF-20, RF-22.
 - [ ] (a verificar, sin marcar hasta la prueba en la tablet) **A verificar en la tablet (800x1340 vertical)**: la lista principal entra sin desplazar, cualquier evento a 3 toques como máximo con una mano, y la secundaria con ~25 eventos se recorre bien (RF-10, RF-14).
-- [ ] `dotnet build` y `dotnet test` en verde. (lo corre el coordinador al cerrar la spec)
+- [x] `dotnet build` y `dotnet test` en verde (con la 006 integrada, 2026-11-23).
 
 ## Preguntas abiertas
 - **P1 — Códigos reales de OK, Aborto y Revisar Nuevamente (los trae el padre del responsable).** Mientras tanto rigen los provisorios (RF-1), anotados en `MEMORY.md` como pendientes de validar. Recomendación: no agregar columna ni pantalla para marcarlos; cuando lleguen, corregirlos con una actualización del catálogo.

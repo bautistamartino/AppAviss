@@ -16,7 +16,7 @@ public class TrabajoViewModelRechazoVigenteTests
     private static TrabajoViewModel Crear(FakeCampoService campo)
     {
         var sesion = new SesionTrabajo();
-        sesion.Empezar(Datos.Vet, Datos.Rodeo());
+        sesion.Empezar(Datos.Rodeo());
         var lector = new FakeLector();
         return new TrabajoViewModel(campo, lector, new FakePreferencias { ControlPorMangaPorDefecto = true }, new FakeAvisos(),
             new FakePantalla(), new FakeTemporizador(), new FakeNavegacion(), sesion, lector, new RelojFijo());

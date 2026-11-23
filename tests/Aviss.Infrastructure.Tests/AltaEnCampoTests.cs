@@ -13,12 +13,12 @@ public sealed class AltaEnCampoTests : IDisposable
 
     private static string T(Guid? id) => EscenarioConServicios.Texto(id);
 
-    private Task<Resultado<Guid>> Alta(string caravana, string? idElec = null, string? obs = null, Guid? rodeo = null, Guid? usuario = null)
+    private Task<Resultado<Guid>> Alta(string caravana, string? idElec = null, string? obs = null, Guid? rodeo = null)
         => _e.Servicio<IAnimalService>().AltaEnCampoAsync(
-            new AltaEnCampoCommand(rodeo ?? _e.RodeoId, caravana, idElec, obs, usuario ?? _e.UsuarioId));
+            new AltaEnCampoCommand(rodeo ?? _e.RodeoId, caravana, idElec, obs));
 
-    private Task<Resultado> AnularAlta(Guid animal, Guid? usuario = null)
-        => _e.Servicio<IAnimalService>().AnularAltaAsync(new AnularAltaCommand(animal, usuario ?? _e.UsuarioId));
+    private Task<Resultado> AnularAlta(Guid animal)
+        => _e.Servicio<IAnimalService>().AnularAltaAsync(new AnularAltaCommand(animal));
 
     [Fact]
     public async Task Crea_el_animal_con_los_datos_minimos_origen_alta_y_un_historial()
@@ -41,7 +41,6 @@ public sealed class AltaEnCampoTests : IDisposable
         Assert.Equal(T(id), _e.Base.Escalar("SELECT EntidadId FROM Historial"));
         Assert.Equal("Alta", _e.Base.Escalar("SELECT Campo FROM Historial"));
         Assert.Equal("Alta", _e.Base.Escalar("SELECT Accion FROM Historial"));
-        Assert.Equal(T(_e.UsuarioId), _e.Base.Escalar("SELECT UsuarioId FROM Historial"));
     }
 
     [Fact]
@@ -98,11 +97,9 @@ public sealed class AltaEnCampoTests : IDisposable
     }
 
     [Fact]
-    public async Task Rechaza_rodeo_establecimiento_o_usuario_de_baja_o_inexistentes()
+    public async Task Rechaza_rodeo_establecimiento_o_inexistentes()
     {
         Assert.Equal(CodigoError.NoEncontrado, (await Alta("1", rodeo: Guid.NewGuid())).Codigo);
-        Assert.Equal(CodigoError.NoEncontrado, (await Alta("1", usuario: Guid.NewGuid())).Codigo);
-        Assert.Equal(CodigoError.UsuarioDeBaja, (await Alta("1", usuario: _e.Base.Usuario("B", activo: false))).Codigo);
 
         _e.Base.Ejecutar("UPDATE Rodeo SET Activo = 0");
         Assert.Equal(CodigoError.RodeoDeBaja, (await Alta("1")).Codigo);
@@ -159,10 +156,9 @@ public sealed class AltaEnCampoTests : IDisposable
     }
 
     [Fact]
-    public async Task Anular_dos_veces_o_un_inexistente_o_con_usuario_de_baja_se_rechaza()
+    public async Task Anular_dos_veces_o_un_inexistente_se_rechaza()
     {
         var id = (await Alta("1")).Valor;
-        Assert.Equal(CodigoError.UsuarioDeBaja, (await AnularAlta(id, _e.Base.Usuario("B", activo: false))).Codigo);
         Assert.True((await AnularAlta(id)).EsCorrecto);
         Assert.Equal(CodigoError.AnimalAnulado, (await AnularAlta(id)).Codigo);
         Assert.Equal(CodigoError.NoEncontrado, (await AnularAlta(Guid.NewGuid())).Codigo);
@@ -175,10 +171,10 @@ public sealed class AltaEnCampoTests : IDisposable
         await AnularAlta(id);
 
         var tacto = await _e.Servicio<ITrabajoCampoService>().RegistrarTactoAsync(
-            new RegistrarTactoCommand(id, _e.EstadoSeca, null, null, _e.UsuarioId));
+            new RegistrarTactoCommand(id, _e.EstadoSeca, null, null));
         Assert.Equal(CodigoError.AnimalAnulado, tacto.Codigo);
 
-        var edicion = await _e.Servicio<IAnimalService>().EditarAsync(new EditarAnimalCommand(id, "1", null, "x", _e.UsuarioId));
+        var edicion = await _e.Servicio<IAnimalService>().EditarAsync(new EditarAnimalCommand(id, "1", null, "x"));
         Assert.Equal(CodigoError.AnimalAnulado, edicion.Codigo);
     }
 }

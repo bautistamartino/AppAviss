@@ -19,24 +19,19 @@ public sealed class MarcaPasada : EntidadEditable
     /// </summary>
     public long OrdenInsercion { get; private set; }
 
-    public Guid UsuarioId { get; private set; }
-    public Guid DispositivoId { get; private set; }
     public bool Anulado { get; private set; }
 
     private MarcaPasada() { }
     private MarcaPasada(DateTime ahoraUtc) : base(ahoraUtc) { }
 
     public static MarcaPasada Registrar(
-        Guid animalId, Guid mangaId, DateTime fechaHoraUtc, long ordenInsercion,
-        Guid usuarioId, Guid dispositivoId, DateTime ahoraUtc)
+        Guid animalId, Guid mangaId, DateTime fechaHoraUtc, long ordenInsercion, DateTime ahoraUtc)
         => new(ahoraUtc)
         {
             AnimalId = Validar.IdObligatorio(animalId, "El animal"),
             MangaId = Validar.IdObligatorio(mangaId, "La manga"),
             FechaHoraUtc = Validar.Utc(fechaHoraUtc, nameof(fechaHoraUtc)),
             OrdenInsercion = ordenInsercion,
-            UsuarioId = Validar.IdObligatorio(usuarioId, "El usuario"),
-            DispositivoId = Validar.IdObligatorio(dispositivoId, "El dispositivo")
         };
 
     /// <summary>Desmarca a la vaca. Es el único cambio permitido sobre una marca guardada.</summary>

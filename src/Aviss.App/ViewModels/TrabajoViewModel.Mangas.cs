@@ -12,17 +12,17 @@ namespace Aviss.App.ViewModels;
 /// <summary>Pantalla de trabajo: el control por manga (cantidad, contador 7/10, cierre automático), el engranaje, "Finalizar manga" y "Terminar el tacto".</summary>
 public sealed partial class TrabajoViewModel
 {
-    // ---- Control por manga: cada veterinario lo prende o lo apaga a su gusto (engranaje de arriba a la izquierda)
+    // ---- Control por manga: cada tablet lo prende o lo apaga a su gusto (engranaje de arriba a la izquierda)
 
     private bool _cargandoPreferencias;
 
     /// <summary>
     /// Se lleva el control por manga en este establecimiento: contador "7/10", cantidad de la manga, cierre automático y "Finalizar
     /// manga". Apagado, se ve todo lo demás sin lo de las mangas (la app sigue usando una manga interna para guardar los datos).
-    /// Es una preferencia de cada establecimiento (cada tambo trabaja a su manera): se guarda al cambiarla y se vuelve a leer al empezar. No depende del veterinario.
+    /// Es una preferencia de cada establecimiento (cada tambo trabaja a su manera): se guarda al cambiarla y se vuelve a leer al empezar.
     /// </summary>
     [ObservableProperty]
-    private bool _usaMangas = IPreferenciasDispositivo.ControlPorMangaPorDefecto;
+    private bool _usaMangas = IPreferenciasMangas.ControlPorMangaPorDefecto;
 
     partial void OnUsaMangasChanged(bool value)
     {
@@ -39,7 +39,7 @@ public sealed partial class TrabajoViewModel
     {
         if (_sesion.Rodeo is not { } rodeo) return;
         _cargandoPreferencias = true;
-        try { UsaMangas = _preferencias.ObtenerControlPorManga(rodeo.EstablecimientoId) ?? IPreferenciasDispositivo.ControlPorMangaPorDefecto; }
+        try { UsaMangas = _preferencias.ObtenerControlPorManga(rodeo.EstablecimientoId) ?? IPreferenciasMangas.ControlPorMangaPorDefecto; }
         finally { _cargandoPreferencias = false; }
     }
 
@@ -311,12 +311,12 @@ public sealed partial class TrabajoViewModel
     private async Task CerrarMangaSiEstaCompletaAsync()
     {
         if (!MangaAbierta || MetaManga is not { } meta || Contador != meta) return;
-        if (_sesion.Veterinario is not { } vet || _sesion.Rodeo is not { } rodeo) return;
+        if (_sesion.Rodeo is not { } rodeo) return;
 
         try
         {
             var numero = NumeroManga;
-            var resultado = await EnCampoAsync(() => _campo.FinalizarMangaAsync(new FinalizarMangaCommand(rodeo.RodeoId, null, vet.Id)));
+            var resultado = await EnCampoAsync(() => _campo.FinalizarMangaAsync(new FinalizarMangaCommand(rodeo.RodeoId, null)));
             if (!resultado.EsCorrecto)
             {
                 MensajeInfo = resultado.Mensaje;
@@ -336,10 +336,10 @@ public sealed partial class TrabajoViewModel
 
     private async Task CerrarMangaAsync()
     {
-        if (_sesion.Veterinario is not { } vet || _sesion.Rodeo is not { } rodeo) return;
+        if (_sesion.Rodeo is not { } rodeo) return;
         try
         {
-            var resultado = await EnCampoAsync(() => _campo.FinalizarMangaAsync(new FinalizarMangaCommand(rodeo.RodeoId, _cantidadRealConfirmada, vet.Id)));
+            var resultado = await EnCampoAsync(() => _campo.FinalizarMangaAsync(new FinalizarMangaCommand(rodeo.RodeoId, _cantidadRealConfirmada)));
             if (!resultado.EsCorrecto)
             {
                 MensajeCuadro = resultado.Mensaje;   // se queda en el cuadro con el motivo
@@ -365,10 +365,10 @@ public sealed partial class TrabajoViewModel
     [RelayCommand]
     private async Task ConfirmarTerminarAsync()
     {
-        if (Cuadro != CuadroTrabajo.SegundaConfirmacion || _sesion.Veterinario is not { } vet || _sesion.Rodeo is not { } rodeo) return;
+        if (Cuadro != CuadroTrabajo.SegundaConfirmacion || _sesion.Rodeo is not { } rodeo) return;
         try
         {
-            var resultado = await EnCampoAsync(() => _campo.TerminarElTactoAsync(new TerminarElTactoCommand(rodeo.RodeoId, _cantidadRealConfirmada, vet.Id)));
+            var resultado = await EnCampoAsync(() => _campo.TerminarElTactoAsync(new TerminarElTactoCommand(rodeo.RodeoId, _cantidadRealConfirmada)));
             if (!resultado.EsCorrecto)
             {
                 MensajeCuadro = resultado.Mensaje;

@@ -24,17 +24,6 @@ internal static class Ayudas
 
     public static Resultado DatosInvalidos(DominioException ex) => Resultado.Error(CodigoError.DatosInvalidos, ex.Message);
 
-    /// <summary>Verifica que el usuario exista y esté activo: uno de baja no puede hacer registros nuevos (RF-24).</summary>
-    public static async Task<Resultado?> ValidarUsuarioAsync(IUsuarioRepository usuarios, Guid usuarioId, CancellationToken ct)
-    {
-        var usuario = await usuarios.ObtenerAsync(usuarioId, ct);
-        if (usuario is null)
-            return Resultado.Error(CodigoError.NoEncontrado, "El usuario no existe.");
-        if (!usuario.Activo)
-            return Resultado.Error(CodigoError.UsuarioDeBaja, "El usuario está dado de baja y no puede hacer registros nuevos.");
-        return null;
-    }
-
     /// <summary>De la regla pura del dominio al código y mensaje que ve quien llama (RF-8b). Los mensajes no llevan datos.</summary>
     public static (CodigoError Codigo, string Mensaje) DeMotivo(MotivoRechazoTacto motivo) => motivo switch
     {

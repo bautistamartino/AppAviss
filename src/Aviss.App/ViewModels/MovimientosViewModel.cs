@@ -9,7 +9,7 @@ namespace Aviss.App.ViewModels;
 
 /// <summary>
 /// Una fila de "Últimos movimientos" lista para mostrar (RF-28): la hora, la caravana con su CVET y qué evento se agregó. No muestra la manga
-/// ni el veterinario (solo los cierres hablan de su manga, porque son movimientos de manga).
+/// ni quién lo hizo (solo los cierres hablan de su manga, porque son movimientos de manga).
 /// </summary>
 public sealed class MovimientoItem
 {
@@ -143,7 +143,7 @@ public sealed partial class MovimientosViewModel : ObservableObject
     [RelayCommand]
     private async Task DeshacerAsync(MovimientoItem? item)
     {
-        if (item is null || !item.PuedeDeshacer || EstaOcupado || _sesion.Veterinario is not { } vet) return;
+        if (item is null || !item.PuedeDeshacer || EstaOcupado) return;
 
         EstaOcupado = true;
         MensajeError = null;
@@ -157,7 +157,7 @@ public sealed partial class MovimientosViewModel : ObservableObject
                 TipoMovimiento.Rechazo => TipoDeshacer.Rechazo,
                 _ => TipoDeshacer.Cierre
             };
-            var resultado = await _campo.DeshacerAsync(new DeshacerCommand(tipo, item.Dto.RegistroId, vet.Id));
+            var resultado = await _campo.DeshacerAsync(new DeshacerCommand(tipo, item.Dto.RegistroId));
             if (!resultado.EsCorrecto)
             {
                 MensajeError = resultado.Mensaje;
@@ -261,14 +261,14 @@ public sealed partial class MovimientosViewModel : ObservableObject
     [RelayCommand(CanExecute = nameof(PuedeGuardarEdicion))]
     private async Task GuardarEdicionAsync()
     {
-        if (Editando is not { } item || EventoEditado is not { } evento || EstaOcupado || _sesion.Veterinario is not { } vet) return;
+        if (Editando is not { } item || EventoEditado is not { } evento || EstaOcupado) return;
 
         EstaOcupado = true;
         MensajeEdicion = null;
         try
         {
             var observacion = string.IsNullOrWhiteSpace(ObservacionEditada) ? null : ObservacionEditada.Trim();
-            var resultado = await _campo.CorregirRegistroAsync(new CorregirRegistroCommand(item.Dto.RegistroId, evento.Id, observacion, vet.Id));
+            var resultado = await _campo.CorregirRegistroAsync(new CorregirRegistroCommand(item.Dto.RegistroId, evento.Id, observacion));
             if (!resultado.EsCorrecto)
             {
                 MensajeEdicion = resultado.Mensaje;

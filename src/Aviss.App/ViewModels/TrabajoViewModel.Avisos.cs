@@ -29,9 +29,9 @@ public sealed partial class TrabajoViewModel
     /// <summary>La caravana leída, para mostrarla bien grande (quien maneja el bastón nota si leyó la de la vecina).</summary>
     public string AvisoCaravana => Aviso?.Caravana ?? Aviso?.CodigoLeido ?? "";
 
-    /// <summary>Último registro de la vaca: qué, a qué hora y de quién.</summary>
+    /// <summary>Último registro de la vaca: qué y a qué hora (`<evento> · <hora>`; sin quién, spec 006 RF-5).</summary>
     public string AvisoDetalle => Aviso?.UltimoRegistro is { } u
-        ? $"{DescribirRegistro(u)} · {u.FechaHoraUtc.ToLocalTime():HH:mm} · {u.Veterinario}"
+        ? $"{DescribirRegistro(u)} · {u.FechaHoraUtc.ToLocalTime():HH:mm}"
         : "";
 
     /// <summary>"Corregir" solo se ofrece cuando lo último no es la marca de pasada (RF-22).</summary>
@@ -140,9 +140,8 @@ public sealed partial class TrabajoViewModel
     // contador y recalcula. Devuelve el resultado para que quien llama decida qué mensaje mostrar si fue rechazado.
     private async Task<Resultado<ResultadoDeshacerDto>> DeshacerAsync(TipoDeshacer tipo, Guid id)
     {
-        if (_sesion.Veterinario is not { } vet) return Resultado.Error<ResultadoDeshacerDto>(CodigoError.DatosInvalidos, MensajeFalla);
 
-        var resultado = await EnCampoAsync(() => _campo.DeshacerAsync(new DeshacerCommand(tipo, id, vet.Id)));
+        var resultado = await EnCampoAsync(() => _campo.DeshacerAsync(new DeshacerCommand(tipo, id)));
         if (!resultado.EsCorrecto) return resultado;
 
         var deshecho = resultado.Valor;

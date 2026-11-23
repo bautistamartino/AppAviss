@@ -13,8 +13,8 @@ public sealed class MangaServiceTests : IDisposable
 
     private static string T(Guid? id) => EscenarioConServicios.Texto(id);
 
-    private Task<Resultado<EstadoTrabajoDto>> Iniciar(Guid? rodeo = null, Guid? usuario = null)
-        => _e.Campo.IniciarTrabajoAsync(rodeo ?? _e.RodeoId, usuario ?? _e.UsuarioId);
+    private Task<Resultado<EstadoTrabajoDto>> Iniciar(Guid? rodeo = null)
+        => _e.Campo.IniciarTrabajoAsync(rodeo ?? _e.RodeoId);
 
     private async Task MarcarVarias(int cantidad, string prefijo = "A")
     {
@@ -51,10 +51,8 @@ public sealed class MangaServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task Iniciar_trabajo_exige_un_veterinario_activo_y_un_rodeo_vigente()
+    public async Task Iniciar_trabajo_exige_un_rodeo_vigente()
     {
-        var baja = _e.Base.Usuario("De baja", activo: false);
-        Assert.Equal(CodigoError.UsuarioDeBaja, (await Iniciar(usuario: baja)).Codigo);
         Assert.Equal(CodigoError.NoEncontrado, (await Iniciar(rodeo: Guid.NewGuid())).Codigo);
 
         _e.Base.Ejecutar("UPDATE Rodeo SET Activo = 0");
@@ -86,8 +84,8 @@ public sealed class MangaServiceTests : IDisposable
     {
         var ayer = _e.Reloj.UtcAhora.AddDays(-1);
         var animal = _e.AnimalImportado("100");
-        var manga = _e.Base.Manga(_e.RodeoId, 1, _e.UsuarioId, creadaEn: ayer);
-        _e.Base.MarcaPasada(animal, manga, _e.UsuarioId, fechaHora: ayer);
+        var manga = _e.Base.Manga(_e.RodeoId, 1, creadaEn: ayer);
+        _e.Base.MarcaPasada(animal, manga, fechaHora: ayer);
 
         var r = await Iniciar();
 
@@ -185,8 +183,6 @@ public sealed class MangaServiceTests : IDisposable
         Assert.Equal(3, c.CantidadConfirmada);
         Assert.Equal(0, c.Diferencia);
         Assert.Equal(1, c.NumeroManga);
-        Assert.Equal(T(_e.UsuarioId), _e.Col("CierreManga", c.CierreId, "UsuarioId"));
-        Assert.Equal(T(_e.DispositivoId), _e.Col("CierreManga", c.CierreId, "DispositivoId"));
         Assert.Equal(BaseDeDatosDePrueba.Fecha(_e.Reloj.UtcAhora), _e.Col("CierreManga", c.CierreId, "FechaHoraUtc"));
         Assert.Equal(1, _e.Cuenta("Historial", "Accion = 'MangaCerrada' AND ValorNuevo = 'Manual'"));
 
@@ -221,7 +217,7 @@ public sealed class MangaServiceTests : IDisposable
         await MarcarVarias(2);
         var antes = _e.FotoCampo();
 
-        var r = await _e.Campo.FinalizarMangaAsync(new FinalizarMangaCommand(_e.RodeoId, -1, _e.UsuarioId));
+        var r = await _e.Campo.FinalizarMangaAsync(new FinalizarMangaCommand(_e.RodeoId, -1));
 
         Assert.Equal(CodigoError.CantidadInvalida, r.Codigo);
         Assert.Equal(antes, _e.FotoCampo());
@@ -230,21 +226,11 @@ public sealed class MangaServiceTests : IDisposable
     [Fact]
     public async Task Finalizar_sin_manga_abierta_avisa_que_no_hay_nada_para_finalizar()
     {
-        var r = await _e.Campo.FinalizarMangaAsync(new FinalizarMangaCommand(_e.RodeoId, null, _e.UsuarioId));
+        var r = await _e.Campo.FinalizarMangaAsync(new FinalizarMangaCommand(_e.RodeoId, null));
         Assert.Equal(CodigoError.NoHayMangaAbierta, r.Codigo);
 
         var resumen = await _e.Campo.ObtenerResumenMangaAsync(_e.RodeoId);
         Assert.Equal(CodigoError.NoHayMangaAbierta, resumen.Codigo);
-        Assert.Equal(0, _e.Cuenta("CierreManga"));
-    }
-
-    [Fact]
-    public async Task Finalizar_con_un_veterinario_de_baja_se_rechaza()
-    {
-        await MarcarVarias(1);
-        var baja = _e.Base.Usuario("De baja", activo: false);
-        var r = await _e.Campo.FinalizarMangaAsync(new FinalizarMangaCommand(_e.RodeoId, null, baja));
-        Assert.Equal(CodigoError.UsuarioDeBaja, r.Codigo);
         Assert.Equal(0, _e.Cuenta("CierreManga"));
     }
 
@@ -270,7 +256,7 @@ public sealed class MangaServiceTests : IDisposable
         _e.ForzarFallaAlGuardarHistorial("MangaCerrada");
 
         await Assert.ThrowsAnyAsync<Exception>(() =>
-            _e.Campo.FinalizarMangaAsync(new FinalizarMangaCommand(_e.RodeoId, null, _e.UsuarioId)));
+            _e.Campo.FinalizarMangaAsync(new FinalizarMangaCommand(_e.RodeoId, null)));
 
         Assert.Equal(antes, _e.FotoCampo());
         Assert.Equal(0, _e.Cuenta("CierreManga"));
@@ -284,7 +270,7 @@ public sealed class MangaServiceTests : IDisposable
     {
         await MarcarVarias(3);
 
-        var r = await _e.Campo.TerminarElTactoAsync(new TerminarElTactoCommand(_e.RodeoId, 4, _e.UsuarioId));
+        var r = await _e.Campo.TerminarElTactoAsync(new TerminarElTactoCommand(_e.RodeoId, 4));
 
         Assert.True(r.EsCorrecto, r.Mensaje);
         var c = r.Valor.Cierre!;
@@ -303,7 +289,7 @@ public sealed class MangaServiceTests : IDisposable
         _e.AnimalImportado("1");
         var antes = _e.FotoCampo();
 
-        var r = await _e.Campo.TerminarElTactoAsync(new TerminarElTactoCommand(_e.RodeoId, null, _e.UsuarioId));
+        var r = await _e.Campo.TerminarElTactoAsync(new TerminarElTactoCommand(_e.RodeoId, null));
 
         Assert.True(r.EsCorrecto, r.Mensaje);
         Assert.Null(r.Valor.Cierre);
@@ -316,7 +302,7 @@ public sealed class MangaServiceTests : IDisposable
     {
         await MarcarVarias(2);
         _e.AnimalImportado("otra");
-        await _e.Campo.TerminarElTactoAsync(new TerminarElTactoCommand(_e.RodeoId, null, _e.UsuarioId));
+        await _e.Campo.TerminarElTactoAsync(new TerminarElTactoCommand(_e.RodeoId, null));
 
         var r = await Iniciar();
 
@@ -395,8 +381,8 @@ public sealed class MangaServiceTests : IDisposable
     {
         var ayer = _e.Reloj.UtcAhora.AddDays(-1);
         var animal = _e.AnimalImportado("100");
-        var manga = _e.Base.Manga(_e.RodeoId, 1, _e.UsuarioId, creadaEn: ayer);
-        _e.Base.MarcaPasada(animal, manga, _e.UsuarioId, fechaHora: ayer);
+        var manga = _e.Base.Manga(_e.RodeoId, 1, creadaEn: ayer);
+        _e.Base.MarcaPasada(animal, manga, fechaHora: ayer);
         await Iniciar(); // lo cierra sola
         var cierre = Guid.Parse(_e.Base.Escalar("SELECT Id FROM CierreManga")!.ToString()!);
 

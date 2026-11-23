@@ -19,18 +19,18 @@ public sealed class ArranqueService : IArranqueService
     private readonly IMigrador _migrador;
     private readonly IBackupService _backups;
     private readonly SembradorInicial _sembrador;
-    private readonly IDispositivoService _dispositivo;
     private readonly ArranqueResultado _resultado;
+    private readonly LimpiezaDeRastros _limpieza;
 
     public ArranqueService(RutasAviss rutas, IMigrador migrador, IBackupService backups, SembradorInicial sembrador,
-        IDispositivoService dispositivo, ArranqueResultado resultado)
+        ArranqueResultado resultado, LimpiezaDeRastros limpieza)
     {
         _rutas = rutas;
         _migrador = migrador;
         _backups = backups;
         _sembrador = sembrador;
-        _dispositivo = dispositivo;
         _resultado = resultado;
+        _limpieza = limpieza;
     }
 
     public async Task<ResultadoArranque> IniciarAsync(CancellationToken ct = default)
@@ -53,6 +53,10 @@ public sealed class ArranqueService : IArranqueService
         {
             SqliteConnection.ClearAllPools();
         }
+        // Solo si la app queda abierta (Correcto, BaseCreada o BaseActualizada): una actualización fallida, una base dañada
+        // o más nueva no pierden nada por esto (spec 006, RF-21). Nunca lanza.
+        if (resultado.PuedeAbrir) _limpieza.Ejecutar();
+
         _resultado.Establecer(resultado);
         return resultado;
     }
@@ -60,7 +64,6 @@ public sealed class ArranqueService : IArranqueService
     private async Task<ResultadoArranque> IniciarInternoAsync(CancellationToken ct)
     {
         Directory.CreateDirectory(_rutas.DirectorioDatos);
-        _dispositivo.ObtenerId(); // genera dispositivo.id la primera vez
 
         DescartarArchivosDeCreacion();
 
@@ -127,7 +130,6 @@ public sealed class ArranqueService : IArranqueService
             using (var ctx = NuevoContexto(creando))
             {
                 await _sembrador.SembrarEstadosAsync(ctx, ct);
-                await _sembrador.SembrarUsuarioSinAsignarAsync(ctx, ct);
             }
 
             // Se vuelca el WAL al archivo principal para que el .creando sea autosuficiente antes de moverlo.

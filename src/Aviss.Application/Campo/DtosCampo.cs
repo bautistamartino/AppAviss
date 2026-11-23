@@ -77,7 +77,7 @@ public sealed record EsperaDto(Guid EsperaId, Guid AnimalId, string Caravana, st
 
 /// <summary>El último registro vigente de una vaca, para el aviso "Ya pasó / Animal repetido" (RF-22). <see cref="Observaciones"/>: el motivo, si es un rechazo.</summary>
 public sealed record UltimoRegistroDto(
-    TipoRegistroCampo Tipo, Guid RegistroId, DateTime FechaHoraUtc, string? EstadoNombre, string Veterinario, int? NumeroManga,
+    TipoRegistroCampo Tipo, Guid RegistroId, DateTime FechaHoraUtc, string? EstadoNombre, int? NumeroManga,
     string? Observaciones = null);
 
 /// <summary>Lo que devuelve el procesamiento de una lectura (RF-11, RF-12, RF-22, RF-24).</summary>
@@ -146,7 +146,6 @@ public sealed record MovimientoDto(
     int? NumeroManga,
     string? Detalle,
     DateTime FechaHoraUtc,
-    string Veterinario,
     bool Anulado,
     bool PuedeDeshacer,
     int? CantidadAviss,
@@ -164,8 +163,6 @@ public sealed record RodeoParaTrabajarDto(
     DateTime FechaImportacionUtc,
     EstadoRodeo Estado,
     AvanceRodeoDto Avance);
-
-public sealed record VeterinarioDto(Guid Id, string Nombre, string? Matricula);
 
 /// <summary>
 /// Un evento de la lista de la ficha (spec 005, RF-6). <see cref="CambiaEstado"/>: un estado cambia el estado de la vaca (se guarda un

@@ -11,7 +11,7 @@ namespace Aviss.Infrastructure.Tests.Soporte;
 /// <summary>
 /// Arma el contenedor real de la app (AddAvissInfrastructure) sobre una base SQLite de prueba, con el reloj falso.
 /// Cada llamada a <see cref="Servicio{T}"/> abre un scope NUEVO (un DbContext nuevo), igual que hará la app con cada
-/// operación. Trae datos base listos (usuario, establecimiento, rodeo y dos estados) creados por SQL crudo.
+/// operación. Trae datos base listos (establecimiento, rodeo y dos estados) creados por SQL crudo.
 /// </summary>
 public sealed class EscenarioConServicios : IDisposable
 {
@@ -22,7 +22,6 @@ public sealed class EscenarioConServicios : IDisposable
     public FakeReloj Reloj => Base.Reloj;
     public FakeZonaHoraria Zona { get; } = new();
 
-    public Guid UsuarioId { get; }
     public Guid EstablecimientoId { get; }
     public Guid RodeoId { get; }
     public Guid EstadoSeca { get; }
@@ -39,7 +38,6 @@ public sealed class EscenarioConServicios : IDisposable
 
         if (conDatosBase)
         {
-            UsuarioId = Base.Usuario("Vet Uno");
             EstablecimientoId = Base.Establecimiento();
             RodeoId = Base.Rodeo(EstablecimientoId);
             EstadoSeca = Base.Estado("SECA", "SECA", "SECA");
@@ -55,8 +53,6 @@ public sealed class EscenarioConServicios : IDisposable
         return scope.ServiceProvider.GetRequiredService<T>();
     }
 
-    public Guid DispositivoId => _proveedor.GetRequiredService<IDispositivoService>().ObtenerId();
-
     // ---------- Atajos para armar y leer datos ----------
 
     /// <summary>Como la base guarda los GUID: texto en mayúsculas.</summary>
@@ -69,17 +65,17 @@ public sealed class EscenarioConServicios : IDisposable
         => Base.Animal(rodeoId ?? RodeoId, caravana, "Importado", estadoId: estadoId, datosOriginalesJson: json);
 
     /// <summary>Registra un tacto y exige que salga bien; devuelve el Id del tacto.</summary>
-    public async Task<Guid> TactoAsync(Guid animalId, Guid estadoNuevoId, int? dias = null, Guid? usuarioId = null)
+    public async Task<Guid> TactoAsync(Guid animalId, Guid estadoNuevoId, int? dias = null)
     {
         var r = await Servicio<ITrabajoCampoService>()
-            .RegistrarTactoAsync(new RegistrarTactoCommand(animalId, estadoNuevoId, dias, null, usuarioId ?? UsuarioId));
+            .RegistrarTactoAsync(new RegistrarTactoCommand(animalId, estadoNuevoId, dias, null));
         Assert.True(r.EsCorrecto, r.Mensaje);
         return r.Valor;
     }
 
-    public async Task<Guid> AnularTactoAsync(Guid tactoId, Guid? usuarioId = null)
+    public async Task<Guid> AnularTactoAsync(Guid tactoId)
     {
-        var r = await Servicio<ITrabajoCampoService>().AnularTactoAsync(new AnularTactoCommand(tactoId, usuarioId ?? UsuarioId));
+        var r = await Servicio<ITrabajoCampoService>().AnularTactoAsync(new AnularTactoCommand(tactoId));
         Assert.True(r.EsCorrecto, r.Mensaje);
         return r.Valor;
     }
@@ -89,9 +85,9 @@ public sealed class EscenarioConServicios : IDisposable
     public ICampoService Campo => Servicio<ICampoService>();
 
     /// <summary>Lee una caravana y exige que el servicio responda sin error (aunque el resultado sea un aviso o "no encontrada").</summary>
-    public async Task<ResultadoLecturaDto> LeerAsync(string codigo, Guid? rodeoId = null, Guid? usuarioId = null)
+    public async Task<ResultadoLecturaDto> LeerAsync(string codigo, Guid? rodeoId = null)
     {
-        var r = await Campo.ProcesarLecturaAsync(new ProcesarLecturaCommand(rodeoId ?? RodeoId, codigo, usuarioId ?? UsuarioId));
+        var r = await Campo.ProcesarLecturaAsync(new ProcesarLecturaCommand(rodeoId ?? RodeoId, codigo));
         Assert.True(r.EsCorrecto, r.Mensaje);
         return r.Valor;
     }
@@ -115,13 +111,13 @@ public sealed class EscenarioConServicios : IDisposable
     /// <summary>"Finalizar manga" con "Coincide" (o con la cantidad real indicada); exige que salga bien.</summary>
     public async Task<ResultadoCierreDto> FinalizarAsync(int? cantidadReal = null, Guid? rodeoId = null)
     {
-        var r = await Campo.FinalizarMangaAsync(new FinalizarMangaCommand(rodeoId ?? RodeoId, cantidadReal, UsuarioId));
+        var r = await Campo.FinalizarMangaAsync(new FinalizarMangaCommand(rodeoId ?? RodeoId, cantidadReal));
         Assert.True(r.EsCorrecto, r.Mensaje);
         return r.Valor;
     }
 
-    public Task<Resultado<ResultadoDeshacerDto>> DeshacerAsync(TipoDeshacer tipo, Guid id, Guid? usuarioId = null)
-        => Campo.DeshacerAsync(new DeshacerCommand(tipo, id, usuarioId ?? UsuarioId));
+    public Task<Resultado<ResultadoDeshacerDto>> DeshacerAsync(TipoDeshacer tipo, Guid id)
+        => Campo.DeshacerAsync(new DeshacerCommand(tipo, id));
 
     /// <summary>Hace fallar a propósito el INSERT en Historial de una acción (trigger de la base): para probar que una falla a mitad no deja rastro.</summary>
     public void ForzarFallaAlGuardarHistorial(string accion)

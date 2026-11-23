@@ -28,7 +28,7 @@ public enum TipoResultadoArranque
 
 /// <summary>
 /// Resultado del arranque. <see cref="Mensaje"/> está en español y es fijo por tipo: no incluye datos de animales,
-/// tambos ni veterinarios, ni rutas, ni textos de excepciones.
+/// tambos, ni rutas, ni textos de excepciones.
 /// </summary>
 public sealed record ResultadoArranque(TipoResultadoArranque Tipo, string Mensaje)
 {

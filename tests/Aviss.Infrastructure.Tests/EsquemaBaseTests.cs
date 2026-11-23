@@ -217,8 +217,7 @@ public sealed class EsquemaBaseTests : IDisposable
     [Fact]
     public void Historial_no_se_puede_modificar_ni_borrar()
     {
-        var usuario = _db.Usuario();
-        var id = _db.Historial(usuario);
+        var id = _db.Historial();
 
         Assert.Throws<SqliteException>(() => _db.Ejecutar("UPDATE Historial SET ValorNuevo = 'otro' WHERE Id = $id", ("$id", id)));
         Assert.Throws<SqliteException>(() => _db.Ejecutar("DELETE FROM Historial WHERE Id = $id", ("$id", id)));
@@ -229,26 +228,24 @@ public sealed class EsquemaBaseTests : IDisposable
     }
 
     [Fact]
-    public void Historial_con_accion_invalida_o_usuario_inexistente_se_rechaza()
+    public void Historial_con_accion_invalida_se_rechaza()
     {
-        var usuario = _db.Usuario();
-        Assert.Throws<SqliteException>(() => _db.Historial(usuario, accion: "Borrado"));
-        Assert.Throws<SqliteException>(() => _db.Historial(Guid.NewGuid()));
+        Assert.Throws<SqliteException>(() => _db.Historial(accion: "Borrado"));
     }
 
     // ---------- Tacto (RF-12, 13, 14, 16) ----------
 
-    private (Guid animal, Guid usuario, Guid estado) EscenarioTacto()
+    private (Guid animal, Guid estado) EscenarioTacto()
     {
         var rodeo = _db.Rodeo();
-        return (_db.Animal(rodeo, "100"), _db.Usuario(), _db.Estado("SECA", "SECA", "SECA"));
+        return (_db.Animal(rodeo, "100"), _db.Estado("SECA", "SECA", "SECA"));
     }
 
     [Fact]
     public void Tacto_no_se_puede_borrar_ni_modificar()
     {
-        var (animal, usuario, estado) = EscenarioTacto();
-        var tacto = _db.Tacto(animal, usuario, estado, diasPrenez: 40);
+        var (animal, estado) = EscenarioTacto();
+        var tacto = _db.Tacto(animal, estado, diasPrenez: 40);
 
         Assert.Throws<SqliteException>(() => _db.Ejecutar("DELETE FROM Tacto WHERE Id = $id", ("$id", tacto)));
         Assert.Throws<SqliteException>(() => _db.Ejecutar("UPDATE Tacto SET DiasPrenez = 41 WHERE Id = $id", ("$id", tacto)));
@@ -260,8 +257,8 @@ public sealed class EsquemaBaseTests : IDisposable
     [Fact]
     public void Solo_se_permite_pasar_Anulado_de_0_a_1_con_su_fecha_de_modificacion()
     {
-        var (animal, usuario, estado) = EscenarioTacto();
-        var tacto = _db.Tacto(animal, usuario, estado);
+        var (animal, estado) = EscenarioTacto();
+        var tacto = _db.Tacto(animal, estado);
 
         var n = _db.Ejecutar("UPDATE Tacto SET Anulado = 1, ActualizadoEnUtc = $f WHERE Id = $id",
             ("$id", tacto), ("$f", BaseDeDatosDePrueba.Fecha(_db.Reloj.UtcAhora.AddMinutes(1))));
@@ -275,8 +272,8 @@ public sealed class EsquemaBaseTests : IDisposable
     [Fact]
     public void Anular_junto_con_cambiar_otro_dato_se_rechaza()
     {
-        var (animal, usuario, estado) = EscenarioTacto();
-        var tacto = _db.Tacto(animal, usuario, estado, diasPrenez: 40);
+        var (animal, estado) = EscenarioTacto();
+        var tacto = _db.Tacto(animal, estado, diasPrenez: 40);
 
         Assert.Throws<SqliteException>(() => _db.Ejecutar("UPDATE Tacto SET Anulado = 1, DiasPrenez = 99 WHERE Id = $id", ("$id", tacto)));
         Assert.Throws<SqliteException>(() => _db.Ejecutar("UPDATE Tacto SET Anulado = 1, Observaciones = 'x' WHERE Id = $id", ("$id", tacto)));
@@ -290,37 +287,37 @@ public sealed class EsquemaBaseTests : IDisposable
     [InlineData(-1, false)]
     public void Dias_de_prenez_entre_0_y_300(int dias, bool valido)
     {
-        var (animal, usuario, estado) = EscenarioTacto();
-        if (valido) _db.Tacto(animal, usuario, estado, diasPrenez: dias);
-        else Assert.Throws<SqliteException>(() => _db.Tacto(animal, usuario, estado, diasPrenez: dias));
+        var (animal, estado) = EscenarioTacto();
+        if (valido) _db.Tacto(animal, estado, diasPrenez: dias);
+        else Assert.Throws<SqliteException>(() => _db.Tacto(animal, estado, diasPrenez: dias));
     }
 
     [Fact]
     public void Tacto_normal_sin_estado_nuevo_se_rechaza_pero_la_anulacion_puede_no_tenerlo()
     {
-        var (animal, usuario, estado) = EscenarioTacto();
-        Assert.Throws<SqliteException>(() => _db.Tacto(animal, usuario, null));
+        var (animal, estado) = EscenarioTacto();
+        Assert.Throws<SqliteException>(() => _db.Tacto(animal, null));
 
-        var original = _db.Tacto(animal, usuario, estado);
-        _db.Tacto(animal, usuario, null, tipo: "Anulacion", tactoAnuladoId: original);
+        var original = _db.Tacto(animal, estado);
+        _db.Tacto(animal, null, tipo: "Anulacion", tactoAnuladoId: original);
     }
 
     [Fact]
     public void Tipo_Anulacion_exige_tacto_anulado_y_Normal_lo_prohibe()
     {
-        var (animal, usuario, estado) = EscenarioTacto();
-        var original = _db.Tacto(animal, usuario, estado);
+        var (animal, estado) = EscenarioTacto();
+        var original = _db.Tacto(animal, estado);
 
-        Assert.Throws<SqliteException>(() => _db.Tacto(animal, usuario, estado, tipo: "Anulacion"));
-        Assert.Throws<SqliteException>(() => _db.Tacto(animal, usuario, estado, tipo: "Normal", tactoAnuladoId: original));
+        Assert.Throws<SqliteException>(() => _db.Tacto(animal, estado, tipo: "Anulacion"));
+        Assert.Throws<SqliteException>(() => _db.Tacto(animal, estado, tipo: "Normal", tactoAnuladoId: original));
     }
 
     [Fact]
     public void Una_anulacion_no_puede_marcarse_como_anulada()
     {
-        var (animal, usuario, estado) = EscenarioTacto();
-        var original = _db.Tacto(animal, usuario, estado);
-        var anulacion = _db.Tacto(animal, usuario, estado, tipo: "Anulacion", tactoAnuladoId: original);
+        var (animal, estado) = EscenarioTacto();
+        var original = _db.Tacto(animal, estado);
+        var anulacion = _db.Tacto(animal, estado, tipo: "Anulacion", tactoAnuladoId: original);
 
         // el CHECK impide Tipo=Anulacion con Anulado=1 (RF-14)
         Assert.Throws<SqliteException>(() => _db.Ejecutar("UPDATE Tacto SET Anulado = 1 WHERE Id = $id", ("$id", anulacion)));
@@ -329,41 +326,39 @@ public sealed class EsquemaBaseTests : IDisposable
     [Fact]
     public void Un_tacto_se_anula_una_sola_vez()
     {
-        var (animal, usuario, estado) = EscenarioTacto();
-        var original = _db.Tacto(animal, usuario, estado);
-        _db.Tacto(animal, usuario, estado, tipo: "Anulacion", tactoAnuladoId: original);
-        Assert.Throws<SqliteException>(() => _db.Tacto(animal, usuario, estado, tipo: "Anulacion", tactoAnuladoId: original));
+        var (animal, estado) = EscenarioTacto();
+        var original = _db.Tacto(animal, estado);
+        _db.Tacto(animal, estado, tipo: "Anulacion", tactoAnuladoId: original);
+        Assert.Throws<SqliteException>(() => _db.Tacto(animal, estado, tipo: "Anulacion", tactoAnuladoId: original));
     }
 
     [Fact]
     public void La_anulacion_solo_puede_apuntar_a_un_tacto_del_mismo_animal()
     {
         var rodeo = _db.Rodeo();
-        var usuario = _db.Usuario();
         var estado = _db.Estado("SECA", "SECA", "SECA");
         var a1 = _db.Animal(rodeo, "1");
         var a2 = _db.Animal(rodeo, "2");
-        var tactoDeA1 = _db.Tacto(a1, usuario, estado);
+        var tactoDeA1 = _db.Tacto(a1, estado);
 
-        Assert.Throws<SqliteException>(() => _db.Tacto(a2, usuario, estado, tipo: "Anulacion", tactoAnuladoId: tactoDeA1));
-        _db.Tacto(a1, usuario, estado, tipo: "Anulacion", tactoAnuladoId: tactoDeA1); // mismo animal: válido
+        Assert.Throws<SqliteException>(() => _db.Tacto(a2, estado, tipo: "Anulacion", tactoAnuladoId: tactoDeA1));
+        _db.Tacto(a1, estado, tipo: "Anulacion", tactoAnuladoId: tactoDeA1); // mismo animal: válido
     }
 
     [Fact]
     public void Orden_de_insercion_es_unico()
     {
-        var (animal, usuario, estado) = EscenarioTacto();
-        _db.Tacto(animal, usuario, estado, orden: 500);
-        Assert.Throws<SqliteException>(() => _db.Tacto(animal, usuario, estado, orden: 500));
+        var (animal, estado) = EscenarioTacto();
+        _db.Tacto(animal, estado, orden: 500);
+        Assert.Throws<SqliteException>(() => _db.Tacto(animal, estado, orden: 500));
     }
 
     [Fact]
     public void Tacto_con_referencias_inexistentes_se_rechaza()
     {
-        var (animal, usuario, estado) = EscenarioTacto();
-        Assert.Throws<SqliteException>(() => _db.Tacto(Guid.NewGuid(), usuario, estado));
-        Assert.Throws<SqliteException>(() => _db.Tacto(animal, Guid.NewGuid(), estado));
-        Assert.Throws<SqliteException>(() => _db.Tacto(animal, usuario, Guid.NewGuid()));
+        var (animal, estado) = EscenarioTacto();
+        Assert.Throws<SqliteException>(() => _db.Tacto(Guid.NewGuid(), estado));
+        Assert.Throws<SqliteException>(() => _db.Tacto(animal, Guid.NewGuid()));
     }
 
     // ---------- Animal (RF-3, RF-15, RF-25) ----------
@@ -452,16 +447,14 @@ public sealed class EsquemaBaseTests : IDisposable
     // ---------- Sin borrados (RF-24) ----------
 
     [Fact]
-    public void Establecimiento_rodeo_usuario_y_estado_no_se_pueden_borrar_ni_sin_dependientes()
+    public void Establecimiento_rodeo_y_estado_no_se_pueden_borrar_ni_sin_dependientes()
     {
         var est = _db.Establecimiento();
         var rodeo = _db.Rodeo();
-        var usuario = _db.Usuario();
         var estado = _db.Estado("SECA", "SECA", "SECA");
 
         Assert.Throws<SqliteException>(() => _db.Ejecutar("DELETE FROM Establecimiento WHERE Id = $id", ("$id", est)));
         Assert.Throws<SqliteException>(() => _db.Ejecutar("DELETE FROM Rodeo WHERE Id = $id", ("$id", rodeo)));
-        Assert.Throws<SqliteException>(() => _db.Ejecutar("DELETE FROM Usuario WHERE Id = $id", ("$id", usuario)));
         Assert.Throws<SqliteException>(() => _db.Ejecutar("DELETE FROM EstadoReproductivo WHERE Id = $id", ("$id", estado)));
     }
 
@@ -470,39 +463,5 @@ public sealed class EsquemaBaseTests : IDisposable
     {
         var est = _db.Establecimiento();
         Assert.Equal(1, _db.Ejecutar("UPDATE Establecimiento SET Activo = 0 WHERE Id = $id", ("$id", est)));
-    }
-
-    // ---------- Usuario "Sin asignar" (RF-7, RF-7b) ----------
-
-    [Fact]
-    public void Matricula_de_31_caracteres_se_rechaza_y_de_30_se_acepta()
-    {
-        _db.Usuario("A", new string('1', 30));
-        Assert.Throws<SqliteException>(() => _db.Usuario("B", new string('1', 31)));
-        Assert.Throws<SqliteException>(() => _db.Usuario("  "));
-    }
-
-    [Fact]
-    public void Sin_asignar_no_se_da_de_baja_si_es_el_unico_activo()
-    {
-        _db.Usuario("Sin asignar", id: Usuario.SinAsignarId);
-        Assert.Throws<SqliteException>(() =>
-            _db.Ejecutar("UPDATE Usuario SET Activo = 0 WHERE Id = $id", ("$id", Usuario.SinAsignarId)));
-        Assert.Equal(1L, _db.Escalar("SELECT Activo FROM Usuario WHERE Id = $id", ("$id", Usuario.SinAsignarId)));
-    }
-
-    [Fact]
-    public void Sin_asignar_se_puede_dar_de_baja_si_hay_otro_usuario_activo()
-    {
-        _db.Usuario("Sin asignar", id: Usuario.SinAsignarId);
-        _db.Usuario("Dra. Pérez");
-        Assert.Equal(1, _db.Ejecutar("UPDATE Usuario SET Activo = 0 WHERE Id = $id", ("$id", Usuario.SinAsignarId)));
-    }
-
-    [Fact]
-    public void Otro_usuario_se_puede_dar_de_baja_aunque_sea_el_ultimo()
-    {
-        var u = _db.Usuario("Dr. Gómez");
-        Assert.Equal(1, _db.Ejecutar("UPDATE Usuario SET Activo = 0 WHERE Id = $id", ("$id", u)));
     }
 }

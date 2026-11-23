@@ -16,19 +16,17 @@ internal sealed class MangaService
 {
     private readonly IUnitOfWork _uow;
     private readonly IRodeoRepository _rodeos;
-    private readonly IUsuarioRepository _usuarios;
     private readonly IMangaRepository _mangas;
     private readonly IHistorialRepository _historial;
     private readonly IRelojService _reloj;
-    private readonly IDispositivoService _dispositivo;
     private readonly IZonaHoraria _zona;
     private readonly CalculadorAvance _avance;
 
-    public MangaService(IUnitOfWork uow, IRodeoRepository rodeos, IUsuarioRepository usuarios, IMangaRepository mangas,
-        IHistorialRepository historial, IRelojService reloj, IDispositivoService dispositivo, IZonaHoraria zona, CalculadorAvance avance)
+    public MangaService(IUnitOfWork uow, IRodeoRepository rodeos, IMangaRepository mangas,
+        IHistorialRepository historial, IRelojService reloj, IZonaHoraria zona, CalculadorAvance avance)
     {
-        _uow = uow; _rodeos = rodeos; _usuarios = usuarios; _mangas = mangas; _historial = historial;
-        _reloj = reloj; _dispositivo = dispositivo; _zona = zona; _avance = avance;
+        _uow = uow; _rodeos = rodeos; _mangas = mangas; _historial = historial;
+        _reloj = reloj; _zona = zona; _avance = avance;
     }
 
     // ------------------------------------------------------------------ Empezar y estado
@@ -37,12 +35,10 @@ internal sealed class MangaService
     /// Empezar a trabajar un rodeo (RF-4, RF-10): si la manga abierta viene de un día local anterior (el veterinario no
     /// terminó el tacto), se cierra sola como "automática, sin confirmar". Después se devuelve el estado.
     /// </summary>
-    public async Task<Resultado<EstadoTrabajoDto>> IniciarTrabajoAsync(Guid rodeoId, Guid usuarioId, CancellationToken ct)
+    public async Task<Resultado<EstadoTrabajoDto>> IniciarTrabajoAsync(Guid rodeoId, CancellationToken ct)
     {
         var cierre = await _uow.EjecutarAsync(async () =>
         {
-            var errorUsuario = await Ayudas.ValidarUsuarioAsync(_usuarios, usuarioId, ct);
-            if (errorUsuario is not null) return errorUsuario;
             var rodeo = await _rodeos.ObtenerAsync(rodeoId, ct);
             if (rodeo is null) return Resultado.Error(CodigoError.NoEncontrado, "El rodeo no existe.");
             if (!rodeo.Activo) return Resultado.Error(CodigoError.RodeoDeBaja, "El rodeo está dado de baja y no se puede trabajar.");
@@ -54,7 +50,7 @@ internal sealed class MangaService
                 try
                 {
                     var contador = await _mangas.ContarVacasAsync(abierta.Id, ct);
-                    GuardarCierre(abierta.Id, TipoCierreManga.Automatico, ahora, contador, null, usuarioId);
+                    GuardarCierre(abierta.Id, TipoCierreManga.Automatico, ahora, contador, null);
                 }
                 catch (DominioException ex) { return Ayudas.DatosInvalidos(ex); }
             }
@@ -98,7 +94,7 @@ internal sealed class MangaService
     /// <summary>"Finalizar manga": cierra la abierta y la siguiente queda por empezar (RF-6).</summary>
     public async Task<Resultado<ResultadoCierreDto>> FinalizarAsync(FinalizarMangaCommand c, CancellationToken ct)
     {
-        var r = await CerrarAsync(c.RodeoId, c.CantidadReal, c.UsuarioId, TipoCierreManga.Manual, sinMangaEsError: true, ct);
+        var r = await CerrarAsync(c.RodeoId, c.CantidadReal, TipoCierreManga.Manual, sinMangaEsError: true, ct);
         return await ConAvanceAsync(r, c.RodeoId, ct);
     }
 
@@ -108,16 +104,14 @@ internal sealed class MangaService
     /// </summary>
     public async Task<Resultado<ResultadoCierreDto>> TerminarAsync(TerminarElTactoCommand c, CancellationToken ct)
     {
-        var r = await CerrarAsync(c.RodeoId, c.CantidadReal, c.UsuarioId, TipoCierreManga.TerminoElTacto, sinMangaEsError: false, ct);
+        var r = await CerrarAsync(c.RodeoId, c.CantidadReal, TipoCierreManga.TerminoElTacto, sinMangaEsError: false, ct);
         return await ConAvanceAsync(r, c.RodeoId, ct);
     }
 
     private Task<Resultado<CierreMangaDto?>> CerrarAsync(
-        Guid rodeoId, int? cantidadReal, Guid usuarioId, TipoCierreManga tipo, bool sinMangaEsError, CancellationToken ct)
+        Guid rodeoId, int? cantidadReal, TipoCierreManga tipo, bool sinMangaEsError, CancellationToken ct)
         => _uow.EjecutarAsync(async () =>
         {
-            var errorUsuario = await Ayudas.ValidarUsuarioAsync(_usuarios, usuarioId, ct);
-            if (errorUsuario is not null) return Resultado.Error<CierreMangaDto?>(errorUsuario.Codigo!.Value, errorUsuario.Mensaje!);
             if (cantidadReal is < 0)
                 return Resultado.Error<CierreMangaDto?>(CodigoError.CantidadInvalida, MensajesCampo.Para(CodigoError.CantidadInvalida));
 
@@ -133,18 +127,18 @@ internal sealed class MangaService
             {
                 var contador = await _mangas.ContarVacasAsync(abierta.Id, ct);
                 // "Coincide" = sin cantidad real: lo confirmado es lo que contó Aviss.
-                var cierre = GuardarCierre(abierta.Id, tipo, _reloj.UtcAhora, contador, cantidadReal ?? contador, usuarioId);
+                var cierre = GuardarCierre(abierta.Id, tipo, _reloj.UtcAhora, contador, cantidadReal ?? contador);
                 return Resultado.Ok<CierreMangaDto?>(ADto(cierre, abierta.Numero, contador));
             }
             catch (DominioException ex) { return Ayudas.DatosInvalidos<CierreMangaDto?>(ex); }
         }, ct);
 
     /// <summary>Arma el cierre y su historial (sin guardar: lo guarda la transacción del que llama).</summary>
-    private CierreManga GuardarCierre(Guid mangaId, TipoCierreManga tipo, DateTime ahora, int cantidadAviss, int? cantidadConfirmada, Guid usuarioId)
+    private CierreManga GuardarCierre(Guid mangaId, TipoCierreManga tipo, DateTime ahora, int cantidadAviss, int? cantidadConfirmada)
     {
-        var cierre = CierreManga.Cerrar(mangaId, tipo, ahora, cantidadAviss, cantidadConfirmada, usuarioId, _dispositivo.ObtenerId(), ahora);
+        var cierre = CierreManga.Cerrar(mangaId, tipo, ahora, cantidadAviss, cantidadConfirmada, ahora);
         _mangas.AgregarCierre(cierre);
-        _historial.Agregar(Historial.Crear("CierreManga", cierre.Id, "Tipo", null, tipo.ToString(), ahora, usuarioId, AccionHistorial.MangaCerrada));
+        _historial.Agregar(Historial.Crear("CierreManga", cierre.Id, "Tipo", null, tipo.ToString(), ahora, AccionHistorial.MangaCerrada));
         return cierre;
     }
 
@@ -157,13 +151,11 @@ internal sealed class MangaService
 
     // ------------------------------------------------------------------ Reabrir (deshacer un cierre)
 
-    public Task<Resultado<ResultadoDeshacerDto>> ReabrirAsync(Guid cierreId, Guid usuarioId, CancellationToken ct)
+    public Task<Resultado<ResultadoDeshacerDto>> ReabrirAsync(Guid cierreId, CancellationToken ct)
         => _uow.EjecutarAsync(async () =>
         {
             var cierre = await _mangas.ObtenerCierreAsync(cierreId, ct);
             if (cierre is null) return Resultado.Error<ResultadoDeshacerDto>(CodigoError.NoEncontrado, "El cierre de manga no existe.");
-            var errorUsuario = await Ayudas.ValidarUsuarioAsync(_usuarios, usuarioId, ct);
-            if (errorUsuario is not null) return Resultado.Error<ResultadoDeshacerDto>(errorUsuario.Codigo!.Value, errorUsuario.Mensaje!);
             var manga = await _mangas.ObtenerAsync(cierre.MangaId, ct);
             if (manga is null) return Resultado.Error<ResultadoDeshacerDto>(CodigoError.NoEncontrado, "La manga del cierre no existe.");
 
@@ -188,7 +180,7 @@ internal sealed class MangaService
             try
             {
                 cierre.MarcarAnulado(ahora); // el único cambio permitido sobre un cierre guardado: la manga vuelve a estar abierta
-                _historial.Agregar(Historial.Crear("CierreManga", cierre.Id, "Anulado", "0", "1", ahora, usuarioId, AccionHistorial.AnulacionCierre));
+                _historial.Agregar(Historial.Crear("CierreManga", cierre.Id, "Anulado", "0", "1", ahora, AccionHistorial.AnulacionCierre));
                 var contador = await _mangas.ContarVacasAsync(manga.Id, ct);
                 return Resultado.Ok(new ResultadoDeshacerDto(TipoDeshacer.Cierre, null, manga.Id, manga.Numero, contador));
             }

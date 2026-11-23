@@ -16,9 +16,9 @@ public sealed class RegistrarTactoTests : IDisposable
     private static string T(Guid? id) => EscenarioConServicios.Texto(id);
 
     private Task<Resultado<Guid>> Registrar(Guid animal, Guid estado, int? dias = null, string? obs = null,
-        Guid? usuario = null, EstadoEsperado? esperado = null)
+        EstadoEsperado? esperado = null)
         => _e.Servicio<ITrabajoCampoService>().RegistrarTactoAsync(
-            new RegistrarTactoCommand(animal, estado, dias, obs, usuario ?? _e.UsuarioId, esperado));
+            new RegistrarTactoCommand(animal, estado, dias, obs, esperado));
 
     // ---------- Camino feliz ----------
 
@@ -41,8 +41,6 @@ public sealed class RegistrarTactoTests : IDisposable
         Assert.Equal(T(_e.EstadoPrenada), _e.Col("Tacto", t, "EstadoNuevoId"));
         Assert.Equal("45", _e.Col("Tacto", t, "DiasPrenez"));
         Assert.Equal("buena", _e.Col("Tacto", t, "Observaciones"));
-        Assert.Equal(T(_e.UsuarioId), _e.Col("Tacto", t, "UsuarioId"));
-        Assert.Equal(T(_e.DispositivoId), _e.Col("Tacto", t, "DispositivoId"));
         Assert.Equal("Normal", _e.Col("Tacto", t, "Tipo"));
         Assert.Null(_e.Col("Tacto", t, "TactoAnuladoId"));
         Assert.Equal("0", _e.Col("Tacto", t, "Anulado"));
@@ -56,7 +54,6 @@ public sealed class RegistrarTactoTests : IDisposable
         Assert.Equal(T(_e.EstadoSeca), _e.Base.Escalar("SELECT ValorAnterior FROM Historial"));
         Assert.Equal(T(_e.EstadoPrenada), _e.Base.Escalar("SELECT ValorNuevo FROM Historial"));
         Assert.Equal("Tacto", _e.Base.Escalar("SELECT Accion FROM Historial"));
-        Assert.Equal(T(_e.UsuarioId), _e.Base.Escalar("SELECT UsuarioId FROM Historial"));
     }
 
     [Fact]
@@ -143,14 +140,11 @@ public sealed class RegistrarTactoTests : IDisposable
     }
 
     [Fact]
-    public async Task Rechaza_un_estado_nuevo_dado_de_baja_o_un_usuario_dado_de_baja()
+    public async Task Rechaza_un_estado_nuevo_dado_de_baja()
     {
         var animal = _e.AnimalCampo();
         var inactivo = _e.Base.Estado("VIEJO", "Viejo", "VIEJO", activo: false);
         await AssertRechazaSinCambiosAsync(Registrar(animal, inactivo), CodigoError.EstadoDeBaja);
-
-        var vetBaja = _e.Base.Usuario("Baja", activo: false);
-        await AssertRechazaSinCambiosAsync(Registrar(animal, _e.EstadoSeca, usuario: vetBaja), CodigoError.UsuarioDeBaja);
     }
 
     [Fact]
@@ -159,7 +153,6 @@ public sealed class RegistrarTactoTests : IDisposable
         var animal = _e.AnimalCampo();
         await AssertRechazaSinCambiosAsync(Registrar(Guid.NewGuid(), _e.EstadoSeca), CodigoError.NoEncontrado);
         await AssertRechazaSinCambiosAsync(Registrar(animal, Guid.NewGuid()), CodigoError.NoEncontrado);
-        await AssertRechazaSinCambiosAsync(Registrar(animal, _e.EstadoSeca, usuario: Guid.NewGuid()), CodigoError.NoEncontrado);
     }
 
     [Theory]
@@ -246,14 +239,12 @@ public sealed class RegistrarTactoTests : IDisposable
             using var tx = otra.BeginTransaction();
             using var cmd = otra.CreateCommand();
             cmd.Transaction = tx;
-            cmd.CommandText = @"INSERT INTO Tacto (Id, AnimalId, FechaHoraUtc, OrdenInsercion, EstadoNuevoId, UsuarioId, DispositivoId, Tipo, Anulado, CreadoEnUtc, ActualizadoEnUtc)
-                                VALUES ($id, $a, $f, 999, $e, $u, $d, 'Normal', 0, $f, $f)";
+            cmd.CommandText = @"INSERT INTO Tacto (Id, AnimalId, FechaHoraUtc, OrdenInsercion, EstadoNuevoId, Tipo, Anulado, CreadoEnUtc, ActualizadoEnUtc)
+                                VALUES ($id, $a, $f, 999, $e, 'Normal', 0, $f, $f)";
             cmd.Parameters.AddWithValue("$id", Guid.NewGuid());
             cmd.Parameters.AddWithValue("$a", animal);
             cmd.Parameters.AddWithValue("$f", BaseDeDatosDePrueba.Fecha(_e.Reloj.UtcAhora));
             cmd.Parameters.AddWithValue("$e", _e.EstadoSeca);
-            cmd.Parameters.AddWithValue("$u", _e.UsuarioId);
-            cmd.Parameters.AddWithValue("$d", Guid.NewGuid());
             cmd.ExecuteNonQuery();
             // Se sale sin Commit: como si se cortara la energía.
         }

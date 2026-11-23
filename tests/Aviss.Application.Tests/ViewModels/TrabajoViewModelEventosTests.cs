@@ -22,7 +22,7 @@ public class TrabajoViewModelEventosTests
 
         public Banco()
         {
-            Sesion.Empezar(Datos.Vet, Datos.Rodeo());
+            Sesion.Empezar(Datos.Rodeo());
             Campo.Estados = [Revisar, Ok, Vacia, Insemin, Anestro];
             Vm = new TrabajoViewModel(Campo, new FakeLector(), new FakePreferencias { ControlPorMangaPorDefecto = true }, new FakeAvisos(),
                 new FakePantalla(), new FakeTemporizador(), new FakeNavegacion(), Sesion);

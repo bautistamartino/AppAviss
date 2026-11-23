@@ -5,7 +5,7 @@ using Microsoft.Data.Sqlite;
 namespace Aviss.Infrastructure.Tests;
 
 /// <summary>
-/// Actualizar una base con datos de la migración "EsperaYRechazo" (la versión anterior) a "EventosDelCatalogo" (spec 005,
+/// Actualizar una base con datos de la migración "QuitarVeterinario" (la versión anterior, spec 006) a "EventosDelCatalogo" (spec 005,
 /// RF-19, RF-20). El peligro: perder o reactivar algo, o dejar la base a medias si falla.
 /// </summary>
 public sealed class MigracionEventosTests : IDisposable
@@ -32,11 +32,10 @@ public sealed class MigracionEventosTests : IDisposable
     [Fact]
     public async Task Actualizar_una_base_con_datos_no_pierde_ni_reactiva_nada_y_adopta_el_Aborto_a_mano()
     {
-        _db.MigrarHasta("EsperaYRechazo");
+        _db.MigrarHasta("QuitarVeterinario");
 
         // Una base de la versión anterior: los 6 iniciales (VACIA desactivado a mano y SECA renombrada), un evento propio,
         // un "Aborto" creado a mano y registros que los usan.
-        var vet = _db.Usuario("Dra. Pérez");
         var rodeo = _db.Rodeo();
         var vacia = _db.Estado("VACIA", "VACIA", "VACIA", activo: false);
         var prenada = _db.Estado("PRENADA", "PREÑADA", "PREÑADA");
@@ -47,9 +46,9 @@ public sealed class MigracionEventosTests : IDisposable
         var prostag = _db.Estado("PROSTAG", "PROSTAG", "PROSTAG");
         var aborto = _db.Estado("ABORTO", "Aborto", "ABORTO-DC");
         var animal = _db.Animal(rodeo, "100", estadoId: aborto);
-        var tacto = _db.Tacto(animal, vet, aborto);
-        var tactoSeca = _db.Tacto(animal, vet, seca);
-        var rechazo = _db.Rechazo(animal, vet, "motivo");
+        var tacto = _db.Tacto(animal, aborto);
+        var tactoSeca = _db.Tacto(animal, seca);
+        var rechazo = _db.Rechazo(animal, "motivo");
 
         _db.MigrarHasta(null);
 
@@ -99,7 +98,7 @@ public sealed class MigracionEventosTests : IDisposable
     [Fact]
     public void Una_base_nueva_y_una_actualizada_tienen_los_mismos_triggers_e_indices()
     {
-        _db.MigrarHasta("EsperaYRechazo");
+        _db.MigrarHasta("QuitarVeterinario");
         _db.MigrarHasta(null);
         using var nueva = new BaseDeDatosDePrueba();
 
@@ -109,7 +108,7 @@ public sealed class MigracionEventosTests : IDisposable
     [Fact]
     public void Si_la_migracion_falla_a_mitad_la_base_queda_como_estaba()
     {
-        _db.MigrarHasta("EsperaYRechazo");
+        _db.MigrarHasta("QuitarVeterinario");
         var estado = _db.Estado("SECA", "SECA", "SECA");
         // Saboteo: un trigger con el mismo nombre que uno de los últimos pasos hace fallar la migración DESPUÉS de haber
         // agregado las columnas. Como EF aplica cada migración en una transacción, todo tiene que volver atrás.

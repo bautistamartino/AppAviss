@@ -74,7 +74,7 @@ public sealed class FechasUtcTests : IDisposable
             while (r.Read()) tablas.Add(r.GetString(0));
         }
 
-        Assert.Equal(12, tablas.Count); // spec 004 suma Espera y Rechazo
+        Assert.Equal(11, tablas.Count); // spec 004 suma Espera y Rechazo; la spec 006 quita Usuario
         foreach (var tabla in tablas)
         {
             Assert.Equal(1, _db.Contar($"SELECT COUNT(*) FROM pragma_table_info('{tabla}') WHERE name = 'CreadoEnUtc'"));
@@ -124,11 +124,10 @@ public sealed class FechasUtcTests : IDisposable
     {
         var rodeo = _db.Rodeo();
         var animal = _db.Animal(rodeo, "1");
-        var usuario = _db.Usuario();
         var estado = _db.Estado("SECA", "SECA", "SECA");
         var fecha = Ahora;
-        var segundo = _db.Tacto(animal, usuario, estado, fechaHora: fecha, orden: 20);
-        var primero = _db.Tacto(animal, usuario, estado, fechaHora: fecha, orden: 10);
+        var segundo = _db.Tacto(animal, estado, fechaHora: fecha, orden: 20);
+        var primero = _db.Tacto(animal, estado, fechaHora: fecha, orden: 10);
 
         var ids = new List<Guid>();
         using var cmd = _db.Cruda.CreateCommand();
@@ -143,15 +142,14 @@ public sealed class FechasUtcTests : IDisposable
     {
         var est = Establecimiento.Crear("Tambo Sur", "notas", Ahora);
         var rodeo = Rodeo.Crear(est.Id, "Rodeo 1", Ahora, "r.xls", new string('b', 64), new byte[] { 1, 2, 3 }, "DairyComp", Ahora);
-        var usuario = Usuario.CrearSinAsignar(Ahora);
         var estado = EstadoReproductivo.Crear("PRENADA", "PREÑADA", "PREÑADA", Ahora);
         var animal = Animal.CrearImportado(rodeo.Id, Caravana.Crear("ñ12"), "982 000", estado.Id, "obs", "{\"ID\":\"ñ12\"}", Ahora);
-        var tacto = Tacto.Registrar(animal.Id, Ahora, 1, null, estado.Id, 45, "ok", usuario.Id, Guid.NewGuid(), Ahora);
-        var historial = Historial.Crear("Tacto", tacto.Id, "Estado", null, estado.Id.ToString(), Ahora, usuario.Id, AccionHistorial.Tacto);
+        var tacto = Tacto.Registrar(animal.Id, Ahora, 1, null, estado.Id, 45, "ok", Ahora);
+        var historial = Historial.Crear("Tacto", tacto.Id, "Estado", null, estado.Id.ToString(), Ahora, AccionHistorial.Tacto);
 
         using (var ctx = _db.NuevoContexto())
         {
-            ctx.AddRange(est, rodeo, usuario, estado);
+            ctx.AddRange(est, rodeo, estado);
             ctx.SaveChanges();
             ctx.AddRange(animal);
             ctx.SaveChanges();
@@ -165,7 +163,6 @@ public sealed class FechasUtcTests : IDisposable
             var r = ctx.Set<Rodeo>().Single();
             Assert.Equal(new byte[] { 1, 2, 3 }, r.ArchivoOrigenBlob);
             Assert.Equal(EstadoRodeo.Abierto, r.Estado);
-            Assert.Equal(Usuario.SinAsignarId, ctx.Set<Usuario>().Single().Id);
             var e = ctx.Set<EstadoReproductivo>().Single();
             Assert.Equal("PREÑADA", e.Nombre);
             var a = ctx.Set<Animal>().Single();
@@ -189,14 +186,13 @@ public sealed class FechasUtcTests : IDisposable
     {
         var est = Establecimiento.Crear("T", null, Ahora);
         var rodeo = Rodeo.Crear(est.Id, "R", Ahora, "r.xls", new string('b', 64), new byte[] { 1 }, "DairyComp", Ahora);
-        var usuario = Usuario.Crear("Vet", null, Ahora);
         var estado = EstadoReproductivo.Crear("SECA", "SECA", "SECA", Ahora);
         var animal = Animal.CrearAltaEnCampo(rodeo.Id, Caravana.Crear("1"), null, null, Ahora);
-        var original = Tacto.Registrar(animal.Id, Ahora, 1, null, estado.Id, null, null, usuario.Id, Guid.NewGuid(), Ahora);
-        var anulacion = Tacto.CrearAnulacion(original, estado.Id, Ahora, 2, usuario.Id, Guid.NewGuid(), Ahora);
+        var original = Tacto.Registrar(animal.Id, Ahora, 1, null, estado.Id, null, null, Ahora);
+        var anulacion = Tacto.CrearAnulacion(original, estado.Id, Ahora, 2, Ahora);
 
         using var ctx = _db.NuevoContexto();
-        ctx.AddRange(est, rodeo, usuario, estado);
+        ctx.AddRange(est, rodeo, estado);
         ctx.SaveChanges();
         ctx.Add(animal);
         ctx.SaveChanges();
