@@ -14,7 +14,7 @@ Tests primero en cada tarea de lógica. Ninguna tarea se da por terminada con `d
   - Hecho cuando: `dotnet ef migrations has-pending-model-changes` dice que no hay cambios; una base nueva tiene los 9 eventos con tipo, principal y orden de RF-3; una base anterior con un evento a mano, un inicial desactivado y un "Aborto" a mano se actualiza con backup previo, adopta el "Aborto" sin cambiarle nombre, código ni estado, no reactiva nada y deja los demás en "Otro evento"; una migración que falla deja la base como estaba; dos arranques seguidos no duplican nada; la base rechaza (aunque no venga de la app) un `Rechazo` con un evento que no es `SoloEvento`, un tacto Normal hacia un `SoloEvento` y un cambio de `EventoId` en un registro existente; `OrdenAlfabeticoTests` pasa con los ejemplos de RF-7.
   - Qué mirar en el emulador: nada (sin pantallas).
 
-- [ ] **T2** — Servicios de campo: lista de eventos, guardado de solo-evento, edición y consulta.
+- [x] **T2** — Servicios de campo: lista de eventos, guardado de solo-evento, edición y consulta.
   - Qué se hace (tests primero):
     - `ArmadorListaEventos` (pura) y `EventoCampoDto` / `ListaEventosDto`; `ICampoService.ListarEventosAsync` reemplaza a `ListarEstadosActivosAsync` y `EstadoActivoDto`.
     - `RegistrarRechazoCommand` / `RegistrarRechazoAsync` de la 004 pasan a `RegistrarSoloEventoCommand(AnimalId, EventoId, Observaciones, UsuarioId)` / `RegistrarSoloEventoAsync`: `EventoRechazo` guarda `Rechazo.EventoId` nulo; un evento del catálogo guarda su `EventoId`; se valida que exista, esté activo y sea `SoloEvento`. El guardado de tacto rechaza un `SoloEvento`.

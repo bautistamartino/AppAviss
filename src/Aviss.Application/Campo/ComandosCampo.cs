@@ -20,14 +20,17 @@ public sealed record PonerEnEsperaCommand(Guid AnimalId, Guid UsuarioId);
 /// <summary>Saltear la espera pendiente de una vaca: no hacía falta cargar un evento (RF-3).</summary>
 public sealed record SaltearEsperaCommand(Guid AnimalId, Guid UsuarioId);
 
-/// <summary>La marca de rechazo de una vaca; <see cref="Observaciones"/> es el motivo escrito a mano (RF-6).</summary>
-public sealed record RegistrarRechazoCommand(Guid AnimalId, string? Observaciones, Guid UsuarioId);
+/// <summary>
+/// Un "solo evento" (spec 005): un registro que no cambia el estado de la vaca. <see cref="EventoId"/> es un evento del catálogo de tipo
+/// SoloEvento (OK, Aborto, Revisar Nuevamente) o <see cref="EventosCampo.Rechazo"/> (el Rechazo fijo de la spec 004). <see cref="Observaciones"/> es el motivo o la nota.
+/// </summary>
+public sealed record RegistrarSoloEventoCommand(Guid AnimalId, Guid EventoId, string? Observaciones, Guid UsuarioId);
 
 public sealed record AnularRechazoCommand(Guid RechazoId, Guid UsuarioId);
 
 /// <summary>
 /// "Editar" un movimiento (RF-8): se anula el registro (un tacto o un rechazo) y se guarda uno nuevo. <see cref="Evento"/> es el
-/// Id de un estado del catálogo (se guarda un tacto) o <see cref="EventosCampo.Rechazo"/> (se guarda un rechazo).
+/// Id de un evento del catálogo (un estado guarda un tacto; un solo evento guarda un registro sin cambio de estado) o <see cref="EventosCampo.Rechazo"/> (se guarda un rechazo).
 /// </summary>
 public sealed record CorregirRegistroCommand(Guid RegistroId, Guid Evento, string? Observaciones, Guid UsuarioId);
 

@@ -96,7 +96,8 @@ public sealed class RegistrarTactoConMarcaTests : IDisposable
     {
         _e.Base.Estado("VIEJO", "VIEJO", "VIEJO", activo: false);
 
-        var estados = await _e.Campo.ListarEstadosActivosAsync();
+        var lista = await _e.Campo.ListarEventosAsync();
+        var estados = lista.Principales.Concat(lista.Otros.Where(o => o.Id != EventosCampo.Rechazo)).ToList();
 
         Assert.Equal(["PREÑADA", "SECA"], estados.Select(s => s.Nombre).Order());
         Assert.DoesNotContain(estados, s => s.Nombre == "VIEJO");

@@ -334,7 +334,7 @@ internal sealed class RegistroCampoRepository : IRegistroCampoRepository
         var rechazo = await _db.Rechazos.AsNoTracking()
             .Where(r => r.AnimalId == animalId && !r.Anulado)
             .OrderByDescending(r => r.FechaHoraUtc).ThenByDescending(r => r.OrdenInsercion)
-            .Select(r => new RegistroCampoVigente(TipoRegistroCampo.Rechazo, r.Id, r.FechaHoraUtc, r.OrdenInsercion, r.UsuarioId, null, null, r.Observaciones))
+            .Select(r => new RegistroCampoVigente(TipoRegistroCampo.Rechazo, r.Id, r.FechaHoraUtc, r.OrdenInsercion, r.UsuarioId, null, null, r.Observaciones, r.EventoId))
             .FirstOrDefaultAsync(ct);
 
         // Gana el de (fecha, orden) más alto entre los tres.

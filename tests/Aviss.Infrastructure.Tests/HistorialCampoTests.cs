@@ -95,7 +95,7 @@ public sealed class HistorialCampoTests : IDisposable
     {
         var animal = _e.AnimalImportado("100", _e.EstadoSeca);
         var espera = (await _e.Campo.PonerEnEsperaAsync(new PonerEnEsperaCommand(animal, _e.UsuarioId))).Valor;
-        var rechazo = (await _e.Campo.RegistrarRechazoAsync(new RegistrarRechazoCommand(animal, "pata", _e.UsuarioId))).Valor;
+        var rechazo = (await _e.Campo.RegistrarSoloEventoAsync(new RegistrarSoloEventoCommand(animal, EventosCampo.Rechazo, "pata", _e.UsuarioId))).Valor;
         await _e.DeshacerAsync(TipoDeshacer.Rechazo, rechazo);
         var otra = _e.AnimalImportado("200", _e.EstadoSeca);
         await _e.Campo.PonerEnEsperaAsync(new PonerEnEsperaCommand(otra, _e.UsuarioId));

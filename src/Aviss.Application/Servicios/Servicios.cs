@@ -82,7 +82,7 @@ public interface ITrabajoCampoService
     Task<Resultado<Guid>> AnularTactoAsync(AnularTactoCommand comando, CancellationToken ct = default);
 
     /// <summary>Registra la marca de rechazo de una vaca (spec 004, RF-6); si tenía una espera pendiente, la resuelve en la misma transacción.</summary>
-    Task<Resultado<Guid>> RegistrarRechazoAsync(RegistrarRechazoCommand comando, CancellationToken ct = default);
+    Task<Resultado<Guid>> RegistrarSoloEventoAsync(RegistrarSoloEventoCommand comando, CancellationToken ct = default);
 
     /// <summary>Deshace un rechazo (lo marca anulado). Solo vale para el último registro vigente de la vaca.</summary>
     Task<Resultado> AnularRechazoAsync(AnularRechazoCommand comando, CancellationToken ct = default);
@@ -103,7 +103,7 @@ public interface ICampoService
     Task<IReadOnlyList<RodeoParaTrabajarDto>> ListarRodeosParaTrabajarAsync(CancellationToken ct = default);
     Task<IReadOnlyList<VeterinarioDto>> ListarVeterinariosActivosAsync(CancellationToken ct = default);
     Task<Resultado<Guid>> CrearVeterinarioAsync(string nombre, string? matricula, CancellationToken ct = default);
-    Task<IReadOnlyList<EstadoActivoDto>> ListarEstadosActivosAsync(CancellationToken ct = default);
+    Task<ListaEventosDto> ListarEventosAsync(CancellationToken ct = default);
     /// <summary>Crea un estado nuevo en el catálogo desde el campo ("Agregar evento"). El código interno sale del nombre.</summary>
     Task<Resultado<Guid>> CrearEstadoAsync(string nombre, string codigoDairyComp, CancellationToken ct = default);
 
@@ -139,7 +139,7 @@ public interface ICampoService
     Task<IReadOnlyList<EsperaDto>> ListarEsperasAsync(Guid rodeoId, CancellationToken ct = default);
 
     /// <summary>Guarda la marca de rechazo de una vaca con el motivo escrito a mano (RF-6). Si estaba en espera, la resuelve.</summary>
-    Task<Resultado<Guid>> RegistrarRechazoAsync(RegistrarRechazoCommand comando, CancellationToken ct = default);
+    Task<Resultado<Guid>> RegistrarSoloEventoAsync(RegistrarSoloEventoCommand comando, CancellationToken ct = default);
 
     /// <summary>Resetear un rodeo (para pruebas): lo reimporta desde su Excel original como rodeo nuevo y da de baja el viejo. Devuelve el Id del nuevo.</summary>
     Task<Resultado<Guid>> ResetearRodeoAsync(Guid rodeoId, CancellationToken ct = default);

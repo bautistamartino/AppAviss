@@ -1,0 +1,36 @@
+using Aviss.Domain.Entidades;
+using Aviss.Domain.Enums;
+using Aviss.Domain.Reglas;
+
+namespace Aviss.Application.Campo;
+
+/// <summary>
+/// Arma la lista de eventos de la ficha en dos niveles (spec 005, RF-6, RF-7, RF-11, RF-13). Es pura: recibe el catálogo y devuelve
+/// los principales activos en su <c>Orden</c> y los de "Otro evento" (el Rechazo fijo primero y después los activos no principales por
+/// nombre). Los desactivados no aparecen; renombrar un principal no lo mueve (el orden es el de la columna, no el del nombre) y
+/// desactivarlo no lo reemplaza con otro.
+/// </summary>
+public static class ArmadorListaEventos
+{
+    /// <summary>El "Rechazo" fijo de la aplicación (spec 004): no es una fila del catálogo y siempre abre "Otro evento".</summary>
+    public static readonly EventoCampoDto EventoRechazo = new(EventosCampo.Rechazo, "Rechazo", CambiaEstado: false, EsPrincipal: false);
+
+    public static ListaEventosDto Armar(IEnumerable<EstadoReproductivo> catalogo)
+    {
+        var activos = catalogo.Where(e => e.Activo).ToList();
+
+        var principales = activos.Where(e => e.EsPrincipal)
+            .OrderBy(e => e.Orden).ThenBy(e => e.CreadoEnUtc)
+            .Select(Dto)
+            .ToList();
+
+        var otros = new List<EventoCampoDto> { EventoRechazo };
+        otros.AddRange(activos.Where(e => !e.EsPrincipal)
+            .OrderBy(e => OrdenAlfabetico.Clave(e.Nombre), StringComparer.Ordinal).ThenBy(e => e.CreadoEnUtc)
+            .Select(Dto));
+
+        return new ListaEventosDto(principales, otros);
+    }
+
+    private static EventoCampoDto Dto(EstadoReproductivo e) => new(e.Id, e.Nombre, e.Tipo == TipoEvento.Estado, e.EsPrincipal);
+}

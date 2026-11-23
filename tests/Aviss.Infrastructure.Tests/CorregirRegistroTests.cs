@@ -32,7 +32,7 @@ public sealed class CorregirRegistroTests : IDisposable
     {
         var (animal, _) = await _e.VacaMarcadaAsync("100", _e.EstadoSeca);
         _e.Reloj.Avanzar(TimeSpan.FromSeconds(1));
-        var r = await _e.Campo.RegistrarRechazoAsync(new RegistrarRechazoCommand(animal, motivo, _e.UsuarioId));
+        var r = await _e.Campo.RegistrarSoloEventoAsync(new RegistrarSoloEventoCommand(animal, EventosCampo.Rechazo, motivo, _e.UsuarioId));
         Assert.True(r.EsCorrecto, r.Mensaje);
         _e.Reloj.Avanzar(TimeSpan.FromSeconds(1));
         return (animal, r.Valor);

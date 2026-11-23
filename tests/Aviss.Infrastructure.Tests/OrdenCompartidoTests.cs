@@ -92,7 +92,7 @@ public sealed class OrdenCompartidoTests : IDisposable
         var tacto = await _e.TactoAsync(animalTacto, _e.EstadoPrenada);
         Assert.Equal(701, Orden("Tacto", tacto));
 
-        var nuevo = await _e.Campo.RegistrarRechazoAsync(new RegistrarRechazoCommand(animalTacto, null, _e.UsuarioId));
+        var nuevo = await _e.Campo.RegistrarSoloEventoAsync(new RegistrarSoloEventoCommand(animalTacto, EventosCampo.Rechazo, null, _e.UsuarioId));
         Assert.Equal(702, Orden("Rechazo", nuevo.Valor));
 
         _e.AnimalImportado("3");

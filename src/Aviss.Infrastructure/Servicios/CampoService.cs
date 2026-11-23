@@ -50,8 +50,8 @@ internal sealed class CampoService : ICampoService
     public Task<Resultado<Guid>> CrearVeterinarioAsync(string nombre, string? matricula, CancellationToken ct = default)
         => EscribirAsync(p => p.GetRequiredService<IUsuarioService>().CrearAsync(nombre, matricula, ct), ct);
 
-    public Task<IReadOnlyList<EstadoActivoDto>> ListarEstadosActivosAsync(CancellationToken ct = default)
-        => LeerAsync(p => p.GetRequiredService<ConsultaCampoService>().ListarEstadosActivosAsync(ct));
+    public Task<ListaEventosDto> ListarEventosAsync(CancellationToken ct = default)
+        => LeerAsync(p => p.GetRequiredService<ConsultaCampoService>().ListarEventosAsync(ct));
 
     public Task<Resultado<Guid>> CrearEstadoAsync(string nombre, string codigoDairyComp, CancellationToken ct = default)
     {
@@ -110,8 +110,8 @@ internal sealed class CampoService : ICampoService
     public Task<IReadOnlyList<EsperaDto>> ListarEsperasAsync(Guid rodeoId, CancellationToken ct = default)
         => LeerAsync(p => p.GetRequiredService<ConsultaCampoService>().ListarEsperasAsync(rodeoId, ct));
 
-    public Task<Resultado<Guid>> RegistrarRechazoAsync(RegistrarRechazoCommand comando, CancellationToken ct = default)
-        => EscribirAsync(p => p.GetRequiredService<ITrabajoCampoService>().RegistrarRechazoAsync(comando, ct), ct);
+    public Task<Resultado<Guid>> RegistrarSoloEventoAsync(RegistrarSoloEventoCommand comando, CancellationToken ct = default)
+        => EscribirAsync(p => p.GetRequiredService<ITrabajoCampoService>().RegistrarSoloEventoAsync(comando, ct), ct);
 
     public Task<Resultado<ResultadoDeshacerDto>> DeshacerAsync(DeshacerCommand comando, CancellationToken ct = default)
         => EscribirAsync(p => DeshacerEnScopeAsync(p, comando, ct), ct);

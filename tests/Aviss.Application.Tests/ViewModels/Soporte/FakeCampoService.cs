@@ -15,7 +15,7 @@ public class FakeCampoService : ICampoService
     // ---- configuración ----
     public IReadOnlyList<RodeoParaTrabajarDto> Rodeos { get; set; } = [];
     public IReadOnlyList<VeterinarioDto> Veterinarios { get; set; } = [];
-    public IReadOnlyList<EstadoActivoDto> Estados { get; set; } = [];
+    public IReadOnlyList<EventoCampoDto> Estados { get; set; } = [];
     public IReadOnlyList<MovimientoDto> Movimientos { get; set; } = [];
 
     public EstadoTrabajoDto Estado { get; set; } = Datos.EstadoTrabajo();
@@ -46,7 +46,11 @@ public class FakeCampoService : ICampoService
     // ---- ICampoService ----
     public Task<IReadOnlyList<RodeoParaTrabajarDto>> ListarRodeosParaTrabajarAsync(CancellationToken ct = default) => Task.FromResult(Rodeos);
     public virtual Task<IReadOnlyList<VeterinarioDto>> ListarVeterinariosActivosAsync(CancellationToken ct = default) => Task.FromResult(Veterinarios);
-    public Task<IReadOnlyList<EstadoActivoDto>> ListarEstadosActivosAsync(CancellationToken ct = default) => Task.FromResult(Estados);
+    /// <summary>Los eventos del fake: <c>Estados</c> es la lista plana; los principales van arriba y el resto en "Otro evento" (con el Rechazo fijo primero, como el servicio real).</summary>
+    public Task<ListaEventosDto> ListarEventosAsync(CancellationToken ct = default)
+        => Task.FromResult(new ListaEventosDto(
+            Estados.Where(e => e.EsPrincipal).ToList(),
+            [ArmadorListaEventos.EventoRechazo, .. Estados.Where(e => !e.EsPrincipal)]));
 
     public List<(string Nombre, string CodigoDairyComp)> EstadosCreados { get; } = [];
     public Func<string, Resultado<Guid>>? OnCrearEstado { get; set; }
@@ -56,7 +60,7 @@ public class FakeCampoService : ICampoService
         EstadosCreados.Add((nombre, codigoDairyComp));
         if (OnCrearEstado is not null) return Task.FromResult(OnCrearEstado(nombre));
         var id = Guid.NewGuid();
-        Estados = [.. Estados, new EstadoActivoDto(id, nombre.ToUpperInvariant())];
+        Estados = [.. Estados, new EventoCampoDto(id, nombre.ToUpperInvariant(), true, false)];
         return Task.FromResult(Resultado.Ok(id));
     }
 
@@ -129,11 +133,11 @@ public class FakeCampoService : ICampoService
     public IReadOnlyList<EsperaDto> Esperas { get; set; } = [];
     public List<PonerEnEsperaCommand> EsperasPuestas { get; } = [];
     public List<SaltearEsperaCommand> EsperasSalteadas { get; } = [];
-    public List<RegistrarRechazoCommand> Rechazos { get; } = [];
+    public List<RegistrarSoloEventoCommand> Rechazos { get; } = [];
     public List<CorregirRegistroCommand> RegistrosCorregidos { get; } = [];
     public Func<PonerEnEsperaCommand, Resultado<Guid>>? OnPonerEnEspera { get; set; }
     public Func<SaltearEsperaCommand, Resultado>? OnSaltearEspera { get; set; }
-    public Func<RegistrarRechazoCommand, Resultado<Guid>>? OnRegistrarRechazo { get; set; }
+    public Func<RegistrarSoloEventoCommand, Resultado<Guid>>? OnRegistrarRechazo { get; set; }
     public Func<CorregirRegistroCommand, Resultado<Guid>>? OnCorregirRegistro { get; set; }
     public int ConsultasDeEsperas { get; private set; }
 
@@ -161,7 +165,7 @@ public class FakeCampoService : ICampoService
         return Task.FromResult(Esperas);
     }
 
-    public Task<Resultado<Guid>> RegistrarRechazoAsync(RegistrarRechazoCommand comando, CancellationToken ct = default)
+    public Task<Resultado<Guid>> RegistrarSoloEventoAsync(RegistrarSoloEventoCommand comando, CancellationToken ct = default)
     {
         Rechazos.Add(comando);
         return Task.FromResult(OnRegistrarRechazo?.Invoke(comando) ?? Resultado.Ok(Guid.NewGuid()));
@@ -240,8 +244,9 @@ public static class Datos
 
     public static MovimientoDto Movimiento(TipoMovimiento tipo, bool puedeDeshacer = true, bool anulado = false,
         int? cantidadAviss = null, int? cantidadConfirmada = null, int? contadorActual = null, string? caravana = "1001",
-        string? detalle = null, string? cvet = null, string? observaciones = null)
+        string? detalle = null, string? cvet = null, string? observaciones = null, Guid? eventoId = null)
         => new(tipo, Guid.NewGuid(), tipo == TipoMovimiento.Cierre ? null : Guid.NewGuid(), caravana, 1, detalle,
             new DateTime(2026, 11, 17, 13, 0, 0, DateTimeKind.Utc), "Dra. Ana", anulado, puedeDeshacer,
-            cantidadAviss, cantidadConfirmada, contadorActual, cvet, observaciones);
+            cantidadAviss, cantidadConfirmada, contadorActual, cvet, observaciones,
+            eventoId ?? (tipo == TipoMovimiento.Rechazo ? EventosCampo.Rechazo : null));
 }

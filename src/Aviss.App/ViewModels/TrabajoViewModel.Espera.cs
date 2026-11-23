@@ -65,12 +65,12 @@ public sealed partial class TrabajoViewModel
     public const int MaximoEnBotonera = 4;
 
     /// <summary>El evento fijo "Rechazo" de la lista de eventos: no es un estado del catálogo (decisión 1 del plan).</summary>
-    public static readonly EstadoActivoDto EventoRechazo = new(EventosCampo.Rechazo, "Rechazo");
+    public static readonly EventoCampoDto EventoRechazo = ArmadorListaEventos.EventoRechazo;
 
     // ---- La lista de eventos de la ficha: los estados activos y, al final, "Rechazo" (RF-6)
 
     /// <summary>Lo que muestra "Agregar evento": los estados activos y siempre "Rechazo" al final, antes de "+ Nuevo evento".</summary>
-    public ObservableCollection<EstadoActivoDto> Eventos { get; } = [];
+    public ObservableCollection<EventoCampoDto> Eventos { get; } = [];
 
     private void ReconstruirEventos()
     {

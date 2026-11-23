@@ -19,6 +19,9 @@ public sealed class MovimientoItem
 
     public bool EsCierre => Dto.Tipo == TipoMovimiento.Cierre;
     public bool EsRechazo => Dto.Tipo == TipoMovimiento.Rechazo;
+
+    /// <summary>El nombre del solo evento (OK, Aborto, Rechazo...); el Detalle del movimiento ya lo trae.</summary>
+    private string NombreEvento => string.IsNullOrWhiteSpace(Dto.Detalle) ? "Rechazo" : Dto.Detalle;
     public bool Anulado => Dto.Anulado;
     public bool PuedeDeshacer => Dto.PuedeDeshacer;
 
@@ -71,7 +74,7 @@ public sealed class MovimientoItem
 
     /// <summary>El segundo renglón de la fila, junto: "Tacto · PREÑADA", "Marca" o "Cierre de manga · Manual".</summary>
     public string TextoTipoDetalle => EsRechazo
-        ? (string.IsNullOrWhiteSpace(Dto.Observaciones) ? "Rechazo" : $"Rechazo · {Dto.Observaciones.Trim()}")
+        ? (string.IsNullOrWhiteSpace(Dto.Observaciones) ? NombreEvento : $"{NombreEvento} · {Dto.Observaciones.Trim()}")
         : Detalle.Length > 0 ? $"{Tipo} · {Detalle}" : Tipo;
 }
 
@@ -167,7 +170,7 @@ public sealed partial class MovimientosViewModel : ObservableObject
     // (si el nuevo se rechaza, el original sigue como estaba).
 
     /// <summary>Los eventos entre los que se puede elegir al editar: los estados activos y "Rechazo" al final (se puede pasar de tacto a rechazo y al revés).</summary>
-    public ObservableCollection<EstadoActivoDto> EstadosParaEditar { get; } = [];
+    public ObservableCollection<EventoCampoDto> EstadosParaEditar { get; } = [];
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HayEdicion), nameof(TituloEdicion))]
@@ -177,7 +180,7 @@ public sealed partial class MovimientosViewModel : ObservableObject
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(TextoEventoEditado))]
     [NotifyCanExecuteChangedFor(nameof(GuardarEdicionCommand))]
-    private EstadoActivoDto? _eventoEditado;
+    private EventoCampoDto? _eventoEditado;
 
     [ObservableProperty]
     private string _observacionEditada = "";
@@ -202,14 +205,13 @@ public sealed partial class MovimientosViewModel : ObservableObject
             MensajeError = null;
             MensajeInfo = null;
             MensajeEdicion = null;
-            var estados = await _campo.ListarEstadosActivosAsync();
+            // T2: lista plana (principales y "Otro evento", con el Rechazo al final). El registro se reconoce por su EventoId, no por el nombre.
+            var lista = await _campo.ListarEventosAsync();
             EstadosParaEditar.Clear();
-            foreach (var e in estados) EstadosParaEditar.Add(e);
+            foreach (var e in lista.Principales.Concat(lista.Otros.Where(o => o.Id != EventosCampo.Rechazo))) EstadosParaEditar.Add(e);
             EstadosParaEditar.Add(TrabajoViewModel.EventoRechazo);
 
-            EventoEditado = item.EsRechazo
-                ? TrabajoViewModel.EventoRechazo
-                : estados.FirstOrDefault(e => string.Equals(e.Nombre, item.Dto.Detalle, StringComparison.OrdinalIgnoreCase));
+            EventoEditado = EstadosParaEditar.FirstOrDefault(e => e.Id == item.Dto.EventoId);
             ObservacionEditada = item.Dto.Observaciones ?? "";
             Editando = item;
         }
@@ -220,7 +222,7 @@ public sealed partial class MovimientosViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private void ElegirEventoEditado(EstadoActivoDto? estado)
+    private void ElegirEventoEditado(EventoCampoDto? estado)
     {
         if (estado is null) return;
         EventoEditado = estado;

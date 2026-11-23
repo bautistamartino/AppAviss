@@ -174,7 +174,7 @@ public sealed class EsperaServiceTests : IDisposable
         var animal = _e.AnimalImportado("100", _e.EstadoSeca);
         var espera = await PonerOkAsync(animal);
 
-        var rechazo = await _e.Campo.RegistrarRechazoAsync(new RegistrarRechazoCommand(animal, "pata", _e.UsuarioId));
+        var rechazo = await _e.Campo.RegistrarSoloEventoAsync(new RegistrarSoloEventoCommand(animal, EventosCampo.Rechazo, "pata", _e.UsuarioId));
 
         Assert.True(rechazo.EsCorrecto, rechazo.Mensaje);
         Assert.Equal("Resuelta", Estado(espera));
@@ -207,7 +207,7 @@ public sealed class EsperaServiceTests : IDisposable
         var manga = _e.Base.Manga(_e.RodeoId, 9, _e.UsuarioId);
         _e.Base.MarcaPasada(animal, manga, _e.UsuarioId, fechaHora: _e.Reloj.UtcAhora.AddHours(2));
 
-        var r = await _e.Campo.RegistrarRechazoAsync(new RegistrarRechazoCommand(animal, null, _e.UsuarioId));
+        var r = await _e.Campo.RegistrarSoloEventoAsync(new RegistrarSoloEventoCommand(animal, EventosCampo.Rechazo, null, _e.UsuarioId));
 
         Assert.False(r.EsCorrecto);
         Assert.Equal("Pendiente", Estado(espera));

@@ -47,8 +47,8 @@ internal sealed class TrabajoCampoService : ITrabajoCampoService
         => _uow.EjecutarAsync(() => AnularNucleoAsync(c, null, ct), ct);
 
 
-    public Task<Resultado<Guid>> RegistrarRechazoAsync(RegistrarRechazoCommand c, CancellationToken ct = default)
-        => _uow.EjecutarAsync(() => RegistrarRechazoNucleoAsync(c, null, ct), ct);
+    public Task<Resultado<Guid>> RegistrarSoloEventoAsync(RegistrarSoloEventoCommand c, CancellationToken ct = default)
+        => _uow.EjecutarAsync(() => RegistrarSoloEventoNucleoAsync(c, null, ct), ct);
 
     public Task<Resultado> AnularRechazoAsync(AnularRechazoCommand c, CancellationToken ct = default)
         => _uow.EjecutarAsync<Resultado>(async () =>
@@ -87,15 +87,30 @@ internal sealed class TrabajoCampoService : ITrabajoCampoService
                 if (!anulacion.EsCorrecto) return anulacion;
             }
 
-            return c.Evento == EventosCampo.Rechazo
-                ? await RegistrarRechazoNucleoAsync(new RegistrarRechazoCommand(animalId, c.Observaciones, c.UsuarioId), orden, ct)
+            // El tipo del evento elegido decide qué se guarda: Rechazo fijo o un solo evento del catálogo = registro sin cambio de estado;
+            // un estado = tacto. Un id que no existe cae en el tacto, que responde "el estado elegido no existe" (y la transacción se revierte).
+            var elegido = c.Evento == EventosCampo.Rechazo ? null : await _estados.ObtenerAsync(c.Evento, ct);
+            return c.Evento == EventosCampo.Rechazo || elegido?.Tipo == TipoEvento.SoloEvento
+                ? await RegistrarSoloEventoNucleoAsync(new RegistrarSoloEventoCommand(animalId, c.Evento, c.Observaciones, c.UsuarioId), orden, ct)
                 : await RegistrarNucleoAsync(new RegistrarTactoCommand(animalId, c.Evento, null, c.Observaciones, c.UsuarioId), orden, ct);
         }, ct);
 
-    // Núcleo de "registrar un rechazo": mismas validaciones que una marca de pasada (animal, rodeo, establecimiento, reloj), sin
-    // transacción propia. El rechazo NO toca el animal (ni su estado ni su fecha de último tacto, RF-6).
-    private async Task<Resultado<Guid>> RegistrarRechazoNucleoAsync(RegistrarRechazoCommand c, long? orden, CancellationToken ct)
+    // Núcleo de "registrar un solo evento" (spec 005; el Rechazo de la spec 004 es el caso fijo): mismas validaciones que una marca de
+    // pasada (animal, rodeo, establecimiento, reloj), sin transacción propia. NO toca el animal (ni su estado ni su fecha de último
+    // tacto). Se guarda en la tabla Rechazo: EventoId nulo = el Rechazo fijo; con valor = un evento del catálogo de tipo SoloEvento
+    // (el nombre de la tabla quedó de la spec 004).
+    private async Task<Resultado<Guid>> RegistrarSoloEventoNucleoAsync(RegistrarSoloEventoCommand c, long? orden, CancellationToken ct)
     {
+        EstadoReproductivo? evento = null;
+        if (c.EventoId != EventosCampo.Rechazo)
+        {
+            evento = await _estados.ObtenerAsync(c.EventoId, ct);
+            if (evento is null) return Resultado.Error<Guid>(CodigoError.NoEncontrado, "El evento elegido no existe.");
+            if (evento.Tipo != TipoEvento.SoloEvento)
+                return Resultado.Error<Guid>(CodigoError.DatosInvalidos, "Ese evento cambia el estado de la vaca: se guarda como tacto.");
+            if (!evento.Activo) return Resultado.Error<Guid>(CodigoError.EstadoDeBaja, "El evento elegido está dado de baja.");
+        }
+
         var animal = await _animales.ObtenerAsync(c.AnimalId, ct);
         if (animal is null) return Resultado.Error<Guid>(CodigoError.NoEncontrado, "El animal no existe.");
         var rodeo = await _rodeos.ObtenerAsync(animal.RodeoId, ct);
@@ -118,9 +133,12 @@ internal sealed class TrabajoCampoService : ITrabajoCampoService
         try
         {
             var ordenRechazo = orden ?? await _registros.SiguienteOrdenAsync(ct);
-            var rechazo = Rechazo.Registrar(animal.Id, ahora, ordenRechazo, c.Observaciones, c.UsuarioId, _dispositivo.ObtenerId(), ahora);
+            var rechazo = Rechazo.Registrar(animal.Id, ahora, ordenRechazo, c.Observaciones, c.UsuarioId, _dispositivo.ObtenerId(), ahora, evento?.Id);
             _rechazos.Agregar(rechazo);
-            _historial.Agregar(Historial.Crear("Rechazo", rechazo.Id, "Observaciones", null, rechazo.Observaciones, ahora, c.UsuarioId, AccionHistorial.RechazoCreado));
+            // El Rechazo fijo historiza su motivo; un evento del catálogo, su nombre (así el historial lo dice aunque después se renombre o desactive).
+            _historial.Agregar(evento is null
+                ? Historial.Crear("Rechazo", rechazo.Id, "Observaciones", null, rechazo.Observaciones, ahora, c.UsuarioId, AccionHistorial.RechazoCreado)
+                : Historial.Crear("Rechazo", rechazo.Id, "Evento", null, evento.Nombre, ahora, c.UsuarioId, AccionHistorial.RechazoCreado));
             // Si la vaca estaba en espera, queda resuelta en esta misma transacción (RF-3).
             await _esperas.ResolverSiHayAsync(animal.Id, rechazo.Id, c.UsuarioId, ahora, ct);
             return Resultado.Ok(rechazo.Id);
@@ -162,6 +180,9 @@ internal sealed class TrabajoCampoService : ITrabajoCampoService
         if (rodeo is null || establecimiento is null) return Resultado.Error<Guid>(CodigoError.NoEncontrado, "El rodeo del animal no existe.");
         var estadoNuevo = await _estados.ObtenerAsync(c.EstadoNuevoId, ct);
         if (estadoNuevo is null) return Resultado.Error<Guid>(CodigoError.NoEncontrado, "El estado elegido no existe.");
+        // Un solo evento (OK, Aborto, Revisar Nuevamente) no cambia el estado: nunca se guarda como tacto (spec 005, RF-16).
+        if (estadoNuevo.Tipo == TipoEvento.SoloEvento)
+            return Resultado.Error<Guid>(CodigoError.DatosInvalidos, "Ese evento no cambia el estado de la vaca: se guarda como evento, no como tacto.");
         var errorUsuario = await Ayudas.ValidarUsuarioAsync(_usuarios, c.UsuarioId, ct);
         if (errorUsuario is not null) return Resultado.Error<Guid>(errorUsuario.Codigo!.Value, errorUsuario.Mensaje!);
 

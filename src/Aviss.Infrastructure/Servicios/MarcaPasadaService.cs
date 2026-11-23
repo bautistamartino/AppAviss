@@ -179,7 +179,8 @@ internal sealed class MarcaPasadaService
         if (ultimo is not null)
         {
             string? estado = null;
-            if (ultimo.EstadoId is Guid estadoId)
+            // El estado de un tacto o el nombre del solo evento (OK, Aborto...) de un rechazo; el Rechazo fijo no tiene nombre propio.
+            if ((ultimo.EstadoId ?? ultimo.EventoId) is Guid estadoId)
                 estado = (await _estados.ObtenerAsync(estadoId, ct))?.Nombre;
             var veterinario = (await _usuarios.ObtenerAsync(ultimo.UsuarioId, ct))?.Nombre ?? "";
             ultimoDto = new UltimoRegistroDto(ultimo.Tipo, ultimo.Id, ultimo.FechaHoraUtc, estado, veterinario, numeroManga, ultimo.Observaciones);

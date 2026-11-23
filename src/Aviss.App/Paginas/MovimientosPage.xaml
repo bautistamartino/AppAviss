@@ -92,7 +92,7 @@
                     <ScrollView MaximumHeightRequest="260">
                         <VerticalStackLayout BindableLayout.ItemsSource="{Binding EstadosParaEditar}" Spacing="8">
                             <BindableLayout.ItemTemplate>
-                                <DataTemplate x:DataType="dto:EstadoActivoDto">
+                                <DataTemplate x:DataType="dto:EventoCampoDto">
                                     <Button Text="{Binding Nombre}" Style="{StaticResource BotonCampoSecundario}" HeightRequest="52" FontSize="20"
                                             Command="{Binding Source={RelativeSource AncestorType={x:Type vm:MovimientosViewModel}}, Path=ElegirEventoEditadoCommand, x:DataType=vm:MovimientosViewModel}"
                                             CommandParameter="{Binding .}" />

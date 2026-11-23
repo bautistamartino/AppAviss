@@ -433,7 +433,7 @@ public sealed class ConsultasCampoTests : IDisposable
     {
         var r = await _e.Campo.CrearEstadoAsync("  Revisión de pata ", "REV_PATA");
         Assert.True(r.EsCorrecto, r.Mensaje);
-        var nuevo = Assert.Single(await _e.Campo.ListarEstadosActivosAsync(), e => e.Id == r.Valor);
+        var nuevo = Assert.Single((await _e.Campo.ListarEventosAsync()).Otros, e => e.Id == r.Valor);
         Assert.Equal("Revisión de pata", nuevo.Nombre);
         Assert.Equal("REVISION_DE_PATA", _e.Base.Escalar("SELECT Codigo FROM EstadoReproductivo WHERE Nombre = 'Revisión de pata'")!.ToString());
         Assert.Equal("REV_PATA", _e.Base.Escalar("SELECT CodigoDairyComp FROM EstadoReproductivo WHERE Nombre = 'Revisión de pata'")!.ToString());

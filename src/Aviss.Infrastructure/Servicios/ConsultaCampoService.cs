@@ -84,8 +84,9 @@ internal sealed class ConsultaCampoService
             .Select(u => new VeterinarioDto(u.Id, u.Nombre, u.Matricula))
             .ToList();
 
-    public async Task<IReadOnlyList<EstadoActivoDto>> ListarEstadosActivosAsync(CancellationToken ct)
-        => (await _estados.ListarAsync(ct)).Where(e => e.Activo).Select(e => new EstadoActivoDto(e.Id, e.Nombre)).ToList();
+    /// <summary>La lista de eventos de dos niveles (spec 005): solo los activos, armada por la función pura.</summary>
+    public async Task<ListaEventosDto> ListarEventosAsync(CancellationToken ct)
+        => ArmadorListaEventos.Armar(await _estados.ListarAsync(ct));
 
     // ------------------------------------------------------------------ Últimos movimientos (RF-28)
 
@@ -111,7 +112,7 @@ internal sealed class ConsultaCampoService
             var estado = t.EstadoNuevoId is Guid e && estados.TryGetValue(e, out var nombre) ? nombre : null;
             candidatos.Add((new MovimientoDto(TipoMovimiento.Tacto, t.Id, t.AnimalId, t.NumeroCaravana, null, estado,
                 t.FechaHoraUtc, Veterinario(t.UsuarioId), t.Anulado, false, null, null, null,
-                ConstructorFicha.LeerCvet(t.DatosOriginalesJson), t.Observaciones), t.OrdenInsercion + 1));
+                ConstructorFicha.LeerCvet(t.DatosOriginalesJson), t.Observaciones, t.EstadoNuevoId), t.OrdenInsercion + 1));
         }
 
         var marcas = await (from m in _db.MarcasPasada.AsNoTracking()
@@ -143,9 +144,11 @@ internal sealed class ConsultaCampoService
         foreach (var r in rechazos)
         {
             var (caravana, json) = animalesRechazados.GetValueOrDefault(r.AnimalId);
-            candidatos.Add((new MovimientoDto(TipoMovimiento.Rechazo, r.Id, r.AnimalId, caravana, null, "Rechazo",
+            // Un solo evento del catálogo muestra su nombre (aunque esté desactivado: salen de todo el catálogo); el Rechazo fijo, "Rechazo".
+            var nombreEvento = r.EventoId is Guid ev && estados.TryGetValue(ev, out var nombreEv) ? nombreEv : "Rechazo";
+            candidatos.Add((new MovimientoDto(TipoMovimiento.Rechazo, r.Id, r.AnimalId, caravana, null, nombreEvento,
                 r.FechaHoraUtc, Veterinario(r.UsuarioId), r.Anulado, false, null, null, null,
-                ConstructorFicha.LeerCvet(json), r.Observaciones), r.OrdenInsercion + 1));
+                ConstructorFicha.LeerCvet(json), r.Observaciones, r.EventoId ?? EventosCampo.Rechazo), r.OrdenInsercion + 1));
         }
 
         var cierres = await (from c in _db.CierresManga.AsNoTracking()

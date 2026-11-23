@@ -183,14 +183,14 @@ public class MovimientosViewModelTests
 
     // ------------------------------------------------------------------ editar un tacto
 
-    private static readonly EstadoActivoDto Prenada = new(Guid.Parse("33333333-0000-0000-0000-000000000001"), "PREÑADA");
-    private static readonly EstadoActivoDto Vacia = new(Guid.Parse("33333333-0000-0000-0000-000000000002"), "VACIA");
+    private static readonly EventoCampoDto Prenada = new(Guid.Parse("33333333-0000-0000-0000-000000000001"), "PREÑADA", true, false);
+    private static readonly EventoCampoDto Vacia = new(Guid.Parse("33333333-0000-0000-0000-000000000002"), "VACIA", true, false);
 
     private static async Task<(Banco Banco, MovimientoItem Tacto)> BancoConUnTactoAsync(bool puedeDeshacer = true)
     {
         var b = new Banco();
         b.Campo.Estados = [Prenada, Vacia];
-        b.Campo.Movimientos = [Datos.Movimiento(TipoMovimiento.Tacto, puedeDeshacer: puedeDeshacer, caravana: "1014", detalle: "PREÑADA", cvet: "PRE", observaciones: "Cojera")];
+        b.Campo.Movimientos = [Datos.Movimiento(TipoMovimiento.Tacto, puedeDeshacer: puedeDeshacer, caravana: "1014", detalle: "PREÑADA", cvet: "PRE", observaciones: "Cojera", eventoId: Prenada.Id)];
         await b.Vm.CargarAsync();
         return (b, b.Vm.Movimientos[0]);
     }

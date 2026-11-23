@@ -9,7 +9,7 @@ namespace Aviss.Application.Tests.ViewModels;
 // Spec 004: En Espera y Rechazo en la pantalla de trabajo (lógica de ViewModel, sin MAUI).
 public class TrabajoViewModelEsperaTests
 {
-    private static readonly EstadoActivoDto Prenada = new(Guid.Parse("33333333-0000-0000-0000-000000000001"), "PREÑADA");
+    private static readonly EventoCampoDto Prenada = new(Guid.Parse("33333333-0000-0000-0000-000000000001"), "PREÑADA", true, false);
     private static readonly DateTime Ahora = new(2026, 11, 17, 13, 10, 0, DateTimeKind.Utc);
 
     private sealed class RelojFijo : IRelojService

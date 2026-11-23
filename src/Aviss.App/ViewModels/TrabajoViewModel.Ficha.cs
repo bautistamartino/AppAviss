@@ -76,7 +76,7 @@ public sealed partial class TrabajoViewModel
     public bool PuedeAgregarEventos => HayFicha && Ficha!.EntraEnTacto;
 
     /// <summary>Estados activos del catálogo: botones para el tacto de un toque (RF-15).</summary>
-    public ObservableCollection<EstadoActivoDto> Estados { get; } = [];
+    public ObservableCollection<EventoCampoDto> Estados { get; } = [];
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HayEstadosActivos))]
@@ -237,9 +237,10 @@ public sealed partial class TrabajoViewModel
 
     private async Task CargarEstadosAsync()
     {
-        var estados = await EnCampoAsync(() => _campo.ListarEstadosActivosAsync());
+        // T2: la lista plana de siempre (principales y después los de "Otro evento", sin el Rechazo fijo, que suma ReconstruirEventos). El selector de dos niveles llega en T3/T4.
+        var lista = await EnCampoAsync(() => _campo.ListarEventosAsync());
         Estados.Clear();
-        foreach (var e in estados) Estados.Add(e);
+        foreach (var e in lista.Principales.Concat(lista.Otros.Where(o => o.Id != EventosCampo.Rechazo))) Estados.Add(e);
         OnPropertyChanged(nameof(HayEstadosActivos));
         ReconstruirEventos();   // la lista de eventos de la ficha suma el "Rechazo" fijo
     }
@@ -280,7 +281,7 @@ public sealed partial class TrabajoViewModel
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(TextoEventoElegido), nameof(HayEventoElegido))]
     [NotifyCanExecuteChangedFor(nameof(EntrarCommand))]
-    private EstadoActivoDto? _eventoElegido;
+    private EventoCampoDto? _eventoElegido;
 
     public bool HayEventoElegido => EventoElegido is not null;
 
@@ -292,7 +293,7 @@ public sealed partial class TrabajoViewModel
 
     /// <summary>"Elegir" un evento de la lista: queda en el casillero y se vuelve a la ficha. No guarda nada todavía.</summary>
     [RelayCommand]
-    private async Task ElegirEventoAsync(EstadoActivoDto? estado)
+    private async Task ElegirEventoAsync(EventoCampoDto? estado)
     {
         // Solo con una ficha de una vaca que entra en tacto y sin ningún cuadro encima (salvo la lista, desde donde se elige).
         if (estado is null || Ficha is not { EntraEnTacto: true } || Etapa != EtapaTrabajo.Ficha
@@ -319,9 +320,9 @@ public sealed partial class TrabajoViewModel
             var observacion = HayObservacionPendiente ? ObservacionPendiente : null;
             // El evento elegido decide qué se guarda: "Rechazo" es otro tipo de registro (el motivo va en la observación); un estado
             // del catálogo es un tacto. Si la vaca estaba en espera, el servicio la resuelve en la misma transacción.
-            var esRechazo = estado.Id == EventosCampo.Rechazo;
+            var esRechazo = !estado.CambiaEstado;   // Rechazo, OK, Aborto, Revisar Nuevamente: se guardan sin cambiar el estado (spec 005)
             var resultado = esRechazo
-                ? await EnCampoAsync(() => _campo.RegistrarRechazoAsync(new RegistrarRechazoCommand(ficha.AnimalId, observacion, vet.Id)))
+                ? await EnCampoAsync(() => _campo.RegistrarSoloEventoAsync(new RegistrarSoloEventoCommand(ficha.AnimalId, estado.Id, observacion, vet.Id)))
                 : await EnCampoAsync(() => _campo.RegistrarTactoAsync(
                     new RegistrarTactoCommand(ficha.AnimalId, estado.Id, null, observacion, vet.Id)));
             if (!resultado.EsCorrecto)

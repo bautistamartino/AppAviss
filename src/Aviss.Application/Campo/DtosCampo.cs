@@ -136,6 +136,7 @@ public sealed record ResultadoDeshacerDto(
 /// <param name="Detalle">Estado del tacto (nombre) o tipo de cierre.</param>
 /// <param name="CantidadAviss">Solo en cierres: lo que contaba Aviss al cerrar, lo confirmado y el contador de hoy (RF-8).</param>
 /// <param name="Cvet">El CVET de la vaca (por qué estaba en la lista de tacto); vacío en los cierres o si el Excel no lo traía.</param>
+/// <param name="EventoId">Spec 005: el evento del registro (estado del tacto, solo evento o <see cref="EventosCampo.Rechazo"/>); sirve para resaltarlo al editar sin comparar nombres.</param>
 /// <param name="Observaciones">La observación del tacto, si la tenía.</param>
 public sealed record MovimientoDto(
     TipoMovimiento Tipo,
@@ -152,7 +153,8 @@ public sealed record MovimientoDto(
     int? CantidadConfirmada,
     int? ContadorActual,
     string? Cvet = null,
-    string? Observaciones = null);
+    string? Observaciones = null,
+    Guid? EventoId = null);
 
 public sealed record RodeoParaTrabajarDto(
     Guid EstablecimientoId,
@@ -165,4 +167,12 @@ public sealed record RodeoParaTrabajarDto(
 
 public sealed record VeterinarioDto(Guid Id, string Nombre, string? Matricula);
 
-public sealed record EstadoActivoDto(Guid Id, string Nombre);
+/// <summary>
+/// Un evento de la lista de la ficha (spec 005, RF-6). <see cref="CambiaEstado"/>: un estado cambia el estado de la vaca (se guarda un
+/// tacto); un solo evento (OK, Aborto, Revisar Nuevamente, Rechazo) solo queda registrado. <see cref="EsPrincipal"/>: se ve siempre
+/// en la lista (si no, está detrás de "Otro evento").
+/// </summary>
+public sealed record EventoCampoDto(Guid Id, string Nombre, bool CambiaEstado, bool EsPrincipal);
+
+/// <summary>La lista de eventos en dos niveles: los principales (en su orden) y los de "Otro evento" (Rechazo primero, el resto alfabético).</summary>
+public sealed record ListaEventosDto(IReadOnlyList<EventoCampoDto> Principales, IReadOnlyList<EventoCampoDto> Otros);

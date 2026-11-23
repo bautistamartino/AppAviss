@@ -8,8 +8,8 @@ namespace Aviss.Application.Tests.ViewModels;
 // Prueban la pantalla de trabajo sin MAUI: la fachada de campo, el lector, el tiempo y la plataforma son falsos.
 public class TrabajoViewModelTests
 {
-    private static readonly EstadoActivoDto Prenada = new(Guid.Parse("33333333-0000-0000-0000-000000000001"), "PREÑADA");
-    private static readonly EstadoActivoDto Vacia = new(Guid.Parse("33333333-0000-0000-0000-000000000002"), "VACIA");
+    private static readonly EventoCampoDto Prenada = new(Guid.Parse("33333333-0000-0000-0000-000000000001"), "PREÑADA", true, false);
+    private static readonly EventoCampoDto Vacia = new(Guid.Parse("33333333-0000-0000-0000-000000000002"), "VACIA", true, false);
 
     /// <summary>Todo lo que necesita el ViewModel, armado con falsos y con la sesión ya elegida.</summary>
     private sealed class Banco
@@ -45,7 +45,7 @@ public class TrabajoViewModelTests
         public Task LeerAsync(string codigo) => Vm.EncolarLecturaAsync(codigo);
 
         /// <summary>Elegir el evento y tocar "Entrar": el tacto se guarda recién con "Entrar".</summary>
-        public async Task ElegirYEntrarAsync(EstadoActivoDto estado)
+        public async Task ElegirYEntrarAsync(EventoCampoDto estado)
         {
             await Vm.ElegirEventoCommand.ExecuteAsync(estado);
             await Vm.EntrarCommand.ExecuteAsync(null);

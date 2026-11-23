@@ -69,7 +69,7 @@ internal sealed class ArmadorFicha
         var tactos = (await _tactos.ListarPorAnimalAsync(animal.Id, ct))
             .Select(t => new TactoParaFicha(t.FechaHoraUtc, Nombre(t.EstadoNuevoId), t.Anulado));
         var rechazos = (await _rechazos.ListarPorAnimalAsync(animal.Id, ct))
-            .Select(r => new RechazoParaFicha(r.Id, r.FechaHoraUtc, r.OrdenInsercion, r.Observaciones, r.Anulado));
+            .Select(r => new RechazoParaFicha(r.Id, r.FechaHoraUtc, r.OrdenInsercion, r.Observaciones, r.Anulado, r.EventoId, Nombre(r.EventoId)));
         var armada = ConstructorFicha.Armar(animal.DatosOriginalesJson, tactos, _reloj.UtcAhora, _zona.Zona, rechazos);
         var enEspera = await _esperas.ObtenerPendienteAsync(animal.Id, ct) is not null;
 

@@ -17,7 +17,7 @@ public sealed class RechazoTests : IDisposable
     private static string T(Guid? id) => EscenarioConServicios.Texto(id);
 
     private Task<Resultado<Guid>> RechazarAsync(Guid animal, string? motivo = "pata") =>
-        _e.Campo.RegistrarRechazoAsync(new RegistrarRechazoCommand(animal, motivo, _e.UsuarioId));
+        _e.Campo.RegistrarSoloEventoAsync(new RegistrarSoloEventoCommand(animal, EventosCampo.Rechazo, motivo, _e.UsuarioId));
 
     private async Task<Guid> RechazarOkAsync(Guid animal, string? motivo = "pata")
     {
@@ -113,7 +113,7 @@ public sealed class RechazoTests : IDisposable
 
         var deBaja = _e.Base.Usuario("Vet Baja", activo: false);
         var vivo = _e.AnimalImportado("200");
-        var r = await _e.Campo.RegistrarRechazoAsync(new RegistrarRechazoCommand(vivo, "x", deBaja));
+        var r = await _e.Campo.RegistrarSoloEventoAsync(new RegistrarSoloEventoCommand(vivo, EventosCampo.Rechazo, "x", deBaja));
         Assert.Equal(CodigoError.UsuarioDeBaja, r.Codigo);
         Assert.Equal(0, _e.Cuenta("Rechazo"));
     }

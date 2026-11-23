@@ -249,7 +249,7 @@ public sealed class RendimientoCampoTests : IDisposable
     {
         var ms = await MejorDeTresAsync(async i =>
         {
-            var r = await _e.Campo.RegistrarRechazoAsync(new RegistrarRechazoCommand(_ids[19_000 + i], "pata", _e.UsuarioId));
+            var r = await _e.Campo.RegistrarSoloEventoAsync(new RegistrarSoloEventoCommand(_ids[19_000 + i], EventosCampo.Rechazo, "pata", _e.UsuarioId));
             Assert.True(r.EsCorrecto, r.Mensaje);
         });
         Assert.True(ms < 300, $"Guardar el rechazo tardó {ms} ms");
