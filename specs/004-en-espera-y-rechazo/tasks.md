@@ -2,7 +2,7 @@
 
 Tests primero en cada tarea de lógica. Ninguna tarea se da por terminada con `dotnet build` o `dotnet test` en rojo (cada una deja la solución en verde por sí sola). Una rama: `spec/004-en-espera-y-rechazo`. Detalle de diseño en [plan.md](plan.md). **Máximo 5 tareas** (constitución §10). Orden: la base primero, la pantalla al final.
 
-- [ ] **T1** — Dominio y base: entidades, reglas y migración `EsperaYRechazo`.
+- [x] **T1** — Dominio y base: entidades, reglas y migración `EsperaYRechazo`.
   - Qué se hace:
     - `Espera` y `Rechazo`, `EstadoEspera`, las cinco acciones nuevas de `AccionHistorial`, `ReglasEspera`.
     - Configuraciones de EF, `DbSet`s y la migración con el SQL a mano: tablas, CHECK, triggers de inmutabilidad (`Espera` pendiente→resuelta/salteada una vez; `Rechazo` anulado 0→1), índice único parcial de espera pendiente por vaca, índices de `Rechazo`, y **reescritura a mano del CHECK de `Historial` recreando sus triggers** (`ReconstruirHistorial`).

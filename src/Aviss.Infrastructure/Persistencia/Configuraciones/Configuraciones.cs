@@ -176,7 +176,7 @@ internal sealed class HistorialConfig : IEntityTypeConfiguration<Historial>
         // EntidadId NO tiene FK: apunta a tablas distintas según Entidad.
         b.HasIndex(e => new { e.Entidad, e.EntidadId });
 
-        b.HasCheckConstraint("CK_Historial_Accion", "Accion IN ('Alta','Edicion','Tacto','AnulacionTacto','AnulacionAlta','MarcaPasada','AnulacionMarca','MangaAbierta','MangaCerrada','AnulacionCierre')");
+        b.HasCheckConstraint("CK_Historial_Accion", "Accion IN ('Alta','Edicion','Tacto','AnulacionTacto','AnulacionAlta','MarcaPasada','AnulacionMarca','MangaAbierta','MangaCerrada','AnulacionCierre','EsperaCreada','EsperaResuelta','EsperaSalteada','RechazoCreado','RechazoAnulado')");
     }
 }
 
@@ -247,5 +247,61 @@ internal sealed class MarcaPasadaConfig : IEntityTypeConfiguration<MarcaPasada>
         b.HasIndex(e => e.UsuarioId);
 
         b.HasCheckConstraint("CK_MarcaPasada_Anulado", "Anulado IN (0,1)");
+    }
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// Spec 004: espera y rechazo. Los triggers y el CHECK del historial reescrito van a mano en la migración "EsperaYRechazo".
+// ---------------------------------------------------------------------------------------------------------------
+
+internal sealed class EsperaConfig : IEntityTypeConfiguration<Espera>
+{
+    public void Configure(EntityTypeBuilder<Espera> b)
+    {
+        Comun.ConfigurarId(b, "Espera");
+        b.Property(e => e.Estado).HasConversion<string>().IsRequired();
+
+        b.HasOne<Animal>().WithMany().HasForeignKey(e => e.AnimalId).OnDelete(DeleteBehavior.Restrict);
+        b.HasOne<Usuario>().WithMany().HasForeignKey(e => e.UsuarioId).OnDelete(DeleteBehavior.Restrict);
+        b.HasOne<Usuario>().WithMany().HasForeignKey(e => e.ResueltaPorUsuarioId).OnDelete(DeleteBehavior.Restrict);
+        // RegistroResolucionId NO tiene FK: apunta a Tacto o a Rechazo según cómo se resolvió.
+
+        // Una vaca tiene una sola espera pendiente (la vaca es de un solo rodeo, así que es una por rodeo); resueltas o
+        // salteadas puede haber muchas.
+        b.HasIndex(e => e.AnimalId).IsUnique().HasFilter("Estado = 'Pendiente'");
+        b.HasIndex(e => e.UsuarioId);
+        b.HasIndex(e => e.ResueltaPorUsuarioId);
+
+        b.HasCheckConstraint("CK_Espera_Estado", "Estado IN ('Pendiente','Resuelta','Salteada')");
+        // Coherencia de los datos de resolución con el estado.
+        b.HasCheckConstraint("CK_Espera_Resolucion",
+            "(Estado = 'Pendiente' AND ResueltaEnUtc IS NULL AND ResueltaPorUsuarioId IS NULL AND RegistroResolucionId IS NULL)"
+            + " OR (Estado = 'Resuelta' AND ResueltaEnUtc IS NOT NULL AND ResueltaPorUsuarioId IS NOT NULL AND RegistroResolucionId IS NOT NULL)"
+            + " OR (Estado = 'Salteada' AND ResueltaEnUtc IS NOT NULL AND ResueltaPorUsuarioId IS NOT NULL AND RegistroResolucionId IS NULL)");
+    }
+}
+
+internal sealed class RechazoConfig : IEntityTypeConfiguration<Rechazo>
+{
+    public void Configure(EntityTypeBuilder<Rechazo> b)
+    {
+        Comun.ConfigurarId(b, "Rechazo");
+
+        b.HasOne<Animal>().WithMany().HasForeignKey(e => e.AnimalId).OnDelete(DeleteBehavior.Restrict);
+        b.HasOne<Usuario>().WithMany().HasForeignKey(e => e.UsuarioId).OnDelete(DeleteBehavior.Restrict);
+        b.HasOne<Usuario>().WithMany().HasForeignKey(e => e.AnuladoPorUsuarioId).OnDelete(DeleteBehavior.Restrict);
+
+        // Orden de guardado único (compartido con tactos y marcas; entre tablas lo garantiza el cálculo en la transacción).
+        b.HasIndex(e => e.OrdenInsercion).IsUnique();
+        // Para encontrar rápido el último registro vigente de una vaca.
+        b.HasIndex(e => new { e.AnimalId, e.FechaHoraUtc, e.OrdenInsercion });
+        b.HasIndex(e => e.UsuarioId);
+        b.HasIndex(e => e.AnuladoPorUsuarioId);
+
+        b.HasCheckConstraint("CK_Rechazo_Anulado", "Anulado IN (0,1)");
+        // Anulado implica saber quién y cuándo; sin anular, esos datos no existen.
+        b.HasCheckConstraint("CK_Rechazo_Anulacion",
+            "(Anulado = 0 AND AnuladoEnUtc IS NULL AND AnuladoPorUsuarioId IS NULL)"
+            + " OR (Anulado = 1 AND AnuladoEnUtc IS NOT NULL AND AnuladoPorUsuarioId IS NOT NULL)");
     }
 }
