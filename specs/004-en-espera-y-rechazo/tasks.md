@@ -35,7 +35,7 @@ Tests primero en cada tarea de lógica. Ninguna tarea se da por terminada con `d
   - Hecho cuando: los tests de ViewModel cubren cada caso de los criterios de aceptación de En Espera y Rechazo (botón solo con CVET distinto de 0, botonera con hasta 4 y "+N", abrir sin marcar ni sumar, Entrar resuelve, Saltar de espera saltea y Saltar normal solo cierra, vaca en espera abre su ficha, aviso al terminar, Rechazo con motivo libre, editar entre tacto y rechazo).
   - Qué mirar en el emulador: nada todavía (la pantalla va en T4).
 
-- [ ] **T4** — Pantalla de trabajo: botón, botonera, lista, rechazo.
+- [x] **T4** — Pantalla de trabajo: botón, botonera, lista, rechazo.
   - Qué se hace:
     - `TrabajoPage`: botón "En espera" entre Saltar y Entrar; botonera chica con la caravana y el tiempo de cada espera bajo la barra de arriba (oculta en 0); capa de la lista completa ("+N"); cartel "en espera" y franja de rechazo en la ficha; "Rechazo" en la lista de eventos.
     - Todo pensado para vertical y una mano; botones de espera de 40 dp o más, la botonera no tapa los botones de la ficha.

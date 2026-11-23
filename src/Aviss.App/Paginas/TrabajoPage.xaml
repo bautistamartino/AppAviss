@@ -116,6 +116,33 @@
                 <Border IsVisible="{Binding HayMensajeInfo}" BackgroundColor="{StaticResource CampoAlerta}" StrokeThickness="0" Padding="20,12">
                     <Label Text="{Binding MensajeInfo}" TextColor="Black" FontSize="22" FontAttributes="Bold" />
                 </Border>
+
+                <!-- Botonera de espera (spec 004, RF-2): las primeras vacas en espera, con la caravana y cuánto hace que esperan, y "+N" si
+                     hay más. Va en una sola fila, chica y con desplazamiento horizontal por si no entran; con 0 esperas no se ve. Cada
+                     botón mide 44 dp de alto. Al estar arriba, no tapa los botones de la ficha (que están abajo). -->
+                <Border IsVisible="{Binding HayEsperas}" BackgroundColor="{StaticResource CampoClaro}" StrokeThickness="0" Padding="8,4">
+                    <ScrollView Orientation="Horizontal" HorizontalScrollBarVisibility="Never">
+                        <HorizontalStackLayout Spacing="8">
+                            <Label Text="En espera:" Style="{StaticResource TextoCampo}" FontSize="15" FontAttributes="Bold"
+                                   TextColor="{StaticResource Gray600}" VerticalOptions="Center" />
+                            <HorizontalStackLayout BindableLayout.ItemsSource="{Binding EsperasBotonera}" Spacing="8">
+                                <BindableLayout.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:EsperaItem">
+                                        <Button Text="{Binding TextoBotonera}" Style="{StaticResource BotonCampoAlerta}" FontSize="16"
+                                                HeightRequest="44" MinimumWidthRequest="64" Padding="12,0" CornerRadius="8"
+                                                Command="{Binding Source={RelativeSource AncestorType={x:Type vm:TrabajoViewModel}}, Path=AbrirEsperaCommand, x:DataType=vm:TrabajoViewModel}"
+                                                CommandParameter="{Binding .}"
+                                                SemanticProperties.Hint="Abrir la ficha de esta vaca en espera" />
+                                    </DataTemplate>
+                                </BindableLayout.ItemTemplate>
+                            </HorizontalStackLayout>
+                            <Button Text="{Binding TextoMasEsperas}" IsVisible="{Binding HayMasEsperas}" Style="{StaticResource BotonCampoSecundario}"
+                                    FontSize="16" HeightRequest="44" MinimumWidthRequest="52" Padding="12,0" CornerRadius="8"
+                                    Command="{Binding AbrirListaEsperaCommand}"
+                                    SemanticProperties.Hint="Ver todas las vacas en espera" />
+                        </HorizontalStackLayout>
+                    </ScrollView>
+                </Border>
             </VerticalStackLayout>
 
             <!-- Centro -->
@@ -147,6 +174,20 @@
                     <VerticalStackLayout Grid.Row="0">
                         <Border IsVisible="{Binding NoEntraEnTacto}" BackgroundColor="{StaticResource CampoPeligro}" StrokeThickness="0" Padding="14,6">
                             <Label Text="No entra en tacto (CVET 0)" TextColor="White" FontSize="20" FontAttributes="Bold" />
+                        </Border>
+                        <!-- Cartel de la vaca que viene de la espera (RF-3): acá "Saltar" la saca de la espera sin guardar nada. -->
+                        <Border IsVisible="{Binding EsEsperaAbierta}" BackgroundColor="{StaticResource CampoAlerta}" StrokeThickness="0" Padding="14,6">
+                            <Label Text="En espera: Saltar la saca de la lista" TextColor="Black" FontSize="18" FontAttributes="Bold" />
+                        </Border>
+                        <!-- Franja de rechazo (RF-15): la vaca tiene un rechazo vigente. Se oculta si no hay (RechazoVigente nulo). -->
+                        <Border BackgroundColor="{StaticResource CampoPeligro}" StrokeThickness="0" Padding="14,6">
+                            <Border.Triggers>
+                                <DataTrigger TargetType="Border" Binding="{Binding Ficha.RechazoVigente}" Value="{x:Null}">
+                                    <Setter Property="IsVisible" Value="False" />
+                                </DataTrigger>
+                            </Border.Triggers>
+                            <Label Text="{Binding Ficha.RechazoVigente.Observaciones, StringFormat='Rechazo: {0}', TargetNullValue='Rechazo', FallbackValue='Rechazo'}"
+                                   TextColor="White" FontSize="20" FontAttributes="Bold" LineBreakMode="TailTruncation" />
                         </Border>
                     </VerticalStackLayout>
 
@@ -231,11 +272,15 @@
                     </Grid>
 
                     <!-- Barra de abajo: Saltar (cierra sin guardar, sirve para solo mirar los datos) y Entrar (guarda). -->
-                    <Grid Grid.Row="3" ColumnDefinitions="*,2*" ColumnSpacing="8" Padding="10,6" BackgroundColor="{StaticResource CampoClaro}">
+                    <Grid Grid.Row="3" ColumnDefinitions="*,*,2*" ColumnSpacing="8" Padding="10,6" BackgroundColor="{StaticResource CampoClaro}">
                         <Button Grid.Column="0" Text="Saltar" Style="{StaticResource BotonCampoSecundario}" FontSize="20" HeightRequest="56" MinimumWidthRequest="0"
                                 Command="{Binding CerrarFichaCommand}"
                                 SemanticProperties.Hint="Cerrar la ficha sin guardar nada" />
-                        <Button Grid.Column="1" Text="Entrar" Style="{StaticResource BotonCampo}" BackgroundColor="{StaticResource CampoExito}" FontSize="22"
+                        <!-- "En espera" (RF-1): deja la vaca para después, sin guardar tacto. Solo si entra en tacto y no viene ya de la espera. -->
+                        <Button Grid.Column="1" Text="En espera" Style="{StaticResource BotonCampoAlerta}" FontSize="20" HeightRequest="56" MinimumWidthRequest="0"
+                                Padding="4,0" IsVisible="{Binding PuedePonerEnEspera}" Command="{Binding PonerEnEsperaCommand}"
+                                SemanticProperties.Hint="Dejar esta vaca en espera para atenderla después" />
+                        <Button Grid.Column="2" Text="Entrar" Style="{StaticResource BotonCampo}" BackgroundColor="{StaticResource CampoExito}" FontSize="22"
                                 HeightRequest="56" IsVisible="{Binding PuedeAgregarEventos}" Command="{Binding EntrarCommand}"
                                 SemanticProperties.Hint="Guardar el evento elegido para esta vaca" />
                     </Grid>
@@ -400,6 +445,10 @@
                     <Border IsVisible="{Binding HayAdvertenciaMangaAbierta}" BackgroundColor="{StaticResource CampoAlerta}" StrokeThickness="0" Padding="14,10">
                         <Label Text="{Binding AdvertenciaMangaAbierta}" TextColor="Black" FontSize="20" FontAttributes="Bold" />
                     </Border>
+                    <!-- Aviso de vacas en espera (RF-10): no impide terminar. -->
+                    <Border IsVisible="{Binding HayEsperaPendiente}" BackgroundColor="{StaticResource CampoAlerta}" StrokeThickness="0" Padding="14,10">
+                        <Label Text="{Binding TextoEsperaPendiente}" TextColor="Black" FontSize="20" FontAttributes="Bold" />
+                    </Border>
                     <Label Text="{Binding TextoSegundaConfirmacion}" Style="{StaticResource TituloCuadro}" FontSize="26" />
                     <Border IsVisible="{Binding HayMensajeCuadro}" BackgroundColor="{StaticResource CampoPeligro}" StrokeThickness="0" Padding="16,10">
                         <Label Text="{Binding MensajeCuadro}" TextColor="White" FontSize="22" FontAttributes="Bold" />
@@ -474,7 +523,30 @@
             </Border>
         </Grid>
 
-        <!-- "Agregar evento": todas las opciones de estado; un toque guarda el tacto (RF-15). -->
+        <!-- Lista completa de vacas en espera ("+N" de la botonera, RF-2). Un toque abre la ficha de esa vaca. -->
+        <Grid IsVisible="{Binding HayListaEspera}" BackgroundColor="{StaticResource CampoVelo}" Padding="14">
+            <Grid.GestureRecognizers><TapGestureRecognizer /></Grid.GestureRecognizers>
+            <Border BackgroundColor="White" StrokeThickness="0" Padding="18,16" HorizontalOptions="Fill" VerticalOptions="Center">
+                <VerticalStackLayout Spacing="12">
+                    <Label Text="Vacas en espera" Style="{StaticResource TituloCuadro}" FontSize="26" />
+                    <ScrollView MaximumHeightRequest="480" VerticalScrollBarVisibility="Always">
+                        <VerticalStackLayout BindableLayout.ItemsSource="{Binding Esperas}" Spacing="8">
+                            <BindableLayout.ItemTemplate>
+                                <DataTemplate x:DataType="vm:EsperaItem">
+                                    <Button Text="{Binding TextoBotonera}" Style="{StaticResource BotonCampoAlerta}" HeightRequest="56" FontSize="22"
+                                            Command="{Binding Source={RelativeSource AncestorType={x:Type vm:TrabajoViewModel}}, Path=AbrirEsperaCommand, x:DataType=vm:TrabajoViewModel}"
+                                            CommandParameter="{Binding .}" />
+                                </DataTemplate>
+                            </BindableLayout.ItemTemplate>
+                        </VerticalStackLayout>
+                    </ScrollView>
+                    <Button Text="Cerrar" Style="{StaticResource BotonCampoSecundario}" HeightRequest="52" FontSize="20"
+                            Command="{Binding CerrarListaEsperaCommand}" />
+                </VerticalStackLayout>
+            </Border>
+        </Grid>
+
+        <!-- "Agregar evento": todas las opciones de estado más "Rechazo"; un toque guarda el tacto o el rechazo (RF-15). -->
         <Grid IsVisible="{Binding HayEventos}" BackgroundColor="{StaticResource CampoVelo}" Padding="14">
             <Grid.GestureRecognizers><TapGestureRecognizer /></Grid.GestureRecognizers>
             <Border BackgroundColor="White" StrokeThickness="0" Padding="18,16" HorizontalOptions="Fill" VerticalOptions="Center">
@@ -505,7 +577,7 @@
                     <VerticalStackLayout Spacing="12" IsVisible="{Binding HayFormularioEvento, Converter={StaticResource Invertir}}">
                     <!-- Alto para los 6 estados de siempre sin desplazar; si hay más (eventos propios), la barra queda siempre visible. -->
                     <ScrollView MaximumHeightRequest="480" VerticalScrollBarVisibility="Always">
-                        <VerticalStackLayout BindableLayout.ItemsSource="{Binding Estados}" Spacing="8">
+                        <VerticalStackLayout BindableLayout.ItemsSource="{Binding Eventos}" Spacing="8">
                             <BindableLayout.ItemTemplate>
                                 <DataTemplate x:DataType="dto:EstadoActivoDto">
                                     <Button Text="{Binding Nombre}" Style="{StaticResource BotonCampo}" HeightRequest="60" FontSize="22"
