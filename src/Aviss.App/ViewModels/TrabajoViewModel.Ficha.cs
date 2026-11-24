@@ -168,7 +168,8 @@ public sealed partial class TrabajoViewModel
         MensajeCuadro = null;
         HayFormularioEvento = false;
         // Siempre se abre en los principales, con resaltado: el evento ya elegido o, si no hay, el estado actual de la vaca (RF-9).
-        Selector.Abrir(EventoElegido?.Id ?? Ficha?.EstadoId);
+        // Con un evento ya elegido se le pasan sus datos (días, resultado): si se lo vuelve a tocar, sus pasos abren con los valores actuales.
+        Selector.Abrir(EventoElegido?.Id ?? Ficha?.EstadoId, EleccionElegida);
         await CambiarCuadroAsync(CuadroTrabajo.Eventos);
     }
 
@@ -188,7 +189,7 @@ public sealed partial class TrabajoViewModel
     [RelayCommand]
     private void AbrirNuevoEvento()
     {
-        // "+ Nuevo evento" solo se ofrece desde la vista de "Otro evento" (RF-8).
+        // "+ Agregar evento" solo se ofrece desde la vista de "Otro evento" (RF-8).
         if (Cuadro != CuadroTrabajo.Eventos || !Selector.PuedeCrearNuevo) return;
         MensajeCuadro = null;
         NuevoEventoNombre = "";
@@ -268,6 +269,7 @@ public sealed partial class TrabajoViewModel
     private async Task CerrarCuadroAgregarAsync()
     {
         if (Cuadro is not (CuadroTrabajo.Eventos or CuadroTrabajo.Observacion)) return;
+        Selector.CancelarCommand.Execute(null);   // un paso abierto (días, resultado) se descarta: no deja nada elegido
         await CambiarCuadroAsync(CuadroTrabajo.Ninguno);
     }
 
@@ -279,15 +281,25 @@ public sealed partial class TrabajoViewModel
     [NotifyCanExecuteChangedFor(nameof(EntrarCommand))]
     private EventoCampoDto? _eventoElegido;
 
+    /// <summary>
+    /// Lo que completó el selector del evento elegido: los días y el resultado si tiene pasos (spec 005, RF-27). Es lo que viaja al guardar.
+    /// </summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(TextoEventoElegido))]
+    private EleccionEvento? _eleccionElegida;
+
     public bool HayEventoElegido => EventoElegido is not null;
 
-    /// <summary>Lo que muestra el casillero "Evento".</summary>
-    public string TextoEventoElegido => EventoElegido?.Nombre ?? "Tocá para elegir";
+    /// <summary>Lo que muestra el casillero "Evento": el resumen ("Aborto, 45 días, Vacía OK") o, si no hay, la invitación a elegir.</summary>
+    public string TextoEventoElegido => EventoElegido is { } e ? SelectorEventosViewModel.Resumen(e, EleccionElegida) : "Tocá para elegir";
 
     /// <summary>Lo que muestra el casillero "Observación".</summary>
     public string TextoCasilleroObservacion => HayObservacionPendiente ? ObservacionPendiente : "Opcional";
 
-    /// <summary>"Elegir" un evento de la lista: queda en el casillero y se vuelve a la ficha. No guarda nada todavía.</summary>
+    /// <summary>
+    /// El selector avisa que el evento quedó elegido (con todos sus pasos completos si los tiene): queda en el casillero y se vuelve a la
+    /// ficha. No guarda nada todavía.
+    /// </summary>
     [RelayCommand]
     private async Task ElegirEventoAsync(EventoCampoDto? estado)
     {
@@ -295,6 +307,11 @@ public sealed partial class TrabajoViewModel
         if (estado is null || Ficha is not { EntraEnTacto: true } || Etapa != EtapaTrabajo.Ficha
             || Cuadro is not (CuadroTrabajo.Ninguno or CuadroTrabajo.Eventos)) return;
 
+        // Los datos los armó el selector; un evento sin pasos no necesita ninguno. Un evento con pasos sin sus datos completos no se elige.
+        var eleccion = Selector.EleccionActual is { } e && e.EventoId == estado.Id ? e : new EleccionEvento(estado.Id);
+        if (estado.TienePasos && !SelectorEventosViewModel.EstaCompleta(estado, eleccion)) return;
+
+        EleccionElegida = eleccion;
         EventoElegido = estado;
         MensajeError = null;
         if (Cuadro == CuadroTrabajo.Eventos) await CambiarCuadroAsync(CuadroTrabajo.Ninguno);
@@ -315,11 +332,17 @@ public sealed partial class TrabajoViewModel
             var observacion = HayObservacionPendiente ? ObservacionPendiente : null;
             // El evento elegido decide qué se guarda: "Rechazo" es otro tipo de registro (el motivo va en la observación); un estado
             // del catálogo es un tacto. Si la vaca estaba en espera, el servicio la resuelve en la misma transacción.
-            var esRechazo = !estado.CambiaEstado;   // Rechazo, OK, Aborto, Revisar Nuevamente: se guardan sin cambiar el estado (spec 005)
+            // Un solo evento (OK, Revisar Nuevamente, Rechazo) y un Aborto que termina en Rechazo se guardan como registro de rechazo: no
+            // cambian el estado. El resto (un estado, Preñada fecha previa, un Aborto con estado) es un tacto. Los datos de los pasos
+            // (días, resultado) viajan en la elección (spec 005, RF-24, RF-29, RF-30).
+            var eleccion = EleccionElegida ?? new EleccionEvento(estado.Id);
+            var esRechazo = eleccion.RegistraComoRechazo || !estado.CambiaEstado;
             var resultado = esRechazo
-                ? await EnCampoAsync(() => _campo.RegistrarSoloEventoAsync(new RegistrarSoloEventoCommand(ficha.AnimalId, estado.Id, observacion)))
+                ? await EnCampoAsync(() => _campo.RegistrarSoloEventoAsync(
+                    new RegistrarSoloEventoCommand(ficha.AnimalId, eleccion.EventoId, observacion, eleccion)))
                 : await EnCampoAsync(() => _campo.RegistrarTactoAsync(
-                    new RegistrarTactoCommand(ficha.AnimalId, estado.Id, null, observacion)));
+                    new RegistrarTactoCommand(ficha.AnimalId, eleccion.EventoId, null, observacion, null, eleccion)));
+            var texto = SelectorEventosViewModel.Resumen(estado, eleccion);
             if (!resultado.EsCorrecto)
             {
                 // Rechazo: motivo en español, nada cambia (el evento y la observación siguen elegidos), la ficha queda abierta
@@ -331,8 +354,8 @@ public sealed partial class TrabajoViewModel
             // Guardado: vibración, resumen, aviso de deshacer y listo para la siguiente (RF-16, RF-17).
             _avisos.Confirmacion();
             CerrarFichaInterno();   // también descarta el evento elegido y la observación
-            UltimoGuardado = $"{ficha.Caravana}: {estado.Nombre}";
-            PublicarAvisoDeshacer(new AvisoDeshacerDto(esRechazo ? TipoDeshacer.Rechazo : TipoDeshacer.Tacto, resultado.Valor, $"{ficha.Caravana}: {estado.Nombre}"));
+            UltimoGuardado = $"{ficha.Caravana}: {texto}";
+            PublicarAvisoDeshacer(new AvisoDeshacerDto(esRechazo ? TipoDeshacer.Rechazo : TipoDeshacer.Tacto, resultado.Valor, $"{ficha.Caravana}: {texto}"));
             await RecalcularAsync();
             if (ficha.EnEspera) await CargarEsperasAsync();   // la espera quedó resuelta: sale de la botonera
         }

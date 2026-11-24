@@ -197,6 +197,11 @@ public sealed partial class MovimientosViewModel : ObservableObject
     [NotifyCanExecuteChangedFor(nameof(GuardarEdicionCommand))]
     private EventoCampoDto? _eventoEditado;
 
+    /// <summary>Los datos del evento editado (días y resultado si tiene pasos); viajan en la corrección (spec 005, RF-27, RF-30).</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(TextoEventoEditado))]
+    private EleccionEvento? _eleccionEditada;
+
     [ObservableProperty]
     private string _observacionEditada = "";
 
@@ -213,7 +218,7 @@ public sealed partial class MovimientosViewModel : ObservableObject
     private static string QueEs(MovimientoItem e) =>
         !e.EsRechazo ? "tacto"
         : e.Dto.EventoId is null || e.Dto.EventoId == Aviss.Application.Campo.EventosCampo.Rechazo ? "rechazo" : "evento";
-    public string TextoEventoEditado => EventoEditado?.Nombre ?? "Elegí un evento";
+    public string TextoEventoEditado => EventoEditado is { } e ? SelectorEventosViewModel.Resumen(e, EleccionEditada) : "Elegí un evento";
 
     /// <summary>Abre la edición con el evento y la observación actuales ya cargados.</summary>
     [RelayCommand]
@@ -227,8 +232,15 @@ public sealed partial class MovimientosViewModel : ObservableObject
             MensajeEdicion = null;
             // El registro se reconoce por su EventoId, no por el nombre. Si su evento ya no está activo no se elige ninguno (y no se resalta).
             Selector.Actualizar(await _campo.ListarEventosAsync());
-            Selector.Abrir(item.Dto.EventoId);
-            EventoEditado = Selector.Buscar(item.Dto.EventoId);
+            // Se precargan los días y el resultado del registro: si se vuelve a tocar el mismo evento, sus pasos abren con esos valores.
+            var dto = item.Dto;
+            var eleccion = dto.EventoId is { } id ? new EleccionEvento(id, dto.DiasPreniez, dto.DiasAborto, dto.ResultadoAborto) : null;
+            Selector.Abrir(dto.EventoId, eleccion);
+            var evento = Selector.Buscar(dto.EventoId);
+            // Un Aborto viejo (sin días ni resultado) no está completo: no se deja elegido, hay que volver a elegirlo con sus pasos.
+            var completo = evento is not null && (!evento.TienePasos || SelectorEventosViewModel.EstaCompleta(evento, eleccion));
+            EventoEditado = completo ? evento : null;
+            EleccionEditada = completo ? eleccion : null;
             ObservacionEditada = item.Dto.Observaciones ?? "";
             Editando = item;
         }
@@ -242,6 +254,10 @@ public sealed partial class MovimientosViewModel : ObservableObject
     private void ElegirEventoEditado(EventoCampoDto? estado)
     {
         if (estado is null) return;
+        // Los datos de los pasos los armó el selector; un evento con pasos incompletos no se elige.
+        var eleccion = Selector.EleccionActual is { } e && e.EventoId == estado.Id ? e : new EleccionEvento(estado.Id);
+        if (estado.TienePasos && !SelectorEventosViewModel.EstaCompleta(estado, eleccion)) return;
+        EleccionEditada = eleccion;
         EventoEditado = estado;
         MensajeEdicion = null;
     }
@@ -251,6 +267,8 @@ public sealed partial class MovimientosViewModel : ObservableObject
     {
         Editando = null;
         EventoEditado = null;
+        EleccionEditada = null;
+        Selector.LimpiarEleccion();   // un paso abierto no queda para la próxima edición
         ObservacionEditada = "";
         MensajeEdicion = null;
     }
@@ -268,7 +286,8 @@ public sealed partial class MovimientosViewModel : ObservableObject
         try
         {
             var observacion = string.IsNullOrWhiteSpace(ObservacionEditada) ? null : ObservacionEditada.Trim();
-            var resultado = await _campo.CorregirRegistroAsync(new CorregirRegistroCommand(item.Dto.RegistroId, evento.Id, observacion));
+            var resultado = await _campo.CorregirRegistroAsync(new CorregirRegistroCommand(
+                item.Dto.RegistroId, evento.Id, observacion, evento.TienePasos ? EleccionEditada : null));
             if (!resultado.EsCorrecto)
             {
                 MensajeEdicion = resultado.Mensaje;

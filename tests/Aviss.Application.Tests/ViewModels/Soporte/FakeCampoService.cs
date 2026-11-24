@@ -46,7 +46,11 @@ public class FakeCampoService : ICampoService
     public Task<ListaEventosDto> ListarEventosAsync(CancellationToken ct = default)
         => Task.FromResult(new ListaEventosDto(
             Estados.Where(e => e.EsPrincipal).ToList(),
-            [ArmadorListaEventos.EventoRechazo, .. Estados.Where(e => !e.EsPrincipal)]));
+            [ArmadorListaEventos.EventoRechazo, .. Estados.Where(e => !e.EsPrincipal)],
+            ResultadosAborto));
+
+    /// <summary>Los resultados del aborto que ofrece el fake (por defecto los cinco; un test puede sacar los de un estado desactivado).</summary>
+    public IReadOnlyList<ResultadoAborto> ResultadosAborto { get; set; } = Aviss.Domain.Catalogo.ReglasResultadoAborto.Todos;
 
     public List<(string Nombre, string CodigoDairyComp)> EstadosCreados { get; } = [];
     public Func<string, Resultado<Guid>>? OnCrearEstado { get; set; }
@@ -230,9 +234,10 @@ public static class Datos
 
     public static MovimientoDto Movimiento(TipoMovimiento tipo, bool puedeDeshacer = true, bool anulado = false,
         int? cantidadAviss = null, int? cantidadConfirmada = null, int? contadorActual = null, string? caravana = "1001",
-        string? detalle = null, string? cvet = null, string? observaciones = null, Guid? eventoId = null)
+        string? detalle = null, string? cvet = null, string? observaciones = null, Guid? eventoId = null,
+        int? diasPreniez = null, int? diasAborto = null, ResultadoAborto? resultadoAborto = null)
         => new(tipo, Guid.NewGuid(), tipo == TipoMovimiento.Cierre ? null : Guid.NewGuid(), caravana, 1, detalle,
             new DateTime(2026, 11, 17, 13, 0, 0, DateTimeKind.Utc), anulado, puedeDeshacer,
             cantidadAviss, cantidadConfirmada, contadorActual, cvet, observaciones,
-            eventoId ?? (tipo == TipoMovimiento.Rechazo ? EventosCampo.Rechazo : null));
+            eventoId ?? (tipo == TipoMovimiento.Rechazo ? EventosCampo.Rechazo : null), diasPreniez, diasAborto, resultadoAborto);
 }

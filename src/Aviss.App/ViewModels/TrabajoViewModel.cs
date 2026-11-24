@@ -467,6 +467,8 @@ public sealed partial class TrabajoViewModel : ObservableObject
         Ficha = ficha;
         ObservacionPendiente = "";   // la observación y el evento elegido son de la ficha anterior
         EventoElegido = null;
+        EleccionElegida = null;
+        Selector.LimpiarEleccion();
         MostrarHistorial = false;
         Etapa = EtapaTrabajo.Ficha;
     }
@@ -476,6 +478,8 @@ public sealed partial class TrabajoViewModel : ObservableObject
         Ficha = null;
         ObservacionPendiente = "";
         EventoElegido = null;
+        EleccionElegida = null;
+        Selector.LimpiarEleccion();
         if (Etapa == EtapaTrabajo.Ficha) Etapa = EtapaTrabajo.Esperando;
     }
 
