@@ -98,9 +98,15 @@
                                     SelectedItem="{Binding EstablecimientoSeleccionado, Mode=TwoWay}">
                         <CollectionView.ItemTemplate>
                             <DataTemplate x:DataType="vm:EstablecimientoParaTrabajar">
-                                <Grid Style="{StaticResource FilaElegible}" Margin="0,0,0,8" MinimumHeightRequest="72">
-                                    <Label Text="{Binding Nombre}" Style="{StaticResource TextoCampo}" FontSize="26" FontAttributes="Bold"
+                                <Grid Style="{StaticResource FilaElegible}" ColumnDefinitions="*,Auto" ColumnSpacing="12" Margin="0,0,0,8" MinimumHeightRequest="72">
+                                    <Label Grid.Column="0" Text="{Binding Nombre}" Style="{StaticResource TextoCampo}" FontSize="26" FontAttributes="Bold"
                                            VerticalOptions="Center" />
+                                    <!-- Editar el nombre: abre una capa; no cambia la elección. -->
+                                    <Button Grid.Column="1" Text="Editar" Style="{StaticResource BotonCampoSecundario}" FontSize="20"
+                                            HeightRequest="56" MinimumWidthRequest="110" Padding="18,0" VerticalOptions="Center"
+                                            Command="{Binding Source={RelativeSource AncestorType={x:Type vm:EleccionTrabajoViewModel}}, Path=PedirEditarEstablecimientoCommand, x:DataType=vm:EleccionTrabajoViewModel}"
+                                            CommandParameter="{Binding .}"
+                                            SemanticProperties.Description="Editar el nombre de este establecimiento" />
                                 </Grid>
                             </DataTemplate>
                         </CollectionView.ItemTemplate>
@@ -182,6 +188,29 @@
                         <Button Text="No, cancelar" Style="{StaticResource BotonCampoSecundario}" HeightRequest="52" FontSize="20"
                                 Command="{Binding CancelarReseteoCommand}" />
                     </VerticalStackLayout>
+                </VerticalStackLayout>
+            </Border>
+        </Grid>
+
+        <!-- Editar el nombre de un establecimiento: escribir y Guardar o Cancelar. Un error (vacío, repetido) se ve acá y la capa queda abierta. -->
+        <Grid Grid.RowSpan="4" Margin="-24,-16" IsVisible="{Binding HayEdicionEstablecimiento}" BackgroundColor="{StaticResource CampoVelo}" Padding="16">
+            <Grid.GestureRecognizers><TapGestureRecognizer /></Grid.GestureRecognizers>
+            <Border BackgroundColor="White" StrokeThickness="0" Padding="18,16" HorizontalOptions="Fill" VerticalOptions="Start" Margin="0,80,0,0">
+                <VerticalStackLayout Spacing="14">
+                    <Label Text="Editar establecimiento" Style="{StaticResource TituloCuadro}" FontSize="26" />
+                    <Label Text="Nombre" Style="{StaticResource TextoCampo}" FontSize="20" FontAttributes="Bold" />
+                    <Entry Text="{Binding NombreEditado, Mode=TwoWay}" Style="{StaticResource EntradaCampo}" FontSize="24" HeightRequest="64"
+                           MaxLength="100" ReturnType="Done" ReturnCommand="{Binding GuardarEdicionEstablecimientoCommand}"
+                           SemanticProperties.Description="Nombre del establecimiento" />
+                    <Border IsVisible="{Binding HayMensajeErrorEdicion}" BackgroundColor="{StaticResource CampoPeligro}" StrokeThickness="0" Padding="14,10">
+                        <Label Text="{Binding MensajeErrorEdicion}" TextColor="White" FontSize="20" FontAttributes="Bold" />
+                    </Border>
+                    <Button Text="Guardar" Style="{StaticResource BotonCampo}" HeightRequest="60" FontSize="22"
+                            BackgroundColor="{StaticResource CampoExito}"
+                            IsEnabled="{Binding EstaGuardandoEdicion, Converter={StaticResource Invertir}}"
+                            Command="{Binding GuardarEdicionEstablecimientoCommand}" />
+                    <Button Text="Cancelar" Style="{StaticResource BotonCampoSecundario}" HeightRequest="60" FontSize="22"
+                            Command="{Binding CancelarEdicionEstablecimientoCommand}" />
                 </VerticalStackLayout>
             </Border>
         </Grid>

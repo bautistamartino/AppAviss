@@ -14,6 +14,11 @@ public interface IEstablecimientoService
     Task<Resultado<Guid>> CrearAsync(string nombre, string? notas, CancellationToken ct = default);
     Task<Resultado> DarDeBajaAsync(Guid id, CancellationToken ct = default);
     Task<Resultado> ReactivarAsync(Guid id, CancellationToken ct = default);
+    /// <summary>
+    /// Cambia el nombre de un establecimiento activo. <c>DatosInvalidos</c> si está vacío, <c>Duplicado</c> si lo usa OTRO
+    /// establecimiento (sin distinguir mayúsculas; las tildes cuentan, igual que en la importación, incluidos los dados de baja), <c>NoEncontrado</c> si no existe o está de baja.
+    /// </summary>
+    Task<Resultado> RenombrarAsync(Guid id, string nombre, CancellationToken ct = default);
     Task<IReadOnlyList<Establecimiento>> ListarAsync(CancellationToken ct = default);
 }
 
@@ -97,6 +102,9 @@ public interface ICampoService
     Task<ListaEventosDto> ListarEventosAsync(CancellationToken ct = default);
     /// <summary>Crea un estado nuevo en el catálogo desde el campo ("Agregar evento"). El código interno sale del nombre.</summary>
     Task<Resultado<Guid>> CrearEstadoAsync(string nombre, string codigoDairyComp, CancellationToken ct = default);
+
+    /// <summary>Cambia el nombre de un establecimiento desde la pantalla de elegir (ver <see cref="IEstablecimientoService.RenombrarAsync"/>).</summary>
+    Task<Resultado> RenombrarEstablecimientoAsync(Guid establecimientoId, string nombre, CancellationToken ct = default);
 
     // ---- Mangas (RF-4 a RF-10) ----
     /// <summary>Empieza a trabajar un rodeo: cierra como automática la manga abierta de un día anterior y devuelve el estado.</summary>
