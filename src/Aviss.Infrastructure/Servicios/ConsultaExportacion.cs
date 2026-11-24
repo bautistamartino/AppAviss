@@ -31,8 +31,6 @@ public sealed class ConsultaExportacion : IConsultaExportacion
     private sealed record AnimalLeido(Guid Id, string NumeroCaravana, string? DatosOriginalesJson, OrigenAnimal Origen);
     private sealed record TactoLeido(Guid AnimalId, DateTime FechaHoraUtc, long OrdenInsercion, Guid? EstadoNuevoId, Guid? EventoId, int? DiasPreniezInformados, int? DiasAborto);
     private sealed record RechazoLeido(Guid AnimalId, DateTime FechaHoraUtc, long OrdenInsercion, Guid? EventoId, int? DiasAborto);
-    private const string NombreRechazoExportado = "Rechazo";
-
     private sealed record EstadoLeido(Guid Id, string Nombre, string? ClaveEstandar);
     private sealed record Lectura(List<AnimalLeido> Animales, List<TactoLeido> Tactos, List<RechazoLeido> Rechazos, Dictionary<Guid, EstadoLeido> Estados);
 
@@ -61,8 +59,8 @@ public sealed class ConsultaExportacion : IConsultaExportacion
         }
         foreach (var r in lectura.Rechazos)
         {
-            // Rechazo sin evento = el Rechazo fijo. El archivo de vuelta sigue diciendo "Rechazo" (spec 007): la pantalla lo muestra como "RECHAZO", pero no se cambia el formato de intercambio sin decidirlo.
-            var nombre = r.EventoId is null ? NombreRechazoExportado : NombreDe(r.EventoId);
+            // Rechazo sin evento = el Rechazo fijo. El archivo de vuelta dice "RECHAZO", igual que la pantalla (decisión del 2026-11-24; un solo lugar: EventosCampo.NombreRechazo).
+            var nombre = r.EventoId is null ? EventosCampo.NombreRechazo : NombreDe(r.EventoId);
             // Un Aborto cuyo resultado fue Rechazo guarda sus días en el rechazo: ahí el resultado es siempre Rechazo.
             ResultadoAborto? resultado = r.DiasAborto is not null ? ResultadoAborto.Rechazo : null;
             registros.Add(new RegistroExportable(infoAnimal[r.AnimalId].Clave, TipoRegistroExportable.Rechazo, r.FechaHoraUtc,

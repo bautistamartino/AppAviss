@@ -154,7 +154,7 @@ public sealed class ConsultaExportacionTests : IDisposable
 
         var d = await Consultar();
 
-        Assert.Equal("Rechazo", d.ValoresPorCaravana["1"].Evento);
+        Assert.Equal("RECHAZO", d.ValoresPorCaravana["1"].Evento);
         Assert.Equal("OK", d.ValoresPorCaravana["2"].Evento);
         // Las observaciones no van al archivo.
         Assert.DoesNotContain("motivo", string.Join("|", d.ValoresPorCaravana["1"].EnOrden()));
@@ -208,7 +208,7 @@ public sealed class ConsultaExportacionTests : IDisposable
 
         var v = (await Consultar()).ValoresPorCaravana["100"];
 
-        Assert.Equal("Rechazo", v.Evento);
+        Assert.Equal("RECHAZO", v.Evento);
         Assert.Equal("1100", v.Hora);
     }
 

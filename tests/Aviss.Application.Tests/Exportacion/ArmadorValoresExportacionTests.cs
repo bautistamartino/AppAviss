@@ -29,7 +29,7 @@ public class ArmadorValoresExportacionTests
     [InlineData("VACIA")]
     [InlineData("Preñada fecha correcta")]
     [InlineData("Revisar Nuevamente")]
-    [InlineData("Rechazo")]
+    [InlineData("RECHAZO")]
     [InlineData("Un evento creado a mano")]
     public void El_evento_sale_por_su_nombre_tal_cual(string nombre)
         => Assert.Equal(nombre, ArmadorValoresExportacion.Armar(R.Reg(evento: nombre), TimeZoneInfo.Utc).Evento);

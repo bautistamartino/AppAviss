@@ -45,7 +45,7 @@ Hasta ahora Aviss solo importa y guarda (specs 002 a 006). Esta spec cierra el c
 - **Jornada de tacto:** el día local (zona de la tablet) del registro exportable más reciente del rodeo. Solo los registros de ese día se exportan.
 - **Último vigente:** dentro de la jornada, el registro exportable de la vaca con fecha y hora más recientes; si dos tienen la misma, el que se guardó después.
 - **Columnas nuevas:** las que agrega la exportación (nombres en RF-4 a RF-8; los de las tres últimas son tentativos, ver preguntas).
-- **Evento:** lo que el veterinario eligió en la ficha, por su **nombre** actual en el catálogo (Rechazo es fijo).
+- **Evento:** lo que el veterinario eligió en la ficha, por su **nombre** actual en el catálogo (el Rechazo fijo sale como `RECHAZO`, decisión del 2026-11-24; el resultado `Rechazo` del Aborto en su columna no cambia).
 - **Resultado del aborto:** Vacía OK, Inseminada, Seca, Fresca o Rechazo (spec 005, P11).
 - **Hora local:** la de la zona horaria de la tablet al momento de exportar.
 
@@ -61,7 +61,7 @@ Hasta ahora Aviss solo importa y guarda (specs 002 a 006). Esta spec cierra el c
 - **RF-5** — El sistema deberá armar el archivo a partir de la **copia del original guardada en el rodeo**, sin volver a abrir ni modificar el archivo que eligió el veterinario (spec 002, constitución §2).
 - **RF-6** — El sistema deberá agregar, para cada vaca con registro exportable, la columna **SCDAT** con la **fecha** del registro en formato `dd/mm/yyyy` (por ejemplo `05/11/2026`), en hora local.
 - **RF-7** — El sistema deberá agregar la columna **SCTIM** con la **hora** del registro en hora militar `HHmm`, con ceros a la izquierda y sin separadores (15:30 es `1530`; 09:05 es `0905`; 00:10 es `0010`), en hora local.
-- **RF-8** — El sistema deberá agregar una columna fija de **evento**, de nombre provisorio **`Evento1`**, con el **nombre** del evento elegido, tal como está en el catálogo en ese momento (por ejemplo `OK`, `VACIA`, `Aborto`, `Preñada fecha correcta`, `Preñada fecha previa`, `Revisar Nuevamente`, `Rechazo`, o un evento creado a mano). No deberá exportar el código de Dairy Comp en esa columna.
+- **RF-8** — El sistema deberá agregar una columna fija de **evento**, de nombre provisorio **`Evento1`**, con el **nombre** del evento elegido, tal como está en el catálogo en ese momento (por ejemplo `OK`, `VACIA`, `Aborto`, `Preñada fecha correcta`, `Preñada fecha previa`, `Revisar Nuevamente`, `RECHAZO`, o un evento creado a mano). No deberá exportar el código de Dairy Comp en esa columna.
 - **RF-9** — Cuando el evento es **Preñada fecha previa**, el sistema deberá agregar los **días de preñez informados** en su propia columna (número entero). En cualquier otro evento esa columna queda vacía.
 - **RF-10** — Cuando el evento es **Aborto**, el sistema deberá agregar los **días de aborto** (número entero, puede ser 0) y el **resultado del aborto** (Vacía OK, Inseminada, Seca, Fresca o Rechazo) en columnas propias. En cualquier otro evento esas dos columnas quedan vacías.
 - **RF-11** — El sistema deberá dejar **vacías todas las columnas nuevas** (sin ningún texto) en las vacas que no pasaron, en las vacas con **CVET 0** (spec 003 RF-40), **aunque tengan un registro guardado** (el resumen de la pantalla deberá decir cuántas son), en las filas del original que la importación excluyó y en la fila `Total`.
@@ -142,3 +142,6 @@ Hasta ahora Aviss solo importa y guarda (specs 002 a 006). Esta spec cierra el c
 10. **Resuelta (2026-11-24):** el archivo trae solo el tacto hecho del día (la jornada); no se exportan tactos de días anteriores del mismo rodeo (ver la decisión al principio).
 11. **Fila `Total`.** *Recomendación:* se conserva tal cual, con las columnas nuevas vacías.
 12. **Nombre del archivo.** *Recomendación:* `<nombre original sin extensión>_aviss_AAAAMMDD_HHmm.<csv|xls>`.
+
+## Cambios posteriores 2026-11-24
+El Rechazo fijo sale en la columna de evento como `RECHAZO` (mayúsculas, igual que en pantalla; `EventosCampo.NombreRechazo`). El resultado `Rechazo` de un Aborto en su columna de resultado queda como estaba (es una etiqueta de resultado, junto a Vacía OK, Inseminada, Seca y Fresca).
