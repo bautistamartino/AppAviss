@@ -222,7 +222,7 @@
                         </Grid>
 
                         <!-- Datos: una tabla "dato → valor" con renglones separados. Trae todas las columnas del Excel (DCC, DDUC, LECHE...). -->
-                        <ScrollView Grid.Row="1" IsVisible="{Binding HayDatos}">
+                        <ScrollView x:Name="ScrollDatos" Grid.Row="1" IsVisible="{Binding HayDatos}">
                             <VerticalStackLayout BindableLayout.ItemsSource="{Binding FilasDatos}" Padding="10,0">
                                 <BindableLayout.ItemTemplate>
                                     <DataTemplate x:DataType="dto:CampoFichaDto">
@@ -241,7 +241,7 @@
                         </ScrollView>
 
                         <!-- Historial cronológico (RF-14). -->
-                        <ScrollView Grid.Row="1" IsVisible="{Binding MostrarHistorial}">
+                        <ScrollView x:Name="ScrollHistorial" Grid.Row="1" IsVisible="{Binding MostrarHistorial}">
                             <VerticalStackLayout BindableLayout.ItemsSource="{Binding Ficha.Historial}" Spacing="10" Padding="14,10">
                                 <BindableLayout.ItemTemplate>
                                     <DataTemplate x:DataType="dto:EventoFichaDto">
