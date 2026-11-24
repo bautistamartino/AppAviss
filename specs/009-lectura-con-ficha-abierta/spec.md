@@ -12,7 +12,7 @@ Pedido del responsable (2026-11-24): cuando hay una ficha abierta y el bastón l
 
 ## Alcance
 - Incluye:
-  - Un aviso con tres opciones cuando llega la lectura (del bastón o la búsqueda a mano) de otra vaca que entra en tacto y hay una ficha abierta: **poner en espera la actual y abrir la nueva**, **cancelar la lectura**, **saltar la actual y abrir la nueva**.
+  - Un aviso con tres opciones cuando llega la lectura (del bastón o la búsqueda a mano) de otra vaca que entra en tacto y hay una ficha abierta: **poner en espera y abrir la nueva**, **cancelar la lectura**, **saltar la actual y abrir la nueva**.
   - Que la vaca nueva **no se marque** hasta que el veterinario elige abrirla.
   - Qué pasa con las lecturas que no entran en ese caso (misma vaca, CVET 0, no encontrada, ya procesada, en espera) cuando hay una ficha abierta.
   - Qué pasa con las lecturas que llegan mientras el aviso está abierto.
@@ -34,15 +34,15 @@ Pedido del responsable (2026-11-24): cuando hay una ficha abierta y el bastón l
 
 ### El aviso
 - **RF-1** — Cuando llega la lectura de una vaca nueva que entra en tacto y **todavía no está procesada hoy**, y hay una ficha con tacto abierta, el sistema deberá mostrar un aviso con tres opciones y **no deberá guardar nada** (ni marca ni conteo) hasta que el veterinario elija. Esto vale **siempre**: haya o no un evento o una observación elegidos en la ficha actual. La búsqueda manual se comporta igual que la lectura (spec 003 RF-23).
-- **RF-2** — El aviso deberá mostrar la caravana de la vaca actual y la de la nueva (con su CVET) y tres botones grandes, en este orden: **"Poner en espera la actual y abrir la nueva"**, **"Cancelar la lectura"** y **"Saltar la actual y abrir la nueva"**. Si la ficha actual tiene un evento o una observación elegidos sin guardar, el aviso deberá decir que se perderían con la opción 1 y la 3. Deberá sonar o vibrar una vez (para que quien mira a la vaca note que la pantalla pide algo). El botón Atrás de Android deberá equivaler a "Cancelar la lectura".
+- **RF-2** — El aviso deberá mostrar la caravana de la vaca actual y la de la nueva (con su CVET) y tres botones grandes, en este orden: **"Poner en espera y abrir la nueva"**, **"Cancelar lectura"** y **"Saltar la actual y abrir la nueva"**. Si la ficha actual tiene un evento o una observación elegidos sin guardar, el aviso deberá decir que se perderían con la opción 1 y la 3. Deberá sonar o vibrar una vez (para que quien mira a la vaca note que la pantalla pide algo). El botón Atrás de Android deberá equivaler a "Cancelar lectura".
 
 ### Las tres opciones
-- **RF-3** — Cuando el veterinario elige **"Poner en espera la actual y abrir la nueva"**, el sistema deberá poner la vaca actual en espera (spec 004 RF-1: queda en la botonera, sin tacto, descartando el evento y la observación elegidos), marcar la vaca nueva como pasada (spec 003 RF-12: suma al conteo de la manga y al avance) y abrir su ficha. Deberá quedar listo para la siguiente lectura sin otro toque.
-- **RF-4** — Cuando el veterinario elige **"Cancelar la lectura"**, el sistema deberá descartar la lectura **como si no se hubiera leído**: la vaca nueva **no se marca**, no suma al conteo ni al avance y no deja ningún registro; la ficha actual sigue abierta tal cual estaba, con su evento y su observación.
+- **RF-3** — Cuando el veterinario elige **"Poner en espera y abrir la nueva"**, el sistema deberá poner la vaca actual en espera (spec 004 RF-1: queda en la botonera, sin tacto, descartando el evento y la observación elegidos), marcar la vaca nueva como pasada (spec 003 RF-12: suma al conteo de la manga y al avance) y abrir su ficha. Deberá quedar listo para la siguiente lectura sin otro toque.
+- **RF-4** — Cuando el veterinario elige **"Cancelar lectura"**, el sistema deberá descartar la lectura **como si no se hubiera leído**: la vaca nueva **no se marca**, no suma al conteo ni al avance y no deja ningún registro; la ficha actual sigue abierta tal cual estaba, con su evento y su observación.
 - **RF-5** — Cuando el veterinario elige **"Saltar la actual y abrir la nueva"**, el sistema deberá cerrar la ficha actual como lo hace "Saltar" hoy (sin guardar ningún tacto; si venía de una espera, la deja salteada, spec 004 RF-3), marcar la vaca nueva como pasada y abrir su ficha.
 
 ### Casos de la vaca nueva y de la vaca actual
-- **RF-6** — Cuando la vaca nueva **está en espera** (spec 004 RF-5) y hay una ficha con tacto abierta, el sistema deberá mostrar el mismo aviso de tres opciones. Como esa vaca ya está marcada, la opción 1 y la 3 solo abren su ficha: **no la marcan otra vez ni suman al conteo** (sigue sin poder ser "Animal repetido"). "Cancelar la lectura" la deja en espera, sin tocarla.
+- **RF-6** — Cuando la vaca nueva **está en espera** (spec 004 RF-5) y hay una ficha con tacto abierta, el sistema deberá mostrar el mismo aviso de tres opciones. Como esa vaca ya está marcada, la opción 1 y la 3 solo abren su ficha: **no la marcan otra vez ni suman al conteo** (sigue sin poder ser "Animal repetido"). "Cancelar lectura" la deja en espera, sin tocarla.
 - **RF-7** — Cuando la vaca actual **viene de una espera** (ya está pendiente), la opción 1 deberá cerrar su ficha dejándola pendiente, **sin crear otra espera**, y la opción 3 deberá saltearla como lo hace "Saltar" en esa ficha (spec 004 RF-3).
 
 ### Lecturas que no abren el aviso
@@ -59,8 +59,8 @@ Pedido del responsable (2026-11-24): cuando hay una ficha abierta y el bastón l
 - **RF-11** — Si la app se cierra, la tablet se apaga o se pasa a segundo plano con el aviso abierto, el sistema no deberá haber guardado nada por el aviso: la vaca nueva sigue sin marcar y la actual queda como estaba (marcada, sin tacto). Con la app viva, el aviso se conserva al rotar o volver de segundo plano (spec 003 RF-36).
 
 ### Cuentas e historial
-- **RF-12** — El sistema deberá actualizar el conteo de la manga, el avance del día y el cierre automático por cantidad (spec 003 RF-45) **solo cuando una opción marca a la vaca nueva** (opciones 1 y 3, y solo si no estaba ya marcada). "Cancelar la lectura" no cambia ningún número ni el texto de "Último guardado".
-- **RF-13** — El sistema no deberá agregar acciones de historial ni tablas nuevas: usa las que ya existen (marca de pasada creada, espera creada, espera salteada). "Cancelar la lectura" no deja rastro en la base. Lo guardado solo se agrega, nada se borra ni se modifica.
+- **RF-12** — El sistema deberá actualizar el conteo de la manga, el avance del día y el cierre automático por cantidad (spec 003 RF-45) **solo cuando una opción marca a la vaca nueva** (opciones 1 y 3, y solo si no estaba ya marcada). "Cancelar lectura" no cambia ningún número ni el texto de "Último guardado".
+- **RF-13** — El sistema no deberá agregar acciones de historial ni tablas nuevas: usa las que ya existen (marca de pasada creada, espera creada, espera salteada). "Cancelar lectura" no deja rastro en la base. Lo guardado solo se agrega, nada se borra ni se modifica.
 
 ### Transversales
 - **RF-14** — El aviso y sus tres botones deberán estar pensados para la tablet **en vertical** (800x1340): botones grandes de alto contraste, una sola mano, en español rioplatense (constitución §9). El sistema no deberá usar la red ni incluir caravanas ni nombres en registros de error o logs, y no deberá registrar ni mostrar qué veterinario ni qué tablet (spec 006).
@@ -89,7 +89,7 @@ Esta spec **modifica** el texto de los requisitos de abajo. Al aprobarse, se les
 - **Sin conexión:** todo funciona sin Internet (RF-14).
 - **Corte de energía o app cerrada con el aviso abierto:** no se perdió nada (RF-11). Con la opción 1, si el corte llega entre poner en espera la actual y marcar la nueva, la actual queda en espera (se ve en la botonera al reabrir) y la nueva sin marcar: se la vuelve a leer (RF-10).
 - **Excel mal formado:** no aplica. Una vaca con CVET ilegible o ausente se toma como que entra en tacto (spec 003 RF-40).
-- **Lectura repetida de la misma vaca:** de la actual, se ignora (RF-8.1). De la nueva mientras el aviso está abierto, se ignora (RF-9). Si después de "Cancelar la lectura" el bastón vuelve a leer la misma vaca, es una lectura nueva y se vuelve a preguntar; el filtro por tiempo es de la spec 008.
+- **Lectura repetida de la misma vaca:** de la actual, se ignora (RF-8.1). De la nueva mientras el aviso está abierto, se ignora (RF-9). Si después de "Cancelar lectura" el bastón vuelve a leer la misma vaca, es una lectura nueva y se vuelve a preguntar; el filtro por tiempo es de la spec 008.
 - **Vaca no encontrada o de otro rodeo:** como siempre, la ficha abierta no se toca (RF-8.3).
 - **Vaca nueva ya procesada hoy:** aviso de repetido; sin las tres opciones (RF-8.4). Si el veterinario toca "Ver ficha" abre esa ficha con un toque explícito (pregunta 1).
 - **Vaca actual con CVET 0:** si se abrió con "Ver ficha", es una ficha con tacto abierta como cualquier otra: una lectura de otra vaca que entra en tacto muestra el aviso de tres opciones (RF-8.5). Al tactarla o ponerla en espera se guarda como a cualquier vaca.
@@ -97,7 +97,7 @@ Esta spec **modifica** el texto de los requisitos de abajo. Al aprobarse, se les
 - **Vaca de CVET 0 ya tactada y exportación:** sale en el archivo como cualquier otra (spec 007 RF-11, ya modificada el 2026-11-24).
 - **Lectura mientras el evento o la observación están abiertos como cuadro:** esos cuadros ya frenan las lecturas (spec 003 RF-19); la lectura se procesa al cerrarlos y recién ahí aparece el aviso (RF-1).
 - **Dos lecturas seguidas de vacas distintas con el aviso abierto:** se conserva la última; la primera no se marca (RF-9). Antes, las dos quedaban marcadas.
-- **Manga que se completa con la vaca nueva:** el cierre automático por cantidad corre al marcarla, como siempre (RF-12). Con "Cancelar la lectura" no corre.
+- **Manga que se completa con la vaca nueva:** el cierre automático por cantidad corre al marcarla, como siempre (RF-12). Con "Cancelar lectura" no corre.
 - **Control por manga apagado:** el aviso funciona igual (no depende de las mangas).
 - **Terminar el tacto:** no se puede tocar con el aviso abierto (el aviso tapa la pantalla); no cambia lo de la spec 004 RF-10.
 - **Varios veterinarios o tambos en la misma tablet:** sin efecto: la app no registra veterinario ni tablet (spec 006) y las lecturas se buscan solo en el rodeo en trabajo.
@@ -105,8 +105,8 @@ Esta spec **modifica** el texto de los requisitos de abajo. Al aprobarse, se les
 ## Criterios de aceptación
 - [x] Con la ficha de una vaca con CVET distinto de 0 abierta, leer otra vaca con CVET distinto de 0 que no pasó hoy muestra el aviso con las dos caravanas y las tres opciones, y **no marca** a la nueva (el conteo y el avance no cambian) (RF-1, RF-2).
 - [x] El aviso aparece igual con y sin evento u observación elegidos, y cuando hay algo elegido lo dice (RF-1, RF-2).
-- [x] "Poner en espera la actual y abrir la nueva": la actual aparece en la botonera de En espera, la nueva queda marcada (el conteo suma uno) y su ficha se abre (RF-3, RF-12).
-- [x] "Cancelar la lectura" (y el botón Atrás): la nueva no se marca ni cuenta, la ficha actual sigue abierta con su evento y su observación, y no queda ningún registro (RF-2, RF-4, RF-12, RF-13).
+- [x] "Poner en espera y abrir la nueva": la actual aparece en la botonera de En espera, la nueva queda marcada (el conteo suma uno) y su ficha se abre (RF-3, RF-12).
+- [x] "Cancelar lectura" (y el botón Atrás): la nueva no se marca ni cuenta, la ficha actual sigue abierta con su evento y su observación, y no queda ningún registro (RF-2, RF-4, RF-12, RF-13).
 - [x] "Saltar la actual y abrir la nueva": la actual se cierra sin tacto, la nueva queda marcada y se abre su ficha (RF-5).
 - [x] Una vaca nueva en espera pasa por el aviso y, al abrirse, no se marca otra vez ni suma (RF-6).
 - [x] Con la actual viniendo de una espera: la opción 1 la deja pendiente sin crear otra, y la opción 3 la deja salteada (RF-7).
@@ -124,8 +124,8 @@ Esta spec **modifica** el texto de los requisitos de abajo. Al aprobarse, se les
 ## Decisiones
 **Del responsable (2026-11-24):**
 1. El aviso aparece **siempre** que haya una ficha abierta y llegue otra vaca que entra en tacto; no depende de si se eligió evento u observación.
-2. **"Cancelar la lectura" no marca** a la nueva: no cuenta, como si no se hubiera leído.
-3. Las tres opciones y sus nombres: poner en espera la actual y abrir la nueva; cancelar la lectura; saltar la actual y abrir la nueva.
+2. **"Cancelar lectura" no marca** a la nueva: no cuenta, como si no se hubiera leído.
+3. Las tres opciones y sus nombres: poner en espera y abrir la nueva; cancelar lectura; saltar la actual y abrir la nueva.
 
 **Cerradas con criterio del planificador (revisables):**
 4. **La vaca nueva se marca recién al elegir** (no se marca y se desmarca después): así Cancelar no deja marcas anuladas en el historial ni mueve el conteo, y un corte con el aviso abierto no deja nada a medias.
@@ -139,7 +139,7 @@ Esta spec **modifica** el texto de los requisitos de abajo. Al aprobarse, se les
 10. **La ficha de una vaca con CVET 0 abierta con "Ver ficha" es completa** (datos, evento, observación, Entrar, En espera) y el cartel "CVET 0: no estaba en la lista de tacto" es solo informativo. Texto del responsable: "no importa si el CVET es 0, debería aparecer la información igual... cuando se lee o busca un animal con CVET 0, que aparezca lo que venía apareciendo 'no entra en tacto' pero que cuando quiero ver la ficha me aparezcan los datos de ese animal [...] y al mismo tiempo que aparezca si quiero agregar un evento. [...] el veterinario decide qué animal se tacta antes de ir al campo pero en el campo puede cambiar de opinión o ver de tactarla igual o analizarla igual". Consecuencia: esa ficha cuenta como "ficha con tacto abierta" (sin excepciones de "solo mirar").
 
 ## Supuestos y riesgos
-- **Lecturas repetidas sin filtro por tiempo:** hasta la spec 008, después de "Cancelar la lectura" el bastón puede volver a entregar la misma caravana y volver a preguntar. Es aceptable y se mira en la tablet.
+- **Lecturas repetidas sin filtro por tiempo:** hasta la spec 008, después de "Cancelar lectura" el bastón puede volver a entregar la misma caravana y volver a preguntar. Es aceptable y se mira en la tablet.
 - **Dos transacciones, no una:** poner en espera la actual y marcar la nueva son dos operaciones seguidas (RF-10). Si se corta la luz en el medio, no se pierde ni se duplica nada: la actual queda en espera y la nueva se vuelve a leer.
 - **El sonido es el de siempre:** se reutiliza el aviso sonoro existente; si en la tablet no alcanza para notarlo, se ajusta aparte.
 - **Tamaño (constitución §10, máximo 5 tareas):** entra en 3. Orden: (1) servicio y resultado de la lectura sin marcar; (2) ViewModel y sus tests (incluye la ficha completa de CVET 0, RF-15); (3) capa de la pantalla y cierre documental.

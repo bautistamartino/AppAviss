@@ -484,6 +484,29 @@ public class TrabajoViewModelReemplazoTests
         Assert.Equal(CuadroTrabajo.ConfirmarReemplazo, b.Vm.Cuadro);
     }
 
+    [Fact]
+    public async Task El_mismo_codigo_repetido_mientras_se_abre_la_nueva_se_sigue_ignorando()
+    {
+        var b = new Banco();
+        await b.AvisoAbiertoAsync();
+        b.ElServicioSumaAlMarcar();
+        var repetida = Task.CompletedTask;
+        // Justo cuando el servicio marca a la 1002 (la actual ya se cerró y el cuadro todavía está abierto), el bastón la repite.
+        b.Campo.OnProcesarLectura = cmd =>
+        {
+            if (!cmd.HayFichaConTactoAbierta && cmd.Codigo == "1002") repetida = b.Vm.EncolarLecturaAsync("1002");
+            return Resultado.Ok(b.Campo.Lecturas[cmd.Codigo]);
+        };
+
+        await b.Vm.PonerEnEsperaYAbrirNuevaCommand.ExecuteAsync(null);
+        await repetida;
+
+        // La repetida se ignoró: no hubo un segundo pedido de la 1002, no se reabrió el aviso y el conteo es el de una sola marca.
+        Assert.Equal(["1001", "1002", "1002"], b.Campo.LecturasProcesadas.Select(l => l.Codigo));
+        Assert.Equal(CuadroTrabajo.Ninguno, b.Vm.Cuadro);
+        Assert.Equal("1002", b.Vm.Ficha!.Caravana);
+    }
+
     // ------------------------------------------------------------------ RF-10: errores
 
     [Fact]

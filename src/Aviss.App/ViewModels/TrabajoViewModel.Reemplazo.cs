@@ -7,7 +7,7 @@ namespace Aviss.App.ViewModels;
 
 /// <summary>
 /// Pantalla de trabajo, spec 009: con una ficha abierta, el bastón (o la búsqueda a mano) lee OTRA vaca. En vez de reemplazar la ficha
-/// en silencio, se abre el cuadro "Leyó otra vaca" con tres opciones: poner en espera la actual y abrir la nueva, cancelar la lectura
+/// en silencio, se abre el cuadro "Leyó otra vaca" con tres opciones: poner en espera y abrir la nueva, cancelar la lectura
 /// o saltar la actual y abrir la nueva. La vaca nueva no se marca hasta que el veterinario elige abrirla (opciones 1 y 3).
 /// </summary>
 public sealed partial class TrabajoViewModel
@@ -74,11 +74,14 @@ public sealed partial class TrabajoViewModel
     private async Task CancelarLecturaAsync()
     {
         if (Cuadro != CuadroTrabajo.ConfirmarReemplazo) return;
-        _reemplazoPendiente = null;
+        // La referencia a la lectura pendiente se conserva hasta DESPUÉS de cerrar el cuadro: si el bastón repite el mismo código en
+        // ese intervalo, EncolarLecturaAsync todavía lo ignora (RF-9).
+        var pendienteCancelado = _reemplazoPendiente;
         MensajeCuadro = null;
         MensajeError = null;
         MensajeInfo = "Lectura cancelada: no se marcó";
         await CambiarCuadroAsync(CuadroTrabajo.Ninguno);
+        LiberarPendiente(pendienteCancelado);
     }
 
     // Las opciones 1 y 3 hacen lo mismo en tres pasos: (1) cerrar la actual, (2) marcar y abrir la nueva, (3) cerrar el cuadro al final.
@@ -86,6 +89,7 @@ public sealed partial class TrabajoViewModel
     {
         if (Cuadro != CuadroTrabajo.ConfirmarReemplazo || _reemplazoPendiente is not { } pendiente || _sesion.Rodeo is not { } rodeo) return;
 
+        var actualCerrada = false;
         try
         {
             MensajeCuadro = null;
@@ -123,7 +127,7 @@ public sealed partial class TrabajoViewModel
 
             // La actual ya salió de la pantalla (descarta también el evento y la observación elegidos).
             CerrarFichaInterno();
-            _reemplazoPendiente = null;
+            actualCerrada = true;   // _reemplazoPendiente se conserva hasta cerrar el cuadro (RF-9)
             if (textoActual is not null) UltimoGuardado = textoActual;
             if (cambioLaEspera) await CargarEsperasAsync();
 
@@ -152,7 +156,7 @@ public sealed partial class TrabajoViewModel
         {
             MensajeCuadro = MensajeFalla;
             // Si ya se cerró la actual, no queda nada que decidir: se cierra el cuadro y el error se ve en la pantalla.
-            if (_reemplazoPendiente is null && Cuadro == CuadroTrabajo.ConfirmarReemplazo)
+            if (actualCerrada && Cuadro == CuadroTrabajo.ConfirmarReemplazo)
             {
                 MensajeCuadro = null;
                 MensajeError = MensajeFalla;
@@ -161,7 +165,13 @@ public sealed partial class TrabajoViewModel
 
         // 3) Recién ahora se cierra el cuadro: destraba la cola y procesa la lectura guardada con el estado nuevo (RF-9). Si el resultado
         //    de la marca abrió su propio cuadro (un aviso de repetido, por ejemplo), no se lo pisa.
-        if (Cuadro == CuadroTrabajo.ConfirmarReemplazo && _reemplazoPendiente is null)
-            await CambiarCuadroAsync(CuadroTrabajo.Ninguno);
+        if (Cuadro == CuadroTrabajo.ConfirmarReemplazo && actualCerrada) await CambiarCuadroAsync(CuadroTrabajo.Ninguno);
+        if (actualCerrada) LiberarPendiente(pendiente);   // recién ahora: antes, el mismo código repetido se seguía ignorando
+    }
+
+    // Suelta la lectura pendiente solo si sigue siendo la misma (al destrabar la cola puede haberse abierto otro aviso con otra).
+    private void LiberarPendiente(ReemplazoPendiente? pendiente)
+    {
+        if (ReferenceEquals(_reemplazoPendiente, pendiente)) _reemplazoPendiente = null;
     }
 }

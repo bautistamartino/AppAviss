@@ -6,7 +6,7 @@ Spec: [spec.md](spec.md) (aprobada; ajustada el 2026-11-24 con RF-15: la ficha d
 El servicio de lectura aprende a **decir si marcaría a una vaca sin marcarla** (un pedido con la bandera "hay una ficha con tacto abierta" devuelve `RequiereDecision` sin guardar nada). El `TrabajoViewModel` usa esa respuesta para abrir un cuadro nuevo con las tres opciones; las opciones 1 y 3 reutilizan "poner en espera" y "saltear" que ya existen y recién después piden la marca de verdad (el mismo pedido, sin la bandera). **Sin migración ni tablas nuevas** (RF-13).
 
 ## Base de datos
-Ninguna. No hay entidades, migración, triggers ni SQL a mano: "Cancelar la lectura" no guarda nada y las opciones 1 y 3 usan las acciones de historial existentes (`EsperaCreada`, `EsperaSalteada`, marca de pasada creada). `dotnet ef migrations has-pending-model-changes` debe seguir limpio.
+Ninguna. No hay entidades, migración, triggers ni SQL a mano: "Cancelar lectura" no guarda nada y las opciones 1 y 3 usan las acciones de historial existentes (`EsperaCreada`, `EsperaSalteada`, marca de pasada creada). `dotnet ef migrations has-pending-model-changes` debe seguir limpio.
 
 ## Capas y servicios
 | Capa | Qué se agrega | RF |

@@ -375,8 +375,9 @@
              se marcó: el veterinario elige con tres botones grandes, pensados para una mano. Atrás de Android = Cancelar lectura. -->
         <Grid IsVisible="{Binding HayConfirmarReemplazo}" BackgroundColor="{StaticResource CampoVelo}" Padding="14">
             <Grid.GestureRecognizers><TapGestureRecognizer /></Grid.GestureRecognizers>
+            <ScrollView VerticalOptions="Center">
             <Border BackgroundColor="White" StrokeThickness="6" Stroke="{StaticResource CampoAlerta}" Padding="18,16"
-                    HorizontalOptions="Fill" VerticalOptions="Center">
+                    HorizontalOptions="Fill">
                 <VerticalStackLayout Spacing="12">
                     <Label Text="Leyó otra vaca" Style="{StaticResource TituloCuadro}" FontSize="30" HorizontalTextAlignment="Center" />
                     <Label Text="Ficha abierta" Style="{StaticResource TextoCampo}" FontSize="20" HorizontalTextAlignment="Center" />
@@ -401,6 +402,7 @@
                     </Grid>
                 </VerticalStackLayout>
             </Border>
+            </ScrollView>
         </Grid>
 
         <!-- Verificación de "Finalizar manga" / "Terminar el tacto" (RF-6): contador y caravanas -->
