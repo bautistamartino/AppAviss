@@ -83,7 +83,7 @@ public class ExportarViewModelTests
         var e = new Entorno();
         var jornada = new DateOnly(2026, 11, 5);
         var ultima = new UltimaExportacionDto(new DateTime(2026, 11, 6, 13, 30, 0, DateTimeKind.Utc), "x.csv", FormatoExportacion.Csv, 150);
-        e.Servicio.ResumenAEntregar = Resultado.Ok(new ResumenExportacionDto(Norte1.RodeoId, 226, 150, 76, 3, jornada, ultima));
+        e.Servicio.ResumenAEntregar = Resultado.Ok(new ResumenExportacionDto(Norte1.RodeoId, 226, 150, 76, jornada, ultima));
 
         await e.EnResumenAsync();
 
@@ -92,8 +92,6 @@ public class ExportarViewModelTests
         Assert.Empty(e.Servicio.Exportaciones);                       // RF-3: nada se genera sin elegir el formato
         Assert.Equal("150 de 226 vacas con evento", e.Vm.TextoConEvento);
         Assert.Equal("Sin evento: 76", e.Vm.TextoSinEvento);
-        Assert.True(e.Vm.HayCvetCero);
-        Assert.Equal("Con CVET 0 y registro guardado: 3 (salen vacías)", e.Vm.TextoCvetCero);
         Assert.Equal("Tacto del día 05/11/2026", e.Vm.TextoJornada);
         Assert.True(e.Vm.HayUltimaExportacion);
         // 13:30 UTC en la zona de la tablet (UTC-3) son las 10:30: sale en la hora de IZonaHoraria, no en la de la PC que corre el test.
@@ -104,7 +102,7 @@ public class ExportarViewModelTests
     public async Task Las_vacas_con_evento_fuera_del_archivo_se_muestran_aparte_con_una_linea_fija()
     {
         var e = new Entorno();
-        e.Servicio.ResumenAEntregar = Resultado.Ok(new ResumenExportacionDto(Norte1.RodeoId, 226, 150, 76, 0, null, null, VacasFueraDelArchivoConEvento: 2));
+        e.Servicio.ResumenAEntregar = Resultado.Ok(new ResumenExportacionDto(Norte1.RodeoId, 226, 150, 76, null, null, VacasFueraDelArchivoConEvento: 2));
 
         await e.EnResumenAsync();
 
@@ -114,11 +112,10 @@ public class ExportarViewModelTests
     }
 
     [Fact]
-    public async Task Sin_CVET_cero_ni_exportacion_previa_esas_lineas_no_se_muestran()
+    public async Task Sin_exportacion_previa_ni_fuera_del_archivo_esas_lineas_no_se_muestran()
     {
         var e = await new Entorno().EnResumenAsync();
 
-        Assert.False(e.Vm.HayCvetCero);
         Assert.False(e.Vm.HayFueraDelArchivo);
         Assert.False(e.Vm.HayUltimaExportacion);
         Assert.False(e.Vm.HayJornada);
@@ -419,7 +416,7 @@ public class ExportarViewModelTests
         // La pantalla solo conoce nombres de rodeo y establecimiento y cantidades: ni el resumen ni el resultado llevan caravanas.
         var e = await new Entorno().EnResumenAsync();
         await e.Vm.GenerarCsvCommand.ExecuteAsync(null);
-        var textos = string.Join("|", e.Vm.TextoConEvento, e.Vm.TextoSinEvento, e.Vm.TextoCvetCero, e.Vm.TextoJornada,
+        var textos = string.Join("|", e.Vm.TextoConEvento, e.Vm.TextoSinEvento, e.Vm.TextoJornada,
             e.Vm.TextoUltimaExportacion, e.Vm.TextoLugar, e.Vm.TextoCantidades, e.Vm.AvisoConstanciaNoGuardada);
         Assert.DoesNotMatch(@"\b\d{4,}\b", textos);
     }

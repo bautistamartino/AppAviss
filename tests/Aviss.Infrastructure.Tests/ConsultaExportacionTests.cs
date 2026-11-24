@@ -281,7 +281,7 @@ public sealed class ConsultaExportacionTests : IDisposable
     // ---------- CVET, anuladas, otros rodeos ----------
 
     [Fact]
-    public async Task Una_vaca_con_CVET_0_queda_fuera_aunque_tenga_registro_y_se_cuenta_aparte()
+    public async Task Una_vaca_con_CVET_0_tactada_a_proposito_sale_como_cualquier_otra()
     {
         var cero = Vaca("1", cvet: "0");
         var normal = Vaca("2", cvet: "PRE");
@@ -292,11 +292,10 @@ public sealed class ConsultaExportacionTests : IDisposable
 
         var d = await Consultar();
 
-        Assert.False(d.ValoresPorCaravana.ContainsKey("1"));
+        Assert.True(d.ValoresPorCaravana.ContainsKey("1"));   // CVET 0 con registro vigente: sale con sus valores (decisión 2026-11-24)
         Assert.True(d.ValoresPorCaravana.ContainsKey("2"));
         Assert.True(d.ValoresPorCaravana.ContainsKey("3"));   // un CVET ausente no bloquea
-        Assert.Equal(1, d.VacasCvetCeroConRegistro);
-        Assert.Equal(2, d.VacasConEvento);
+        Assert.Equal(3, d.VacasConEvento);
         Assert.Equal(3, d.TotalVacas);
     }
 
@@ -319,10 +318,12 @@ public sealed class ConsultaExportacionTests : IDisposable
     }
 
     [Fact]
-    public async Task Una_vaca_con_CVET_0_sin_registro_no_se_cuenta_como_con_registro()
+    public async Task Una_vaca_con_CVET_0_sin_registro_sale_sin_valores_y_cuenta_como_sin_evento()
     {
         Vaca("1", cvet: "0");
-        Assert.Equal(0, (await Consultar()).VacasCvetCeroConRegistro);
+        var d = await Consultar();
+        Assert.Empty(d.ValoresPorCaravana);
+        Assert.Equal(1, d.VacasSinEvento);
     }
 
     [Fact]

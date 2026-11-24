@@ -20,7 +20,7 @@ public sealed class ExportacionServiceTests : IDisposable
     // Caravanas de 4 dígitos y nombres reconocibles: así se ve si algún mensaje los filtra.
     private const string Pasada = "7101", SinPasar = "7102", CvetCero = "7103", Anulada = "7104";
 
-    /// <summary>Un rodeo con cuatro vacas: una con tacto, una sin pasar, una con CVET 0 y registro, y una con el tacto anulado.</summary>
+    /// <summary>Un rodeo con cuatro vacas: una con tacto, una sin pasar, una con CVET 0 y tacto a propósito, y una con el tacto anulado.</summary>
     private (Guid Rodeo, Guid Pasada) RodeoConTrabajo(byte[]? original = null, string archivo = "tambo-norte.csv")
     {
         var rodeo = _e.Rodeo(original ?? EscenarioExportacion.CsvOriginal(Pasada, SinPasar, CvetCero, Anulada), archivo);
@@ -91,13 +91,13 @@ public sealed class ExportacionServiceTests : IDisposable
         var r = await _e.Servicio.ObtenerResumenAsync(rodeo);
 
         Assert.Equal(4, r.Valor.TotalVacas);                 // las del archivo, sin la alta
-        Assert.Equal(1, r.Valor.VacasConEvento);
-        Assert.Equal(3, r.Valor.VacasSinEvento);
+        Assert.Equal(2, r.Valor.VacasConEvento);
+        Assert.Equal(2, r.Valor.VacasSinEvento);
         Assert.Equal(1, r.Valor.VacasFueraDelArchivoConEvento);
     }
 
     [Fact]
-    public async Task El_resumen_cuenta_vacas_con_y_sin_evento_el_cvet_cero_con_registro_y_la_jornada()
+    public async Task El_resumen_cuenta_vacas_con_y_sin_evento_la_de_CVET_0_con_registro_y_la_jornada()
     {
         var (rodeo, _) = RodeoConTrabajo();
 
@@ -105,9 +105,8 @@ public sealed class ExportacionServiceTests : IDisposable
 
         Assert.True(r.EsCorrecto, r.Mensaje);
         Assert.Equal(4, r.Valor.TotalVacas);
-        Assert.Equal(1, r.Valor.VacasConEvento);          // solo la 7101: la anulada no cuenta y la CVET 0 sale vacía
-        Assert.Equal(3, r.Valor.VacasSinEvento);
-        Assert.Equal(1, r.Valor.VacasCvetCeroConRegistro);
+        Assert.Equal(2, r.Valor.VacasConEvento);          // la 7101 y la CVET 0 tactada a propósito: la anulada no cuenta
+        Assert.Equal(2, r.Valor.VacasSinEvento);
         Assert.Equal(new DateOnly(2026, 11, 16), r.Valor.Jornada);
         Assert.Null(r.Valor.UltimaExportacion);
     }
@@ -125,7 +124,7 @@ public sealed class ExportacionServiceTests : IDisposable
         var ultima = r.Valor.UltimaExportacion!;
         Assert.Equal(FormatoExportacion.Xls, ultima.Formato);
         Assert.Equal(_e.Reloj.UtcAhora, ultima.FechaUtc);
-        Assert.Equal(1, ultima.CantidadVacasConEvento);
+        Assert.Equal(2, ultima.CantidadVacasConEvento);
     }
 
     [Fact]
@@ -159,15 +158,18 @@ public sealed class ExportacionServiceTests : IDisposable
         Assert.Equal("Descargas", r.Valor.Archivo.Lugar);
         Assert.Equal(formato, r.Valor.Formato);
         Assert.Equal(4, r.Valor.Filas);
-        Assert.Equal(1, r.Valor.VacasConEvento);
+        Assert.Equal(2, r.Valor.VacasConEvento);
         Assert.True(r.Valor.ConstanciaGuardada);
 
-        // El archivo entregado tiene las columnas nuevas con lo que corresponde: solo la vaca con tacto lleva valores.
+        // El archivo entregado tiene las columnas nuevas con lo que corresponde: solo las vacas con tacto (la CVET 0 incluida) llevan valores.
         var lectura = Leer(guardado.Contenido);
         Assert.Equal("16/11/2026", Celda(lectura, Pasada, ColumnasExportacion.Fecha.Nombre));
         Assert.Equal("1200", Celda(lectura, Pasada, ColumnasExportacion.Hora.Nombre));
         Assert.Equal("SECA", Celda(lectura, Pasada, ColumnasExportacion.Evento.Nombre));
-        foreach (var vacia in new[] { SinPasar, CvetCero, Anulada })
+        // La vaca de CVET 0 tactada a propósito sale como cualquier otra (decisión 2026-11-24).
+        Assert.Equal("16/11/2026", Celda(lectura, CvetCero, ColumnasExportacion.Fecha.Nombre));
+        Assert.Equal("SECA", Celda(lectura, CvetCero, ColumnasExportacion.Evento.Nombre));
+        foreach (var vacia in new[] { SinPasar, Anulada })
             foreach (var columna in ColumnasExportacion.Todas)
                 Assert.Equal("", Celda(lectura, vacia, columna.Nombre));
 
@@ -177,7 +179,7 @@ public sealed class ExportacionServiceTests : IDisposable
         Assert.Equal(Convert.ToHexString(SHA256.HashData(guardado.Contenido)).ToLowerInvariant(), _e.Base.Escalar("SELECT Hash FROM Exportacion"));
         Assert.Equal(formato.ToString(), _e.Base.Escalar("SELECT Formato FROM Exportacion"));
         Assert.Equal(4L, _e.Base.Escalar("SELECT CantidadFilas FROM Exportacion"));
-        Assert.Equal(1L, _e.Base.Escalar("SELECT CantidadVacasConEvento FROM Exportacion"));
+        Assert.Equal(2L, _e.Base.Escalar("SELECT CantidadVacasConEvento FROM Exportacion"));
         Assert.Equal("Exportado", _e.EstadoDelRodeo(rodeo));
 
         // El original guardado en el rodeo no se tocó (RF-5).
@@ -233,7 +235,7 @@ public sealed class ExportacionServiceTests : IDisposable
         var r = await _e.Servicio.ExportarAsync(rodeo, FormatoExportacion.Csv);
 
         Assert.True(r.EsCorrecto, r.Mensaje);
-        Assert.Equal(2, r.Valor.VacasConEvento);
+        Assert.Equal(3, r.Valor.VacasConEvento);
         Assert.Equal("VACIA", Celda(Leer(_e.Entrega.Guardados[1].Contenido), SinPasar, ColumnasExportacion.Evento.Nombre));
     }
 
