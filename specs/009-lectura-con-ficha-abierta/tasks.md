@@ -4,7 +4,7 @@ Spec: [spec.md](spec.md) · Plan: [plan.md](plan.md)
 
 Regla de verificación: tras cada tarea se corren **solo los proyectos de tests que la tarea toca** (con `--filter "Categoria!=Rendimiento"`) y `dotnet build` de la solución. La suite completa y los tests de rendimiento se corren **una sola vez, en la T3**. Cada tarea deja la solución compilando y se commitea al terminar (rama `spec/009-lectura-con-ficha-abierta`). **Máximo 3 tareas** (constitución §10). Antes de empezar la T1, la spec debe figurar como `aprobada` (las dos preguntas abiertas tienen recomendación).
 
-- [ ] **T1** — Servicio: la lectura que pregunta antes de marcar
+- [x] **T1** — Servicio: la lectura que pregunta antes de marcar
   - Qué hace: bandera `HayFichaConTactoAbierta` (por omisión `false`) en `ProcesarLecturaCommand`; `TipoResultadoLectura.RequiereDecision`; en `MarcaPasadaService.ProcesarLecturaAsync`, con la bandera y una vaca que se marcaría y entra en tacto, devolver `RequiereDecision` con caravana y ficha **sin llamar al `Marcador`** y sin historial; el resto (no encontrada, en espera, repetido, CVET 0 marcada, errores de reloj o de baja) idéntico a hoy; `CampoService` y `FakeCampoService` al día (el fake devuelve `RequiereDecision` a pedido y guarda la bandera de cada pedido).
   - Tests primero: `Infrastructure.Tests › MarcaPasadaFichaAbiertaTests` (ver el plan: sin marca, sin manga, sin historial, contador igual, el segundo pedido sin bandera la marca, CVET 0, procesada hoy, en espera, no encontrada, reloj atrás, base cerrada y reabierta); los `MarcaPasadaServiceTests` existentes siguen verdes sin tocarlos.
   - RF: RF-1, RF-6, RF-8, RF-10, RF-11, RF-13
