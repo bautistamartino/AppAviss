@@ -9,6 +9,8 @@ public sealed class NavegacionShell : INavegacion
 
     public Task IrAImportarAsync() => MainThread.InvokeOnMainThreadAsync(() => Shell.Current.GoToAsync(AppShell.RutaImportar));
 
+    public Task IrAExportarAsync() => MainThread.InvokeOnMainThreadAsync(() => Shell.Current.GoToAsync(AppShell.RutaExportar));
+
     // Flujo de campo (spec 003). La elección se abre con ruta absoluta (//Inicio/EleccionTrabajo): así, al volver desde
     // "Salir" del trabajo, la pila de páginas se rearma en vez de apilar una elección sobre otra.
     public Task IrAEleccionTrabajoAsync() => MainThread.InvokeOnMainThreadAsync(() => Shell.Current.GoToAsync("//" + AppShell.RutaInicio + "/" + AppShell.RutaEleccionTrabajo));

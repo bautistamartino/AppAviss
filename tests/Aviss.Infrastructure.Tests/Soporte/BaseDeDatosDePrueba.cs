@@ -260,6 +260,19 @@ public sealed class BaseDeDatosDePrueba : IDisposable
         return id;
     }
 
+    // ---- Constancias de exportación por SQL crudo (spec 007) ----
+
+    public Guid Exportacion(Guid rodeoId, DateTime? fechaUtc = null, string nombre = "rodeo_aviss_20261124_1200.csv",
+        string formato = "Csv", string? hash = null, int filas = 10, int conEvento = 4)
+    {
+        var id = Guid.NewGuid();
+        Ejecutar(@"INSERT INTO Exportacion (Id, RodeoId, FechaUtc, ArchivoNombre, Formato, Hash, CantidadFilas, CantidadVacasConEvento, CreadoEnUtc)
+                   VALUES ($id, $r, $fh, $n, $fo, $h, $f, $c, $cr)",
+            ("$id", id), ("$r", rodeoId), ("$fh", Fecha(fechaUtc ?? Reloj.UtcAhora)), ("$n", nombre), ("$fo", formato),
+            ("$h", hash ?? new string('b', 64)), ("$f", filas), ("$c", conEvento), ("$cr", Fecha(Reloj.UtcAhora)));
+        return id;
+    }
+
     public bool ExisteTrigger(string nombre)
         => Contar("SELECT COUNT(*) FROM sqlite_master WHERE type = 'trigger' AND name = $n", ("$n", nombre)) == 1;
 

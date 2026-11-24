@@ -18,6 +18,7 @@ public sealed class AvissDbContext : DbContext
     public DbSet<MarcaPasada> MarcasPasada => Set<MarcaPasada>();
     public DbSet<Espera> Esperas => Set<Espera>();
     public DbSet<Rechazo> Rechazos => Set<Rechazo>();
+    public DbSet<Exportacion> Exportaciones => Set<Exportacion>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
         => modelBuilder.ApplyConfigurationsFromAssembly(typeof(AvissDbContext).Assembly);

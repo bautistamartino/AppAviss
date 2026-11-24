@@ -9,6 +9,9 @@ public interface INavegacion
     Task IrAInicioAsync();
     Task IrAImportarAsync();
 
+    /// <summary>Pantalla "Exportar" (spec 007).</summary>
+    Task IrAExportarAsync();
+
     // Flujo de campo (spec 003). Las rutas existen desde T3; las páginas se registran en T4 y T5.
     Task IrAEleccionTrabajoAsync();
     Task IrATrabajoAsync();

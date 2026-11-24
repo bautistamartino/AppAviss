@@ -48,7 +48,7 @@ Todas con `Guid Id`, `CreadoEnUtc`, `ActualizadoEnUtc`.
 - **Historial** (auditoría): `Entidad`, `EntidadId`, `Campo`, `ValorAnterior`, `ValorNuevo`, `FechaHoraUtc`, `Accion`. Un trigger de SQLite aborta cualquier UPDATE o DELETE.
 - **Usuario** (veterinario): **se quitó en la spec 006**. Ninguna entidad guarda quién hizo el trabajo ni en qué tablet (migración `QuitarVeterinario`).
 - **LecturaRfid**: log crudo (`Codigo`, `FechaHoraUtc`, `AnimalId?`, `Resultado`) para diagnóstico y recuperación.
-- **Exportacion**: `RodeoId`, `FechaUtc`, `ArchivoNombre`, `Hash`.
+- **Exportacion** (spec 007): constancia de cada archivo de vuelta entregado. `RodeoId`, `FechaUtc` (UTC exacta), `ArchivoNombre`, `Formato` (`Csv` / `Xls`), `Hash` (SHA-256 del archivo, 64 caracteres), `CantidadFilas`, `CantidadVacasConEvento`, `CreadoEnUtc`. Solo se agrega: triggers `TR_Exportacion_NoModificar` y `TR_Exportacion_NoBorrar` y CHECK de formato, hash y cantidades; índice `(RodeoId, FechaUtc)` para "la última exportación". Sin veterinario ni tablet. Migración `Exportaciones` (después de `EventosConPasos`).
 - **Manga** (spec 003): `RodeoId`, `Numero` (único por rodeo). Nunca cambia. Se crea con la **primera marca** de la manga: la "manga por empezar" no existe en la base.
 - **CierreManga** (spec 003): `MangaId`, `Tipo` (Manual / TerminoElTacto / Automatico), `FechaHoraUtc`, `CantidadAviss`, `CantidadConfirmada?`, `Diferencia?`, `Anulado`. Una manga está cerrada si tiene un cierre con `Anulado = 0` (un índice único parcial garantiza uno solo). Reabrir = anular el cierre; nunca se modifica ni se borra.
 - **MarcaPasada** (spec 003): `AnimalId`, `MangaId`, `FechaHoraUtc`, `OrdenInsercion`, `Anulado`. Una marca vigente por vaca y manga (índice único parcial); un trigger impide marcar una vaca en la manga de otro rodeo. Comparte con `Tacto` el **orden de guardado** (`OrdenInsercion` = máximo entre ambas tablas + 1, dentro de la transacción).
@@ -104,11 +104,15 @@ Archivo de muestra (Dairy Comp, `.xls`): una hoja, 226 vacas, columnas `ID, CVET
 5. Se inserta todo en una transacción.
 6. Se guarda el archivo original (blob y hash) en el `Rodeo`.
 
-**Exportación**
-- Se parte de la **copia del original** guardada en la base y se actualizan solo las celdas modificadas (`RPRO`, `COM`, `FAPAR` y las que resulten de la prueba). Se conservan estilos y estructura.
-- Dairy Comp crea **eventos** al importar, así que el archivo de vuelta debe expresar el tacto como Dairy Comp lo espera. Las reglas exactas dependen de la prueba (sección 14).
-- Alta en campo: se agrega la fila al final si el perfil lo permite.
-- Se reabre y valida el archivo exportado con las reglas de importación, y se guarda con nombre nuevo.
+**Exportación** (spec 007)
+- **Se agrega, no se reemplaza.** Se parte de la **copia del original** guardada en el rodeo (nunca del archivo que eligió el veterinario) y se genera un archivo **nuevo** con todas las filas y columnas del original sin tocar (`RPRO` incluida) y **columnas nuevas a la derecha**: `SCDAT` (`dd/MM/yyyy`), `SCTIM` (`HHmm`), `Evento1` (nombre del evento), `DIASPRE` (días de preñez informados), `DIASABO` y `RESABO` (días y resultado del aborto). Los nombres viven en `ColumnasExportacion` (Application) y son **provisorios** salvo `SCDAT` y `SCTIM`. Fecha y hora salen en la hora local de la tablet. Si el original ya trae una columna con ese nombre se rechaza.
+- **Qué se exporta:** solo la **jornada** del rodeo (el día local del registro vigente más reciente); de cada vaca, su último registro vigente de esa jornada (los anulados no cuentan). Vacas sin registro, con CVET 0, filas excluidas al importar y la fila `Total` salen con las columnas nuevas vacías.
+- **Formatos (a elección al final):** CSV a CSV trabaja a nivel de texto y conserva byte por byte cada línea original (codificación, comillas, relleno, `;` final); .xls agrega sobre la hoja abierta y escribe fecha y hora como texto; los cuatro cruces (CSV o .xls hacia CSV o .xls) están cubiertos. .xls a CSV usa `ConvencionCsvDairyComp` (`;`, Windows-1252, encabezados entre comillas).
+- **Orden de `ExportacionService.ExportarAsync`:** leer rodeo y original → armar el diccionario de valores por caravana (tres consultas por lote en una sola transacción de lectura) → generar → **reabrir y comparar** con el original (`ValidadorExportacion`, con las reglas de importación) → guardar en Descargas → **recién entonces** dejar la constancia (`Exportacion`) y marcar el rodeo como exportado. Si algo falla antes, no queda nada; si falla solo la constancia, el archivo ya está guardado y se avisa.
+- **Entrega (puerto `IEntregaArchivo`, implementación en `Platforms/Android/EntregaArchivoAndroid`):** `MediaStore.Downloads` con `IS_PENDING = 1` mientras se escribe (el archivo no se ve a medias), nombre que no pisa otro, y "Compartir" con un `Intent` de enviar sobre el `content://` (el `Share` de MAUI solo recibe rutas de archivo). Sin permisos especiales (Android 10 o más). Sin red.
+- **Pantalla:** `ExportarPage` + `ExportarViewModel`, una sola con cuatro pasos (lista de rodeos por establecimiento, resumen con "N de M con evento", generando con "Cancelar", resultado con "Compartir" y "Listo"). Se llega desde el botón "Exportar" del inicio.
+- Alta en campo: no se agregan filas (el archivo de vuelta mantiene las del original).
+- **Pendiente (prueba 0.2):** que Dairy Comp acepte las columnas nuevas y cómo se llaman de verdad.
 
 ## 8. SQLite
 
