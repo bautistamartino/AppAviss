@@ -61,6 +61,12 @@ public static class MauiProgram
 		builder.Services.AddSingleton<Aviss.Rfid.FakeRfidReader>();
 		builder.Services.AddSingleton<IRfidReader>(sp => sp.GetRequiredService<Aviss.Rfid.FakeRfidReader>());
 		builder.Services.AddSingleton<ISimuladorLecturas>(sp => sp.GetRequiredService<Aviss.Rfid.FakeRfidReader>());
+
+		// Spike del bastón (spec 008, paso 5.1): pantalla de diagnóstico del Bluetooth. Solo en DEBUG, como el simulador.
+		builder.Services.AddSingleton<Aviss.Rfid.Diagnostico.IBluetoothDiagnostico, Aviss.App.Diagnostico.BluetoothDiagnosticoAndroid>();
+		builder.Services.AddSingleton<Aviss.Rfid.Diagnostico.IEntregaRegistro, Aviss.App.Diagnostico.EntregaRegistroAndroid>();
+		builder.Services.AddTransient<Aviss.App.Diagnostico.DiagnosticoBastonViewModel>();
+		builder.Services.AddTransient<Aviss.App.Diagnostico.DiagnosticoBastonPage>();
 #else
 		// En la versión que se distribuye no hay simulador: el lector no entrega nada hasta la spec del bastón real.
 		builder.Services.AddSingleton<IRfidReader, Aviss.Rfid.LectorNoDisponible>();

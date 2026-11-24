@@ -26,7 +26,7 @@ Cada ítem es una spec o un paso chico. Se marca con `[x]` cuando está terminad
 - [ ] 4.1 Exportar el archivo de vuelta sobre la copia del original, con validación (spec **007**, rama `spec/007-exportacion`, implementada T1 a T4 el 2026-11-24; falta mirarla en el emulador o la tablet y pasar el revisor): pantalla "Exportar", CSV o .xls elegido al final, columnas nuevas a la derecha (`SCDAT`, `SCTIM`, `Evento1`, `DIASPRE`, `DIASABO`, `RESABO`), solo la jornada del rodeo, guardado en Descargas y Compartir, constancia en la tabla `Exportacion`. **Pendiente de la prueba 0.2:** que Dairy Comp acepte el archivo con las columnas nuevas y sus nombres reales.
 
 ## Etapa 5 — Bastón real
-- [ ] 5.1 Spike del XRS2 (transporte y trama) y lector real con reconexión (spec **008**). Requiere bastón y tablet.
+- [ ] 5.1 Spike del XRS2 (transporte y trama) y lector real con reconexión (spec **008**). Requiere bastón y tablet. **Spike de diagnóstico hecho el 2026-11-24** (rama `spec/008-spike-baston`, pantalla "Diagnóstico del bastón" solo en DEBUG; instructivo en [prueba-baston-en-casa.md](prueba-baston-en-casa.md)); falta correrlo con el bastón real y escribir la spec 008 con lo que se vea.
 
 > **Renumeración (hecha):** la 004 es En Espera y Rechazo, la 005 eventos del catálogo, la 006 saca al veterinario, la exportación pasa a ser la **007** y el bastón la **008**. Las referencias a "spec 004" (exportación) y "spec 005" (bastón) en `MEMORY.md` y en las specs 001 a 003 corresponden a la numeración vieja.
 

@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:Aviss.App.Diagnostico"
+             xmlns:rfid="clr-namespace:Aviss.Rfid.Diagnostico;assembly=Aviss.Rfid"
+             x:Class="Aviss.App.Diagnostico.DiagnosticoBastonPage"
+             x:DataType="vm:DiagnosticoBastonViewModel"
+             BackgroundColor="White"
+             Title="Diagnóstico del bastón">
+
+    <!--
+        Spike de la spec 008 (solo compilación DEBUG): averiguar qué transporte y qué trama usa el bastón XRS2.
+        Vertical 800x1340, botones grandes. Una sola columna con scroll; el visor tiene alto fijo.
+    -->
+    <ScrollView>
+        <VerticalStackLayout Padding="20,12" Spacing="12">
+
+            <Label Text="Diagnóstico del bastón" Style="{StaticResource TituloCuadro}" FontSize="32" SemanticProperties.HeadingLevel="Level1" />
+            <Label Text="Herramienta de prueba: no guarda datos de animales. Todo lo que llega se anota en un archivo de texto." Style="{StaticResource TextoCampo}" FontSize="16" />
+
+            <!-- Mensajes -->
+            <Border IsVisible="{Binding HayMensaje}" BackgroundColor="{StaticResource CampoAlerta}" StrokeThickness="0" Padding="12,8">
+                <Label Text="{Binding Mensaje}" TextColor="Black" FontSize="18" FontAttributes="Bold" />
+            </Border>
+
+            <!-- 1. Dispositivos emparejados -->
+            <Label Text="1. Dispositivos emparejados" Style="{StaticResource TituloCuadro}" FontSize="24" />
+            <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
+                <Button Grid.Column="0" Text="Refrescar" Style="{StaticResource BotonCampo}" FontSize="22" Command="{Binding RefrescarCommand}" />
+                <Button Grid.Column="1" Text="Ajustes de Bluetooth" Style="{StaticResource BotonCampoSecundario}" FontSize="22" Command="{Binding AbrirAjustesBluetoothCommand}" />
+            </Grid>
+            <Border Stroke="{StaticResource CampoSecundario}" StrokeThickness="1" HeightRequest="250" Padding="0">
+                <CollectionView ItemsSource="{Binding Dispositivos}" SelectionMode="Single" SelectedItem="{Binding Seleccionado}">
+                    <CollectionView.EmptyView>
+                        <Label Text="Sin dispositivos. Tocá Refrescar." Style="{StaticResource TextoCampo}" Margin="12" />
+                    </CollectionView.EmptyView>
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate x:DataType="rfid:DispositivoBluetooth">
+                            <VerticalStackLayout Padding="12,8" Spacing="2">
+                                <Label Text="{Binding Titulo}" Style="{StaticResource TextoCampo}" FontAttributes="Bold" />
+                                <Label Text="{Binding Direccion, StringFormat='{0}'}" Style="{StaticResource TextoCampo}" FontSize="16" />
+                                <Label Text="{Binding TipoTexto, StringFormat='Tipo: {0}'}" Style="{StaticResource TextoCampo}" FontSize="16" />
+                                <Label Text="{Binding UuidsTexto}" Style="{StaticResource TextoCampo}" FontSize="12" TextColor="{StaticResource CampoSecundario}" />
+                            </VerticalStackLayout>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                </CollectionView>
+            </Border>
+
+            <!-- 2. Conexión -->
+            <Label Text="2. Conexión" Style="{StaticResource TituloCuadro}" FontSize="24" />
+            <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
+                <Button Grid.Column="0" Text="Conectar (clásico SPP)" Style="{StaticResource BotonCampo}" FontSize="20" Command="{Binding ConectarSppCommand}" />
+                <Button Grid.Column="1" Text="Conectar (BLE)" Style="{StaticResource BotonCampo}" FontSize="20" Command="{Binding ConectarBleCommand}" />
+            </Grid>
+            <Button Text="Desconectar" Style="{StaticResource BotonCampoPeligro}" FontSize="22" Command="{Binding DesconectarCommand}" />
+            <Label Text="{Binding Estado, StringFormat='Estado: {0}'}" Style="{StaticResource TituloCuadro}" FontSize="26" />
+            <Label Text="{Binding DetalleEstado}" Style="{StaticResource TextoCampo}" FontSize="16" />
+
+            <!-- 3. Teclado -->
+            <Label Text="3. Si el bastón se comporta como teclado" Style="{StaticResource TituloCuadro}" FontSize="24" />
+            <Label Text="Tocá el cuadro y leé una caravana: cada línea terminada en Enter se registra." Style="{StaticResource TextoCampo}" FontSize="16" />
+            <Border Stroke="{StaticResource CampoSecundario}" StrokeThickness="1" Padding="0">
+                <Editor Text="{Binding TextoTeclado}" AutoSize="TextChanges" MinimumHeightRequest="72" FontSize="24" TextColor="Black" BackgroundColor="White" Placeholder="Acá cae lo que entre como teclado" />
+            </Border>
+
+            <!-- 4. Visor -->
+            <Label Text="4. Lecturas en vivo" Style="{StaticResource TituloCuadro}" FontSize="24" />
+            <Label Text="{Binding Contadores}" Style="{StaticResource TituloCuadro}" FontSize="26" />
+            <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
+                <Button Grid.Column="0" Text="Limpiar" Style="{StaticResource BotonCampoSecundario}" FontSize="22" Command="{Binding LimpiarCommand}" />
+                <Button Grid.Column="1" Text="Cerrar línea pendiente" Style="{StaticResource BotonCampoSecundario}" FontSize="20" Command="{Binding CerrarLineaPendienteCommand}" />
+            </Grid>
+            <HorizontalStackLayout Spacing="10">
+                <Switch IsToggled="{Binding NumerosCortos}" />
+                <Label Text="Marcar también números cortos (4 a 14 dígitos)" Style="{StaticResource TextoCampo}" FontSize="16" VerticalOptions="Center" />
+            </HorizontalStackLayout>
+
+            <Border Stroke="{StaticResource CampoSecundario}" StrokeThickness="1" HeightRequest="520" Padding="0">
+                <CollectionView ItemsSource="{Binding Entradas}" SelectionMode="None">
+                    <CollectionView.EmptyView>
+                        <Label Text="Todavía no llegó nada." Style="{StaticResource TextoCampo}" Margin="12" />
+                    </CollectionView.EmptyView>
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate x:DataType="rfid:EntradaVisor">
+                            <VerticalStackLayout Padding="10,6" Spacing="1">
+                                <Label FontSize="15" FontAttributes="Bold" TextColor="{StaticResource CampoSecundario}">
+                                    <Label.Text>
+                                        <MultiBinding StringFormat="{}{0} · {1} · {2} · {3} bytes">
+                                            <Binding Path="HoraLocal" />
+                                            <Binding Path="Fuente" />
+                                            <Binding Path="Tipo" />
+                                            <Binding Path="Longitud" />
+                                        </MultiBinding>
+                                    </Label.Text>
+                                </Label>
+                                <Label Text="{Binding Trama.Hex, StringFormat='HEX: {0}'}" FontFamily="monospace" FontSize="14" TextColor="Black" />
+                                <Label Text="{Binding Trama.Texto, StringFormat='TXT: {0}'}" FontFamily="monospace" FontSize="18" TextColor="Black" />
+                                <Label Text="{Binding Trama.SeparadoresTexto, StringFormat='Separadores: {0}'}" FontSize="14" TextColor="{StaticResource CampoSecundario}" />
+                                <Label Text="{Binding CandidatosTexto, StringFormat='Candidato: {0}'}" FontSize="16" FontAttributes="Bold" TextColor="{StaticResource CampoExito}" />
+                            </VerticalStackLayout>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                </CollectionView>
+            </Border>
+
+            <!-- 5. Anotar la caravana impresa -->
+            <Label Text="5. Caravana impresa de la última lectura" Style="{StaticResource TituloCuadro}" FontSize="24" />
+            <Entry Text="{Binding CaravanaImpresa}" Placeholder="Número impreso en la caravana" Style="{StaticResource EntradaCampo}" Keyboard="Telephone" />
+            <Button Text="Anotar" Style="{StaticResource BotonCampo}" FontSize="22" Command="{Binding AnotarCommand}" />
+
+            <!-- 6. Archivo -->
+            <Label Text="6. Sacar el archivo" Style="{StaticResource TituloCuadro}" FontSize="24" />
+            <Label Text="{Binding RutaRegistro}" Style="{StaticResource TextoCampo}" FontSize="12" />
+            <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
+                <Button Grid.Column="0" Text="Compartir" Style="{StaticResource BotonCampo}" FontSize="22" Command="{Binding CompartirCommand}" />
+                <Button Grid.Column="1" Text="Guardar en Descargas" Style="{StaticResource BotonCampo}" FontSize="20" Command="{Binding GuardarEnDescargasCommand}" />
+            </Grid>
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>
