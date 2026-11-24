@@ -317,7 +317,7 @@ public class MovimientosViewModelTests
     // ------------------------------------------------------------------ rechazo en la lista y en "Editar" (spec 004, RF-7, RF-8)
 
     private static MovimientoItem Rechazo(string? motivo = "Pata", bool puedeDeshacer = true, bool anulado = false)
-        => new(Datos.Movimiento(TipoMovimiento.Rechazo, puedeDeshacer: puedeDeshacer, anulado: anulado, caravana: "1014", detalle: "Rechazo", cvet: "PRE", observaciones: motivo));
+        => new(Datos.Movimiento(TipoMovimiento.Rechazo, puedeDeshacer: puedeDeshacer, anulado: anulado, caravana: "1014", detalle: "RECHAZO", cvet: "PRE", observaciones: motivo));
 
     [Fact]
     public void Un_rechazo_muestra_Rechazo_y_el_motivo_en_el_segundo_renglon_sin_repetirlo()
@@ -325,10 +325,10 @@ public class MovimientosViewModelTests
         var item = Rechazo("Pata");
 
         Assert.Equal("Rechazo", item.Tipo);
-        Assert.Equal("Rechazo · Pata", item.TextoTipoDetalle);
+        Assert.Equal("RECHAZO · Pata", item.TextoTipoDetalle);
         Assert.False(item.HayObservacion);
         Assert.Equal("CVET PRE", item.TextoCvet);
-        Assert.Equal("Rechazo", Rechazo(null).TextoTipoDetalle);
+        Assert.Equal("RECHAZO", Rechazo(null).TextoTipoDetalle);
     }
 
     [Fact]
@@ -356,7 +356,7 @@ public class MovimientosViewModelTests
     {
         var b = new Banco();
         b.Campo.Estados = [Prenada, Vacia];
-        b.Campo.Movimientos = [Datos.Movimiento(TipoMovimiento.Rechazo, caravana: "1014", detalle: "Rechazo", observaciones: "Pata")];
+        b.Campo.Movimientos = [Datos.Movimiento(TipoMovimiento.Rechazo, caravana: "1014", detalle: "RECHAZO", observaciones: "Pata")];
         await b.Vm.CargarAsync();
 
         await b.Vm.EditarCommand.ExecuteAsync(b.Vm.Movimientos[0]);
@@ -378,7 +378,7 @@ public class MovimientosViewModelTests
         Assert.Equal((EventosCampo.Rechazo, "Ubre"), (aRechazo.Evento, aRechazo.Observaciones));
 
         // y al revés: un rechazo que pasa a ser un tacto
-        b.Campo.Movimientos = [Datos.Movimiento(TipoMovimiento.Rechazo, caravana: "1014", detalle: "Rechazo", observaciones: "Ubre")];
+        b.Campo.Movimientos = [Datos.Movimiento(TipoMovimiento.Rechazo, caravana: "1014", detalle: "RECHAZO", observaciones: "Ubre")];
         await b.Vm.CargarAsync();
         await b.Vm.EditarCommand.ExecuteAsync(b.Vm.Movimientos[0]);
         b.Vm.ElegirEventoEditadoCommand.Execute(Vacia);
@@ -424,7 +424,7 @@ public class MovimientosViewModelTests
     {
         var b = new Banco();
         b.Campo.Estados = [Prenada];
-        b.Campo.Movimientos = [Datos.Movimiento(TipoMovimiento.Rechazo, caravana: "1014", detalle: "Rechazo")];
+        b.Campo.Movimientos = [Datos.Movimiento(TipoMovimiento.Rechazo, caravana: "1014", detalle: "RECHAZO")];
         await b.Vm.CargarAsync();
 
         await b.Vm.EditarCommand.ExecuteAsync(b.Vm.Movimientos[0]);

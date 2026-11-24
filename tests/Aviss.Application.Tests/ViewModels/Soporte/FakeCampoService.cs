@@ -46,7 +46,7 @@ public class FakeCampoService : ICampoService
     public Task<ListaEventosDto> ListarEventosAsync(CancellationToken ct = default)
         => Task.FromResult(new ListaEventosDto(
             Estados.Where(e => e.EsPrincipal).ToList(),
-            [ArmadorListaEventos.EventoRechazo, .. Estados.Where(e => !e.EsPrincipal)],
+            [ArmadorListaEventos.EventoRechazo, .. Estados.Where(e => !e.EsPrincipal && !(e.ClaveEstandar is { } c && ArmadorListaEventos.ClavesOcultasEnOtroEvento.Contains(c)))],
             ResultadosAborto));
 
     /// <summary>Los resultados del aborto que ofrece el fake (por defecto los cinco; un test puede sacar los de un estado desactivado).</summary>

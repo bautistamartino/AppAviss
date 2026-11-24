@@ -42,7 +42,7 @@ public sealed partial class TrabajoViewModel
     private static string DescribirRegistro(UltimoRegistroDto u) => u.Tipo switch
     {
         TipoRegistroCampo.Tacto => string.IsNullOrEmpty(u.EstadoNombre) ? "Tacto" : $"Tacto {u.EstadoNombre}",
-        TipoRegistroCampo.Rechazo => (string.IsNullOrWhiteSpace(u.EstadoNombre) ? "Rechazo" : u.EstadoNombre) + (string.IsNullOrWhiteSpace(u.Observaciones) ? "" : $" · {u.Observaciones}"),
+        TipoRegistroCampo.Rechazo => (string.IsNullOrWhiteSpace(u.EstadoNombre) ? EventosCampo.NombreRechazo : u.EstadoNombre) + (string.IsNullOrWhiteSpace(u.Observaciones) ? "" : $" · {u.Observaciones}"),
         _ => "Marca de pasada"
     };
 

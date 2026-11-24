@@ -168,7 +168,7 @@ public class ConstructorFichaTests
     {
         var f = Armar(null, Tacto(10));
         Assert.Null(f.RechazoVigente);
-        Assert.DoesNotContain(f.Historial, e => e.Titulo.StartsWith("Rechazo"));
+        Assert.DoesNotContain(f.Historial, e => e.Titulo.StartsWith("RECHAZO"));
     }
 
     [Fact]
@@ -176,7 +176,7 @@ public class ConstructorFichaTests
     {
         var f = ArmarConRechazos(Rechazo(10, "pata", anulado: true), Rechazo(12, null, orden: 2));
 
-        Assert.Equal(["Rechazo: pata", "Rechazo"], f.Historial.Select(e => e.Titulo));
+        Assert.Equal(["RECHAZO: pata", "RECHAZO"], f.Historial.Select(e => e.Titulo));
         Assert.Equal([true, false], f.Historial.Select(e => e.Anulado));
         Assert.All(f.Historial, e => Assert.Equal(OrigenEvento.Aviss, e.Origen));
         Assert.Equal([6, 4], f.Historial.Select(e => e.DiasTranscurridos)); // 16 - 10 y 16 - 12
@@ -208,7 +208,7 @@ public class ConstructorFichaTests
     public void Los_rechazos_se_mezclan_en_orden_cronologico_con_los_tactos()
     {
         var f = ConstructorFicha.Armar(null, [Tacto(10), Tacto(14)], Ahora, TimeZoneInfo.Utc, [Rechazo(12, "pata")]);
-        Assert.Equal(["Tacto: PREÑADA", "Rechazo: pata", "Tacto: PREÑADA"], f.Historial.Select(e => e.Titulo));
+        Assert.Equal(["Tacto: PREÑADA", "RECHAZO: pata", "Tacto: PREÑADA"], f.Historial.Select(e => e.Titulo));
     }
 
     [Fact]

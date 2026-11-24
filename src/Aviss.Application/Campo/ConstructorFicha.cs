@@ -81,7 +81,7 @@ public static class ConstructorFicha
         foreach (var r in listaRechazos)
         {
             var local = TimeZoneInfo.ConvertTimeFromUtc(r.FechaHoraUtc, zona);
-            var nombre = r.NombreEvento ?? "Rechazo";
+            var nombre = r.NombreEvento ?? EventosCampo.NombreRechazo;
             var titulo = string.IsNullOrWhiteSpace(r.Observaciones) ? nombre : $"{nombre}: {r.Observaciones}";
             datados.Add(new EventoFichaDto(OrigenEvento.Aviss, titulo, local, null, (hoyLocal - local.Date).Days, r.Anulado));
         }

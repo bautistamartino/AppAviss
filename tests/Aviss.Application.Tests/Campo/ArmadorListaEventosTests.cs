@@ -1,6 +1,7 @@
 using Aviss.Application.Campo;
 using Aviss.Domain.Catalogo;
 using Aviss.Domain.Entidades;
+using Aviss.Domain.Enums;
 
 namespace Aviss.Application.Tests.Campo;
 
@@ -21,7 +22,7 @@ public sealed class ArmadorListaEventosTests
         var lista = ArmadorListaEventos.Armar(Estandar());
 
         Assert.Equal(["Revisar Nuevamente", "OK", "VACIA", "Preñada fecha correcta", "Preñada fecha previa", "Aborto", "NOINSEM"], lista.Principales.Select(e => e.Nombre));
-        Assert.Equal(["Rechazo", "FRESCA", "INSEMIN", "SECA"], lista.Otros.Select(e => e.Nombre));
+        Assert.Equal(["RECHAZO"], lista.Otros.Select(e => e.Nombre));   // FRESCA, INSEMIN y SECA no se ofrecen acá
         Assert.Equal(EventosCampo.Rechazo, lista.Otros[0].Id);
     }
 
@@ -33,9 +34,8 @@ public sealed class ArmadorListaEventosTests
 
         Assert.False(porNombre["OK"].CambiaEstado);
         Assert.True(porNombre["Aborto"].CambiaEstado);       // desde la segunda vuelta Aborto cambia el estado (según su resultado)
-        Assert.False(porNombre["Rechazo"].CambiaEstado);
+        Assert.False(porNombre["RECHAZO"].CambiaEstado);
         Assert.True(porNombre["VACIA"].CambiaEstado);
-        Assert.True(porNombre["SECA"].CambiaEstado);
         Assert.All(lista.Principales, e => Assert.True(e.EsPrincipal));
         Assert.All(lista.Otros, e => Assert.False(e.EsPrincipal));
     }
@@ -48,7 +48,7 @@ public sealed class ArmadorListaEventosTests
 
         var otros = ArmadorListaEventos.Armar(catalogo).Otros.Select(e => e.Nombre).ToList();
 
-        Assert.Equal(["Rechazo", "ánimo", "FRESCA", "INSEMIN", "Nube", "Ñandú", "Oro", "SECA", "zeta"], otros);
+        Assert.Equal(["RECHAZO", "ánimo", "Nube", "Ñandú", "Oro", "zeta"], otros);
     }
 
     [Fact]
@@ -67,13 +67,15 @@ public sealed class ArmadorListaEventosTests
     {
         var catalogo = Estandar();
         catalogo.Single(e => e.ClaveEstandar == "OK").Desactivar(Ahora);
-        catalogo.Single(e => e.ClaveEstandar == "SECA").Desactivar(Ahora);
+        var celo = ABano("Celo");
+        catalogo.Add(celo);
+        celo.Desactivar(Ahora);
 
         var lista = ArmadorListaEventos.Armar(catalogo);
 
         Assert.Equal(6, lista.Principales.Count);
         Assert.DoesNotContain(lista.Principales, e => e.Nombre == "OK");
-        Assert.DoesNotContain(lista.Otros, e => e.Nombre == "SECA");
+        Assert.DoesNotContain(lista.Otros, e => e.Nombre == "Celo");
     }
 
     [Fact]
@@ -96,7 +98,7 @@ public sealed class ArmadorListaEventosTests
         var lista = ArmadorListaEventos.Armar(catalogo);
 
         Assert.Empty(lista.Principales);
-        Assert.Equal("Rechazo", lista.Otros[0].Nombre);
+        Assert.Equal("RECHAZO", lista.Otros[0].Nombre);
     }
 
     [Fact]
@@ -105,7 +107,30 @@ public sealed class ArmadorListaEventosTests
         var lista = ArmadorListaEventos.Armar([ABano("Celo")]);
 
         Assert.Empty(lista.Principales);
-        Assert.Equal(["Rechazo", "Celo"], lista.Otros.Select(e => e.Nombre));
+        Assert.Equal(["RECHAZO", "Celo"], lista.Otros.Select(e => e.Nombre));
         Assert.True(lista.Otros[1].CambiaEstado);
+    }
+
+    [Fact]
+    public void Fresca_Inseminada_y_Seca_no_se_ofrecen_en_Otro_evento_pero_siguen_activas_como_resultados_del_Aborto()
+    {
+        var lista = ArmadorListaEventos.Armar(Estandar());
+
+        Assert.DoesNotContain(lista.Otros, e => e.ClaveEstandar is "FRESCA" or "INSEMIN" or "SECA");
+        Assert.Contains(ResultadoAborto.Fresca, lista.ResultadosAborto);
+        Assert.Contains(ResultadoAborto.Inseminada, lista.ResultadosAborto);
+        Assert.Contains(ResultadoAborto.Seca, lista.ResultadosAborto);
+    }
+
+    [Fact]
+    public void La_exclusion_es_por_clave_estandar_aunque_se_los_renombre_y_un_evento_a_mano_con_ese_nombre_si_aparece()
+    {
+        var catalogo = Estandar();
+        catalogo.Single(e => e.ClaveEstandar == "SECA").Modificar("Vaca seca", "SECA", Ahora);
+        catalogo.Add(ABano("SECA"));   // creado a mano: no tiene clave estándar
+
+        var otros = ArmadorListaEventos.Armar(catalogo).Otros.Select(e => e.Nombre).ToList();
+
+        Assert.Equal(["RECHAZO", "SECA"], otros);
     }
 }

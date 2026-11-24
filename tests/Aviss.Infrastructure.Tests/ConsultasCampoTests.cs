@@ -416,9 +416,9 @@ public sealed class ConsultasCampoTests : IDisposable
         var r = await _e.Campo.CrearEstadoAsync("  Revisión de pata ", "REV_PATA");
         Assert.True(r.EsCorrecto, r.Mensaje);
         var nuevo = Assert.Single((await _e.Campo.ListarEventosAsync()).Otros, e => e.Id == r.Valor);
-        Assert.Equal("Revisión de pata", nuevo.Nombre);
-        Assert.Equal("REVISION_DE_PATA", _e.Base.Escalar("SELECT Codigo FROM EstadoReproductivo WHERE Nombre = 'Revisión de pata'")!.ToString());
-        Assert.Equal("REV_PATA", _e.Base.Escalar("SELECT CodigoDairyComp FROM EstadoReproductivo WHERE Nombre = 'Revisión de pata'")!.ToString());
+        Assert.Equal("REVISIÓN DE PATA", nuevo.Nombre);   // se guarda en mayúsculas, recortado, con tildes y Ñ
+        Assert.Equal("REVISION_DE_PATA", _e.Base.Escalar("SELECT Codigo FROM EstadoReproductivo WHERE Nombre = 'REVISIÓN DE PATA'")!.ToString());
+        Assert.Equal("REV_PATA", _e.Base.Escalar("SELECT CodigoDairyComp FROM EstadoReproductivo WHERE Nombre = 'REVISIÓN DE PATA'")!.ToString());
 
         var repetido = await _e.Campo.CrearEstadoAsync("revisión de pata", "OTRO_CODIGO");
         Assert.Equal(CodigoError.Duplicado, repetido.Codigo);

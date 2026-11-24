@@ -40,4 +40,7 @@ public static class EventosCampo
 {
     /// <summary>El evento "Rechazo": un Guid fijo y conocido (no es una fila del catálogo, spec 004 decisión 1).</summary>
     public static readonly Guid Rechazo = new("5EC4A200-0000-0000-0000-000000000001");
+
+    /// <summary>Cómo se muestra el Rechazo fijo en la lista de "Otro evento", el casillero, el historial, los movimientos y los avisos (decisión del 2026-11-24).</summary>
+    public const string NombreRechazo = "RECHAZO";
 }

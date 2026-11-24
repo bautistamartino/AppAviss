@@ -21,7 +21,7 @@ public sealed class MovimientoItem
     public bool EsRechazo => Dto.Tipo == TipoMovimiento.Rechazo;
 
     /// <summary>El nombre del solo evento (OK, Aborto, Rechazo...); el Detalle del movimiento ya lo trae.</summary>
-    private string NombreEvento => string.IsNullOrWhiteSpace(Dto.Detalle) ? "Rechazo" : Dto.Detalle;
+    private string NombreEvento => string.IsNullOrWhiteSpace(Dto.Detalle) ? EventosCampo.NombreRechazo : Dto.Detalle;
     public bool Anulado => Dto.Anulado;
     public bool PuedeDeshacer => Dto.PuedeDeshacer;
 

@@ -224,7 +224,7 @@ public sealed class RechazoTests : IDisposable
         Assert.Equal(id, m.RegistroId);
         Assert.Equal(animal, m.AnimalId);
         Assert.Equal("100", m.Caravana);
-        Assert.Equal("Rechazo", m.Detalle);
+        Assert.Equal("RECHAZO", m.Detalle);
         Assert.Equal("pata", m.Observaciones);
         Assert.False(m.Anulado);
         Assert.True(m.PuedeDeshacer);
@@ -261,10 +261,10 @@ public sealed class RechazoTests : IDisposable
 
         Assert.Equal(segundo, ficha.RechazoVigente!.RechazoId);
         Assert.Equal("ubre", ficha.RechazoVigente.Observaciones);
-        var eventos = ficha.Historial.Where(h => h.Titulo.StartsWith("Rechazo")).ToList();
+        var eventos = ficha.Historial.Where(h => h.Titulo.StartsWith("RECHAZO")).ToList();
         Assert.Equal(2, eventos.Count);
-        Assert.Single(eventos, h => h.Anulado && h.Titulo == "Rechazo: pata");
-        Assert.Single(eventos, h => !h.Anulado && h.Titulo == "Rechazo: ubre");
+        Assert.Single(eventos, h => h.Anulado && h.Titulo == "RECHAZO: pata");
+        Assert.Single(eventos, h => !h.Anulado && h.Titulo == "RECHAZO: ubre");
     }
 
     [Fact]

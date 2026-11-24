@@ -451,7 +451,7 @@ public class TrabajoViewModelEsperaTests
         await b.Vm.IniciarAsync();
 
         Assert.Equal(["PREÑADA"], b.Vm.Selector.Principales.Select(e => e.Nombre));
-        Assert.Equal(["Rechazo"], b.Vm.Selector.Otros.Select(e => e.Nombre));
+        Assert.Equal(["RECHAZO"], b.Vm.Selector.Otros.Select(e => e.Nombre));
         Assert.Equal(EventosCampo.Rechazo, b.Vm.Selector.Otros[0].Id);
     }
 
@@ -462,7 +462,7 @@ public class TrabajoViewModelEsperaTests
         b.Campo.Estados = [];
         await b.Vm.IniciarAsync();
 
-        Assert.Equal(["Rechazo"], b.Vm.Selector.Otros.Select(e => e.Nombre));
+        Assert.Equal(["RECHAZO"], b.Vm.Selector.Otros.Select(e => e.Nombre));
         Assert.False(b.Vm.Selector.HayPrincipales);
         Assert.Equal([EventosCampo.Rechazo], b.Vm.Selector.Otros.Select(e => e.Id));
     }
@@ -480,7 +480,7 @@ public class TrabajoViewModelEsperaTests
 
         await b.Vm.CrearEventoCommand.ExecuteAsync(null);
 
-        Assert.Equal(["Rechazo", "ABORTO"], b.Vm.Selector.Otros.Select(e => e.Nombre));
+        Assert.Equal(["RECHAZO", "ABORTO"], b.Vm.Selector.Otros.Select(e => e.Nombre));
     }
 
     [Fact]
@@ -500,7 +500,7 @@ public class TrabajoViewModelEsperaTests
         Assert.Equal((animal, "Pata"), (cmd.AnimalId, cmd.Observaciones));
         Assert.Empty(b.Campo.Tactos);
         Assert.False(b.Vm.HayFicha);
-        Assert.Equal("1001: Rechazo", b.Vm.UltimoGuardado);
+        Assert.Equal("1001: RECHAZO", b.Vm.UltimoGuardado);
         Assert.Equal((TipoDeshacer.Rechazo, rechazoId), (b.Vm.AvisoDeshacer!.Tipo, b.Vm.AvisoDeshacer.Id));
     }
 
@@ -579,7 +579,7 @@ public class TrabajoViewModelEsperaTests
 
         await b.Vm.EncolarLecturaAsync("1001");
 
-        Assert.Contains("Rechazo · Pata", b.Vm.AvisoDetalle);
+        Assert.Contains("RECHAZO · Pata", b.Vm.AvisoDetalle);
         await b.Vm.CorregirCommand.ExecuteAsync(null);
         await b.Vm.ConfirmarCorregirCommand.ExecuteAsync(null);
         var cmd = Assert.Single(b.Campo.Deshaceres);
