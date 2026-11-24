@@ -210,6 +210,10 @@ internal sealed class TrabajoCampoService : ITrabajoCampoService
             // Un solo evento (OK, Revisar Nuevamente) no cambia el estado: nunca se guarda como tacto (spec 005, RF-16).
             if (estadoNuevo.Tipo == TipoEvento.SoloEvento)
                 return Resultado.Error<Guid>(CodigoError.DatosInvalidos, "Ese evento no cambia el estado de la vaca: se guarda como evento, no como tacto.");
+            // Un evento con pasos (Aborto) o con destino (Preñada fecha previa) necesita su elección: sin ella faltarían los días o
+            // el resultado. Se rechaza acá con un error controlado y no se deja a cargo del trigger de la base.
+            if (estadoNuevo.ListarPasos().Count > 0 || estadoNuevo.EstadoDestinoId is not null)
+                return Resultado.Error<Guid>(CodigoError.DatosInvalidos, "Ese evento pide días o resultado: hay que elegirlo con sus pasos.");
         }
         else
         {

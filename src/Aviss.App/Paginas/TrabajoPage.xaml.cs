@@ -17,7 +17,22 @@ public partial class TrabajoPage : ContentPage
 	{
 		InitializeComponent();
 		BindingContext = _vm = viewModel;
+		_vm.PropertyChanged += AlCambiarViewModel;
+	}
 
+	// Al abrir o cerrar la capa de eventos se le quita el foco a "Caravana a mano": si no, su teclado numérico queda abierto
+	// y tapa los botones de la capa. Es solo de pantalla.
+	private async void AlCambiarViewModel(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+	{
+		if (e.PropertyName != nameof(TrabajoViewModel.HayEventos)) return;
+		try
+		{
+			CampoBusqueda.Unfocus();
+			await CampoBusqueda.HideSoftInputAsync(CancellationToken.None);
+		}
+		catch (Exception)
+		{
+		}
 	}
 
 	protected override async void OnAppearing()

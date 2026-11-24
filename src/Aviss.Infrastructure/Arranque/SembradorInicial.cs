@@ -100,9 +100,14 @@ public sealed class SembradorInicial
             if (fila is null) continue;
             porClave[inicial.Codigo] = fila;
 
-            if (primeraVez && inicial.Codigo == ClavePrenada)
-                RenombrarPrenada(fila, existentes, nombres, ahora);
         }
+
+        // El renombre va DESPUES del bucle y solo si en esta misma pasada se creó (o adoptó) la fila de fecha previa: así queda atado a
+        // ese hecho y se hace una sola vez. Si la fila no se pudo crear (choque de nombre o código), no se renombra nada y no se
+        // reintenta a ciegas en cada arranque pisando un nombre que el veterinario haya cambiado después.
+        if (primeraVez && porClave.ContainsKey(ClaveFechaPrevia) && porClave.TryGetValue(ClavePrenada, out var prenada))
+            RenombrarPrenada(prenada, existentes, nombres, ahora);
+
         await ctx.SaveChangesAsync(ct);
     }
 

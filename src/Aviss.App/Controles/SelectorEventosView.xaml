@@ -104,7 +104,7 @@
         <VerticalStackLayout Spacing="12" IsVisible="{Binding PideDias}">
             <Label Text="{Binding TituloPaso}" Style="{StaticResource TituloCuadro}" FontSize="24" />
             <Label Text="Días" Style="{StaticResource TextoCampo}" FontSize="18" />
-            <Entry Text="{Binding TextoDias}" Keyboard="Numeric" Placeholder="Días" MaxLength="6"
+            <Entry x:Name="CampoDias" Text="{Binding TextoDias}" Keyboard="Numeric" Placeholder="Días" MaxLength="6"
                    Style="{StaticResource EntradaCampo}" HeightRequest="64" FontSize="28"
                    ReturnType="Done" ReturnCommand="{Binding ConfirmarDiasCommand}" />
             <Border IsVisible="{Binding HayMensajeError}" BackgroundColor="{StaticResource CampoPeligro}" StrokeThickness="0" Padding="12,8">

@@ -203,6 +203,44 @@ public sealed class EventosConPasosServiceTests : IDisposable
         Assert.Equal(T(_aborto), _e.Col("Tacto", r.Valor, "EventoId"));
     }
 
+    // RF-22: fecha y hora exactas del reloj en el Aborto con Rechazo, en el registro nuevo de una edición y en el anulado.
+    [Fact]
+    public async Task Aborto_con_Rechazo_el_registro_nuevo_de_una_edicion_y_el_anulado_conservan_su_fecha_y_hora_exactas()
+    {
+        var animal = _e.AnimalImportado("100", _seca);
+        _e.Reloj.Avanzar(TimeSpan.FromSeconds(137));   // una hora con segundos, no redonda
+        var t1 = BaseDeDatosDePrueba.Fecha(_e.Reloj.UtcAhora);
+
+        var rechazo = await RechazoAsync(animal, Aborto(12, ResultadoAborto.Rechazo));
+        Assert.Equal(t1, _e.Col("Rechazo", rechazo.Valor, "FechaHoraUtc"));
+
+        _e.Reloj.Avanzar(TimeSpan.FromSeconds(61));
+        var t2 = BaseDeDatosDePrueba.Fecha(_e.Reloj.UtcAhora);
+        var edicion = await _e.Campo.CorregirRegistroAsync(new CorregirRegistroCommand(rechazo.Valor, _aborto, null, Aborto(12, ResultadoAborto.Seca)));
+        Assert.True(edicion.EsCorrecto, edicion.Mensaje);
+        // El nuevo lleva la hora de la edición; el anulado conserva la suya.
+        Assert.Equal(t2, _e.Col("Tacto", edicion.Valor, "FechaHoraUtc"));
+        Assert.Equal(t1, _e.Col("Rechazo", rechazo.Valor, "FechaHoraUtc"));
+
+        _e.Reloj.Avanzar(TimeSpan.FromSeconds(29));
+        var d = await _e.DeshacerAsync(TipoDeshacer.Tacto, edicion.Valor);
+        Assert.True(d.EsCorrecto, d.Mensaje);
+        Assert.Equal(t2, _e.Col("Tacto", edicion.Valor, "FechaHoraUtc"));   // el anulado no cambia su fecha
+    }
+
+    [Fact]
+    public async Task Un_estado_con_pasos_o_destino_sin_eleccion_se_rechaza_con_error_controlado()
+    {
+        var animal = _e.AnimalImportado("100", _seca);
+
+        var aborto = await _e.Campo.RegistrarTactoAsync(new RegistrarTactoCommand(animal, _aborto, null, null, null));
+        var previa = await _e.Campo.RegistrarTactoAsync(new RegistrarTactoCommand(animal, _previa, null, null, null));
+
+        Assert.Equal(CodigoError.DatosInvalidos, aborto.Codigo);
+        Assert.Equal(CodigoError.DatosInvalidos, previa.Codigo);
+        Assert.Equal(0, _e.Cuenta("Tacto"));
+    }
+
     [Fact]
     public async Task Deshacer_un_Aborto_con_Rechazo_conserva_los_dias_en_el_anulado()
     {

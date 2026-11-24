@@ -102,6 +102,26 @@ public sealed class SembradorPasosTests : IDisposable
         Assert.Equal(1, _db.Contar("SELECT COUNT(*) FROM EstadoReproductivo WHERE ClaveEstandar = 'PRENADA_FECHA_PREVIA'"));
     }
 
+
+    [Fact]
+    public async Task Si_la_fila_de_fecha_previa_no_se_puede_crear_no_se_renombra_PREÑADA_ni_se_reintenta_en_cada_arranque()
+    {
+        var prenada = _db.Estado("PRENADA", "PREÑADA", "PREÑADA", tipo: "Estado", clave: "PRENADA", principal: true, orden: 4);
+        // Un evento ajeno (con otra clave, así que no se adopta) ya ocupa el código interno de la fila de fecha previa.
+        _db.Estado("PRENADA_FECHA_PREVIA", "Otra cosa", "OTRO-DC", tipo: "Estado", clave: "OTRA_CLAVE");
+
+        await SembrarAsync();   // no tiene que lanzar
+
+        Assert.Equal(0, _db.Contar("SELECT COUNT(*) FROM EstadoReproductivo WHERE ClaveEstandar = 'PRENADA_FECHA_PREVIA'"));
+        Assert.Equal("PREÑADA", Texto("SELECT Nombre FROM EstadoReproductivo WHERE Id = $id", ("$id", prenada)));
+
+        // El veterinario la renombra; los arranques siguientes no se la pisan (el renombre no queda pendiente a ciegas).
+        _db.Ejecutar("UPDATE EstadoReproductivo SET Nombre = 'Preñada confirmada' WHERE Id = $id", ("$id", prenada));
+        await SembrarAsync();
+        await SembrarAsync();
+
+        Assert.Equal("Preñada confirmada", Texto("SELECT Nombre FROM EstadoReproductivo WHERE Id = $id", ("$id", prenada)));
+    }
     [Fact]
     public async Task El_renombre_se_aplica_una_sola_vez_y_no_pisa_un_cambio_posterior()
     {

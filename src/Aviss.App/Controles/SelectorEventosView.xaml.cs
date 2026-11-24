@@ -12,7 +12,7 @@ public partial class SelectorEventosView : ContentView
 {
     public static readonly BindableProperty SelectorProperty = BindableProperty.Create(
         nameof(Selector), typeof(SelectorEventosViewModel), typeof(SelectorEventosView),
-        propertyChanged: (b, _, nuevo) => ((SelectorEventosView)b).Raiz.BindingContext = nuevo);
+        propertyChanged: (b, viejo, nuevo) => ((SelectorEventosView)b).AlCambiarSelector(viejo as SelectorEventosViewModel, nuevo as SelectorEventosViewModel));
 
     public static readonly BindableProperty NuevoEventoCommandProperty = BindableProperty.Create(
         nameof(NuevoEventoCommand), typeof(ICommand), typeof(SelectorEventosView));
@@ -30,5 +30,28 @@ public partial class SelectorEventosView : ContentView
     {
         get => (ICommand?)GetValue(NuevoEventoCommandProperty);
         set => SetValue(NuevoEventoCommandProperty, value);
+    }
+
+    private void AlCambiarSelector(SelectorEventosViewModel? viejo, SelectorEventosViewModel? nuevo)
+    {
+        Raiz.BindingContext = nuevo;
+        if (viejo is not null) viejo.PropertyChanged -= AlCambiarPropiedad;
+        if (nuevo is not null) nuevo.PropertyChanged += AlCambiarPropiedad;
+    }
+
+    // Al cambiar de paso (días -> resultado, confirmar días, cancelar) el teclado numérico se baja solo: si no, queda tapando
+    // "Rechazo", "Volver" y "Cancelar". Es solo de pantalla; la lógica de los pasos está en el ViewModel.
+    private async void AlCambiarPropiedad(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(SelectorEventosViewModel.PasoActual)) return;
+        try
+        {
+            CampoDias.Unfocus();
+            await CampoDias.HideSoftInputAsync(CancellationToken.None);
+        }
+        catch (Exception)
+        {
+            // Si el teclado no se puede bajar no pasa nada: el paso ya cambió.
+        }
     }
 }

@@ -2,8 +2,6 @@
 
 Spec: [spec.md](spec.md) (aprobada el 2026-11-23). Tareas: [tasks.md](tasks.md). Rama: `spec/005-eventos-del-catalogo`.
 
-> **Aviso para el implementador:** al escribir este plan el árbol de trabajo estaba en la rama `spec/006-sin-veterinario` y **no contenía el código de T1 a T5** (no hay `ClaveEstandar`, ni la migración `EventosDelCatalogo`, ni `ArmadorListaEventos`; tampoco en `C:\Users\PC\Projects\AppAviss`). Los nombres de abajo salen del plan anterior y de la spec. **Antes de tocar nada, releer el código real** (nombres de triggers, comandos, DTOs, `MovimientoDto`, cómo se arma el texto del historial) y ajustar. Si T1 a T5 no están en la rama, frenar y avisar.
-
 ## Parte 1 — Primera vuelta (T1 a T5, hecha)
 
 Implementada con los requisitos anteriores; se conserva en el historial de Git. Lo que sigue vigente y esta vuelta usa:

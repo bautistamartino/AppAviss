@@ -20,7 +20,7 @@ public sealed class Rechazo : EntidadEditable
     public long OrdenInsercion { get; private set; }
 
     /// <summary>
-    /// Spec 005: el evento del catálogo (de tipo SoloEvento: OK, Aborto, Revisar Nuevamente) que guarda este registro.
+    /// Spec 005: el evento del catálogo (de tipo SoloEvento: OK, Revisar Nuevamente; o un Aborto cuyo resultado fue Rechazo) que guarda este registro.
     /// Nulo = el Rechazo fijo de la aplicación. Nunca cambia una vez guardado.
     /// </summary>
     public Guid? EventoId { get; private set; }

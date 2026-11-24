@@ -146,7 +146,7 @@ Spec 005. Los códigos de Dairy Comp de estos eventos son **provisorios** (el no
 - **P5 (para la spec 007):** qué dato del evento va en la columna "veredicto" del archivo de vuelta, el nombre o el código. Recomendación: el nombre; el código queda disponible para otra columna.
 - **P6 (abierta, spec 007):** código de Dairy Comp de Preñada fecha previa y cómo sale el dato de los días de preñez en el archivo de vuelta. Mientras tanto Aviss guarda el dato y deja la vaca PREÑADA.
 - **P8 (abierta, spec 007):** cómo salen los días de aborto y el resultado en el archivo de vuelta. Aviss guarda evento, días y resultado con fecha y hora exactas. **El responsable ya tiene el formato**: la exportación de todos los eventos va en **columnas nuevas** (nunca reemplaza las del original); se define en la spec 007.
-- **P9 (abierta):** los rangos de días (preñez 1 a 400, aborto 0 a 400) son provisorios; confirmar con el padre. Cambiarlos es un ajuste chico (`RangosDias`), sin tocar la base.
+- **P9 (abierta):** los rangos de días (preñez 1 a 400, aborto 0 a 400) son provisorios; confirmar con el padre. Cambiarlos pide una migración (los rangos son CHECK en la base, además de `RangosDias`).
 - **P10 (abierta):** los pasos se piden **al elegir el evento** (antes de dejarlo en el casillero); la alternativa es pedirlos recién al tocar Entrar.
 - **P4 (resuelta en la spec):** un `RPRO` que coincide con un solo evento entra sin estado y con advertencia.
 
