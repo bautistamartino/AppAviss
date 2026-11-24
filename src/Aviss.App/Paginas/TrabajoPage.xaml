@@ -194,7 +194,7 @@
                                     Command="{Binding AbrirEventosCommand}"
                                     SemanticProperties.Hint="Elegir el evento de esta vaca" />
                             <Button Grid.Column="1" Text="{Binding TextoCasilleroObservacion}" Style="{StaticResource BotonCampoSecundario}" FontSize="18"
-                                    HeightRequest="56" MinimumWidthRequest="0" Padding="8,0" LineBreakMode="TailTruncation"
+                                    HeightRequest="68" MinimumWidthRequest="0" Padding="8,0" LineBreakMode="TailTruncation"
                                     Command="{Binding AbrirObservacionCommand}"
                                     SemanticProperties.Hint="Opcional: escribir una observación" />
                         </Grid>
