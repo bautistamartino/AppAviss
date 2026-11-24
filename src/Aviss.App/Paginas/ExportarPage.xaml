@@ -68,7 +68,6 @@
                            TextColor="{StaticResource Gray600}" />
                     <Label Text="{Binding TextoConEvento}" Style="{StaticResource TituloCuadro}" FontSize="28" />
                     <Label Text="{Binding TextoSinEvento}" Style="{StaticResource TextoCampo}" FontSize="24" />
-                    <Label Text="{Binding TextoCvetCero}" IsVisible="{Binding HayCvetCero}" Style="{StaticResource TextoCampo}" FontSize="22" />
                     <Label Text="{Binding TextoFueraDelArchivo}" IsVisible="{Binding HayFueraDelArchivo}" Style="{StaticResource TextoCampo}" FontSize="22" />
                     <Label Text="{Binding TextoJornada}" IsVisible="{Binding HayJornada}" Style="{StaticResource TextoCampo}" FontSize="22" />
                     <Label Text="{Binding TextoUltimaExportacion}" IsVisible="{Binding HayUltimaExportacion}" Style="{StaticResource TextoCampo}" FontSize="22" />
