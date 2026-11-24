@@ -1,6 +1,6 @@
 # Plan — 010 EID en la importación
 
-Spec: [spec.md](spec.md) (borrador: el plan parte de las recomendaciones de las preguntas 1 a 3; si el responsable decide otra cosa, cambia solo `ReglasEidImportacion` y el validador).
+Spec: [spec.md](spec.md) (aprobada el 2026-11-24 con las recomendaciones de las preguntas 1 a 3; si el responsable decide otra cosa, cambia solo `ReglasEidImportacion` y el validador).
 
 ## Resumen
 El perfil de Dairy Comp avisa qué columna es `EID` (si la hay) en la lectura cruda; el validador de la importación evalúa el EID de cada fila válida con una regla pura nueva (`ReglasEidImportacion`, hermana de `ReglasIdImportacion`), descarta los inválidos y los repetidos y arma los conteos; el servicio de importación solo pasa el valor a `Animal.CrearImportado`, que ya sabe guardarlo. La **búsqueda por EID ya existe** en `MarcaPasadaService.BuscarAsync` (primero caravana, después EID; `IdElectronico.TryCrear` ya quita espacios): no hay que cambiarla, hay que **probarla** con animales importados de verdad. Sin migración.

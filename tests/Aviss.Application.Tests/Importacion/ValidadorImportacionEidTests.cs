@@ -61,9 +61,9 @@ public class ValidadorImportacionEidTests
     {
         var filas = new List<FilaLeida>
         {
-            Fila(2, "100", "98200045846712"),       // 14 dígitos
-            Fila(3, "101", "98200045846712A"),      // letra
-            Fila(4, "102", "9820004584671234"),     // 16
+            Fila(2, "100", "99900012345712"),       // 14 dígitos
+            Fila(3, "101", "99900012345712A"),      // letra
+            Fila(4, "102", "9990001234571234"),     // 16
             Fila(5, "103", "999000333333333"),      // bueno
             Fila(6, "104", "ABC"),
             Fila(7, "105", "xyz"),
@@ -82,7 +82,7 @@ public class ValidadorImportacionEidTests
         Assert.Equal([2, 3, 4, 6, 7], a.FilasEjemplo);          // a lo sumo 5 ejemplos, por número de fila
         Assert.Null(a.Valor);
         // RF-19: el mensaje no muestra ningún valor.
-        Assert.DoesNotContain("9820004584671", a.Mensaje);
+        Assert.DoesNotContain("9990001234571", a.Mensaje);
         Assert.DoesNotContain("ABC", a.Mensaje);
     }
 
