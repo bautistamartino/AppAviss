@@ -91,6 +91,7 @@ INormalizadorDeId  convierte el código leído al NumeroCaravana (regla configur
 - Fallback: búsqueda manual por número.
 - Desarrollo sin hardware: `FakeRfidReader` que reproduce tramas grabadas, con el emulador de Android.
 - El Excel trae el número de caravana (ID corto). El bastón puede entregar un número de 15 dígitos, así que `INormalizadorDeId` queda configurable hasta ver una lectura real.
+- **EID (spec 010):** si el archivo trae la columna `EID`, la importación guarda el EID de 15 dígitos en `Animal.IdElectronico` y `MarcaPasadaService.BuscarAsync` ya lo encuentra (primero el número corto, después el EID, con o sin espacios). Sin cambios de código en la búsqueda ni en la base. Lo que el bastón entregue de verdad se confirma en la spec 008.
 
 ## 7. Excel
 
@@ -100,9 +101,11 @@ Archivo de muestra (Dairy Comp, `.xls`): una hoja, 226 vacas, columnas `ID, CVET
 1. Se lee una copia del archivo; el original no se toca.
 2. Un `IExcelProfile` (`PerfilDairyComp`) define columnas, detección del formato y reglas.
 3. Validación en dos pasos: estructura (columnas) y datos (ID duplicados, fechas inválidas, estados desconocidos). Se ignora la fila `Total`.
-4. Vista previa con errores por fila; el usuario confirma.
+4. Vista previa con errores por fila (y, si el archivo trae `EID`, "Con EID: N · Sin EID: M"); el usuario confirma.
 5. Se inserta todo en una transacción.
 6. Se guarda el archivo original (blob y hash) en el `Rodeo`.
+
+**Columna `EID` (spec 010):** `PerfilDairyComp` la reconoce por su encabezado (en cualquier posición, sin distinguir mayúsculas) y `ReglasEidImportacion` evalúa cada celda: 15 dígitos (con o sin espacios, o número entero) = válido; vacía, espacios o `-` = sin EID, sin advertencia; cualquier otra cosa = inválido. `ValidadorImportacion` descarta los inválidos y los repetidos entre las filas no excluidas por `ID` (advertencias `EidInvalido` y `EidRepetido` sin el valor) y cuenta `ConEid`/`SinEid`. El animal siempre entra; `EID` no es columna opcional con advertencia, y la ficha lo muestra en una sola fila (`ConstructorFicha.ColumnasPropias`). Un rodeo viejo no se actualiza: el archivo con EID se importa como rodeo nuevo. `SCDAT` y `SCTIM` del archivo real se ignoran al importar y chocan con la exportación (pendiente aparte).
 
 **Exportación** (spec 007)
 - **Se agrega, no se reemplaza.** Se parte de la **copia del original** guardada en el rodeo (nunca del archivo que eligió el veterinario) y se genera un archivo **nuevo** con todas las filas y columnas del original sin tocar (`RPRO` incluida) y **columnas nuevas a la derecha**: `SCDAT` (`dd/MM/yyyy`), `SCTIM` (`HHmm`), `Evento1` (nombre del evento), `DIASPRE` (días de preñez informados), `DIASABO` y `RESABO` (días y resultado del aborto). Los nombres viven en `ColumnasExportacion` (Application) y son **provisorios** salvo `SCDAT` y `SCTIM`. Fecha y hora salen en la hora local de la tablet. Si el original ya trae una columna con ese nombre se rechaza.

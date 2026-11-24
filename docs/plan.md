@@ -12,6 +12,7 @@ Cada ítem es una spec o un paso chico. Se marca con `[x]` cuando está terminad
 
 ## Etapa 2 — Importación
 - [x] 2.1 Importar el `.xls` de Dairy Comp con vista previa y errores por fila, y guardar el original (spec 002).
+- [x] 2.2 Guardar el EID de cada animal al importar, buscarlo con el bastón y mostrar "Con EID / Sin EID" en la importación (spec 010; falta mirarla en la tablet).
 
 ## Etapa 3 — Trabajo de campo
 - [x] 3.1 **003 (núcleo) hecho, probado en una tablet real y ajustado** (spec 003, rama `spec/003-flujo-de-tacto`): lectura → marca automática → ficha estilo Daily (evento + observación, "Entrar") → siguiente; CVET (0 = no entra en tacto), mangas opcionales con cantidad y cierre automático, cabecera contraíble con horarios, movimientos con "Editar", búsqueda manual, deshacer y avance del rodeo. Se retiró el alta en campo. Falta pasar el revisor y mergear a `main` (ver `MEMORY.md`).

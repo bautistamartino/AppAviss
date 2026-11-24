@@ -545,4 +545,64 @@ public class ImportarViewModelTests
         }
         Assert.DoesNotContain(ensamblado.GetReferencedAssemblies(), a => a.Name?.StartsWith("Microsoft.Maui") == true);
     }
+
+    // ------------------------------------------------------------------ spec 010: resumen de EID
+
+    private static VistaPreviaImportacion VistaConEid(bool hayColumna, int conEid, int sinEid, IReadOnlyList<AdvertenciaImportacion>? advertencias = null)
+        => Vista() with { HayColumnaEid = hayColumna, ConEid = conEid, SinEid = sinEid, Advertencias = advertencias ?? [] };
+
+    [Fact]
+    public async Task Con_columna_EID_la_vista_previa_dice_cuantos_traen_EID_y_cuantos_no()
+    {
+        var e = Crear();
+        await ConVistaPrevia(e, VistaConEid(true, 272, 10));
+
+        Assert.True(e.Vm.HayResumenEid);
+        Assert.Equal("Con EID: 272 · Sin EID: 10", e.Vm.ResumenEidTexto);
+    }
+
+    [Fact]
+    public async Task Sin_columna_EID_no_hay_linea_de_resumen()
+    {
+        var e = Crear();
+        await ConVistaPrevia(e, VistaConEid(false, 0, 0));
+
+        Assert.False(e.Vm.HayResumenEid);
+        Assert.Equal("", e.Vm.ResumenEidTexto);
+    }
+
+    [Fact]
+    public async Task Las_advertencias_de_EID_invalido_y_repetido_salen_en_la_lista_sin_el_valor()
+    {
+        var e = Crear();
+        var adv = new List<AdvertenciaImportacion>
+        {
+            new(TipoAdvertencia.EidInvalido, MensajesImportacion.EidInvalido(2), null, 2, [5, 9]),
+            new(TipoAdvertencia.EidRepetido, MensajesImportacion.EidRepetido(3), null, 3, [7]),
+        };
+        await ConVistaPrevia(e, VistaConEid(true, 269, 13, adv));
+
+        Assert.Equal(2, e.Vm.AdvertenciasTexto.Count);
+        Assert.Contains("Filas de ejemplo: 5, 9.", e.Vm.AdvertenciasTexto[0]);
+        Assert.Contains("EID", e.Vm.AdvertenciasTexto[1]);
+        Assert.Equal("Con EID: 269 · Sin EID: 13", e.Vm.ResumenEidTexto);
+    }
+
+    [Fact]
+    public async Task El_resultado_repite_el_resumen_de_EID_y_al_reiniciar_desaparece()
+    {
+        var e = Crear();
+        var vista = await ConVistaPrevia(e, VistaConEid(true, 272, 10));
+        e.Servicio.Confirmar = _ => Task.FromResult(Resultado.Ok(
+            ResultadoDe(vista, "R") with { HayColumnaEid = true, ConEid = 272, SinEid = 10 }));
+        e.Vm.NuevoEstablecimientoNombre = "Tambo";
+        await e.Vm.ConfirmarCommand.ExecuteAsync(null);
+
+        Assert.Equal(PasoImportacion.Resultado, e.Vm.Paso);
+        Assert.True(e.Vm.HayResumenEid);
+        Assert.Equal("Con EID: 272 · Sin EID: 10", e.Vm.ResumenEidTexto);
+
+        await e.Vm.ImportarOtroCommand.ExecuteAsync(null);
+        Assert.False(e.Vm.HayResumenEid);
+    }
 }

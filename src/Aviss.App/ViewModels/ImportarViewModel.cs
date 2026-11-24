@@ -52,11 +52,13 @@ public sealed partial class ImportarViewModel : ObservableObject
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(FilasLeidas), nameof(FilasAImportar), nameof(FilasExcluidas), nameof(HayExcluidas),
-        nameof(HayAdvertencias), nameof(AdvertenciasTexto), nameof(HayConteoEstados), nameof(EsArchivoRepetido), nameof(PuedeConfirmar), nameof(RodeoRepetidoTexto))]
+        nameof(HayAdvertencias), nameof(AdvertenciasTexto), nameof(HayConteoEstados), nameof(EsArchivoRepetido), nameof(PuedeConfirmar), nameof(RodeoRepetidoTexto),
+        nameof(HayResumenEid), nameof(ResumenEidTexto))]
     [NotifyCanExecuteChangedFor(nameof(ConfirmarCommand))]
     private VistaPreviaImportacion? _vista;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HayResumenEid), nameof(ResumenEidTexto))]
     private ResultadoImportacion? _resultado;
 
     // Datos que completa el veterinario en la vista previa.
@@ -106,6 +108,13 @@ public sealed partial class ImportarViewModel : ObservableObject
             .ToList() ?? [];
     public bool HayConteoEstados => Vista?.ConteoPorEstado.Count > 0;
     public bool EsArchivoRepetido => Vista?.EsArchivoRepetido ?? false;
+    /// <summary>Spec 010 (RF-8): solo si el archivo trae columna EID. En la vista previa sale de la vista; en el resultado, del resultado (la vista ya se liberó).</summary>
+    public bool HayResumenEid => Vista?.HayColumnaEid ?? Resultado?.HayColumnaEid ?? false;
+    /// <summary>Texto fijo con solo cantidades, nunca un EID (RF-19).</summary>
+    public string ResumenEidTexto =>
+        Vista is { HayColumnaEid: true } v ? $"Con EID: {v.ConEid} · Sin EID: {v.SinEid}"
+        : Resultado is { HayColumnaEid: true } r ? $"Con EID: {r.ConEid} · Sin EID: {r.SinEid}"
+        : "";
     public bool HayEstablecimientos => Establecimientos.Count > 0;
     public bool PuedeElegirExistente => HayEstablecimientos && !UsarEstablecimientoNuevo;
 

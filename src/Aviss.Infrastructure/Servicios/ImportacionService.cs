@@ -73,7 +73,8 @@ internal sealed class ImportacionService : IImportacionService
 
         var vista = new VistaPreviaImportacion(
             Guid.NewGuid(), NombreSeguro(nombreArchivo), hash, bytes, _perfil.Nombre,
-            v.FilasLeidas, v.Validas, v.Excluidas, v.Advertencias, v.ConteoPorEstado, repetidos);
+            v.FilasLeidas, v.Validas, v.Excluidas, v.Advertencias, v.ConteoPorEstado, repetidos,
+            v.HayColumnaEid, v.ConEid, v.SinEid);   // spec 010: los conteos de EID viajan con la vista previa
 
         _almacen.Guardar(vista);   // si había otra vista previa, se descarta (RF-22)
         return Resultado.Ok(vista);
@@ -224,12 +225,14 @@ internal sealed class ImportacionService : IImportacionService
                 vista.Contenido, vista.PerfilNombre, ahora);
             rodeos.Agregar(rodeo);
 
-            // Sin identificador electrónico ni observaciones (COM queda solo en el JSON): RF-12.
+            // El EID llega ya validado y sin repetidos (spec 010): nulo si no venía, era inválido o repetido.
+            // Sin observaciones (COM queda solo en el JSON): RF-12.
             animales.AgregarVarios(vista.Validas.Select(f =>
-                Animal.CrearImportado(rodeo.Id, f.Caravana, null, f.EstadoId, null, f.DatosOriginalesJson, ahora)));
+                Animal.CrearImportado(rodeo.Id, f.Caravana, f.IdElectronico, f.EstadoId, null, f.DatosOriginalesJson, ahora)));
 
             return Resultado.Ok(new ResultadoImportacion(
-                rodeo.Id, rodeo.Nombre, vista.FilasLeidas, vista.Validas.Count, vista.Excluidas.Count, vista.Advertencias));
+                rodeo.Id, rodeo.Nombre, vista.FilasLeidas, vista.Validas.Count, vista.Excluidas.Count, vista.Advertencias,
+                vista.HayColumnaEid, vista.ConEid, vista.SinEid));
         }
         catch (DominioException ex) { return Ayudas.DatosInvalidos<ResultadoImportacion>(ex); }
     }

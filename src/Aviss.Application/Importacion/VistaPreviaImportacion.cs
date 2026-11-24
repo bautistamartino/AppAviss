@@ -6,7 +6,9 @@ namespace Aviss.Application.Importacion;
 /// <param name="NumeroFila">Número de fila de Excel.</param>
 /// <param name="EstadoId">Estado del catálogo, o nulo si RPRO estaba vacío o no coincide con ningún estado activo.</param>
 /// <param name="DatosOriginalesJson">Columnas originales como objeto JSON (RF-12).</param>
-public sealed record FilaAnimalImportada(int NumeroFila, Caravana Caravana, Guid? EstadoId, string DatosOriginalesJson);
+/// <param name="IdElectronico">EID de 15 dígitos sin espacios (spec 010), o nulo si no venía, era inválido o estaba repetido.</param>
+public sealed record FilaAnimalImportada(
+    int NumeroFila, Caravana Caravana, Guid? EstadoId, string DatosOriginalesJson, string? IdElectronico = null);
 
 /// <summary>Una fila excluida: solo número de fila y motivo (nunca la caravana, RF-13 y RF-24).</summary>
 public sealed record FilaExcluida(int NumeroFila, MotivoFila Motivo)
@@ -14,7 +16,7 @@ public sealed record FilaExcluida(int NumeroFila, MotivoFila Motivo)
     public string Mensaje => MensajesImportacion.Para(Motivo);
 }
 
-public enum TipoAdvertencia { ColumnaOpcionalFaltante, TotalNoCoincide, EstadoDesconocido }
+public enum TipoAdvertencia { ColumnaOpcionalFaltante, TotalNoCoincide, EstadoDesconocido, EidInvalido, EidRepetido }
 
 /// <summary>
 /// Un aviso que no impide importar. Los de estado desconocido van agrupados por valor de RPRO: el valor,
@@ -48,7 +50,10 @@ public sealed record VistaPreviaImportacion(
     IReadOnlyList<FilaExcluida> Excluidas,
     IReadOnlyList<AdvertenciaImportacion> Advertencias,
     IReadOnlyList<ConteoEstado> ConteoPorEstado,
-    IReadOnlyList<RodeoImportadoResumen> ArchivoRepetido)
+    IReadOnlyList<RodeoImportadoResumen> ArchivoRepetido,
+    bool HayColumnaEid = false,     // spec 010: el archivo trae columna EID
+    int ConEid = 0,                 // animales que se importan con EID
+    int SinEid = 0)                 // animales sin EID (guion, vacío, inválido o repetido)
 {
     /// <summary>Con filas de datos pero ninguna válida la vista se muestra igual, pero no se puede confirmar (RF-13).</summary>
     public bool PuedeConfirmar => Validas.Count > 0;
@@ -63,4 +68,7 @@ public sealed record ResultadoImportacion(
     int FilasLeidas,
     int AnimalesImportados,
     int FilasExcluidas,
-    IReadOnlyList<AdvertenciaImportacion> Advertencias);
+    IReadOnlyList<AdvertenciaImportacion> Advertencias,
+    bool HayColumnaEid = false,
+    int ConEid = 0,
+    int SinEid = 0);

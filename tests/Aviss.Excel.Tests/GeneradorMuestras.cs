@@ -42,7 +42,58 @@ public static class GeneradorMuestras
         ["solo-encabezados.xls"] = SoloEncabezados(),
         ["texto-plano.xls"] = System.Text.Encoding.UTF8.GetBytes("esto no es un excel\n"),
         ["dairy-comp-282-vacas.csv"] = Csv282Vacas(),
+        ["dairy-comp-eid-282-vacas.csv"] = Csv282VacasConEid(),
     };
+
+    /// <summary>
+    /// Spec 010: como <see cref="Csv282Vacas"/> pero con el formato del archivo que pasa el usuario ahora: segunda columna EID y
+    /// al final SCDAT y SCTIM. Todo inventado: los EID son "999000" + 9 dígitos (nunca los reales 982...), distintos entre sí y sin
+    /// ceros a la izquierda; 10 vacas "frescas" (recién paridas) traen "-" en lugar del EID, como en el archivo real.
+    /// </summary>
+    public static byte[] Csv282VacasConEid()
+    {
+        const int cantidad = 282;
+        string[] toros = ["TOROUNO", "TORODOS", "TOROTRES", "TOROCUATRO", "TOROCINCO"];
+        var azar = new Random(20261124); // semilla fija
+        var sb = new System.Text.StringBuilder();
+        sb.Append("\"ID\";\"EID\";\"CVET\";\"LACT\";\"FPART\";\"DEL\";\"FCELO\";\"UTORO\";\"RPRO\";\"FAPAR\";\"LECHE\";\"SCDAT\";\"SCTIM\";\n");
+
+        string Fecha(int dias) => new DateTime(2026, 11, 24).AddDays(-dias).ToString("dd/MM/yy");
+
+        for (int i = 0; i < cantidad; i++)
+        {
+            int id = 30001 + i * 7;                       // únicos e inventados
+            bool fresca = i % 28 == 5;                    // i = 5, 33, ..., 257: exactamente 10 vacas
+            int lactancia = azar.Next(1, 7);
+            int del = fresca ? azar.Next(0, 10) : azar.Next(10, 600);
+            string estado = fresca ? "FRESCA" : azar.Next(10) switch
+            {
+                < 4 => "PREÑADA", < 6 => "INSEMIN", 6 => "NOINSEM", 7 => "SECA", 8 => "VACIA", _ => "NOINSEM",
+            };
+            string cvet = estado switch
+            {
+                "INSEMIN" => azar.Next(3) == 0 ? "0" : "PRE",
+                "FRESCA" => "FRES",
+                "VACIA" => "DLSC",
+                "PREÑADA" => azar.Next(30) == 0 ? "ASEC" : "0",
+                _ => "0",
+            };
+            bool sinCelo = estado is "FRESCA" or "VACIA";
+            bool prenada = estado is "PREÑADA" or "SECA";
+            string eid = fresca ? "-" : $"999000{458000000 + i * 1013:D9}";   // 15 dígitos, todos distintos
+            string celo = sinCelo ? "-" : Fecha(azar.Next(1, 200));
+            string toro = sinCelo ? "-" : toros[azar.Next(toros.Length)];
+            string fapar = prenada ? Fecha(-azar.Next(30, 280)) : "-";
+            int leche = lactancia > 1 && azar.Next(4) == 0 ? azar.Next(20, 60) : 0;
+            // SCDAT y SCTIM: casi siempre "-"; algunas filas traen valor para probar que se conservan y no se usan.
+            string scdat = i % 11 == 0 ? Fecha(azar.Next(1, 30)) : "-";
+            string sctim = i % 11 == 0 ? azar.Next(600, 1800).ToString() : "-";
+
+            sb.Append($" {id,5} ;{eid,15} ;{cvet,-5};{lactancia,4} ;{Fecha(del)};{del,4} ;{celo,8};{toro,-10};{estado,-8};{fapar,8};{leche,6} ;{scdat,8};{sctim,5} ;\n");
+        }
+        sb.Append($"Total:;{cantidad};;;;;;;;;;;;\n");
+        return System.Text.Encoding.Latin1.GetBytes(sb.ToString()); // Windows-1252: la Ñ es 0xD1
+    }
 
     /// <summary>
     /// Imita un listado de Dairy Comp guardado como CSV (formato visto en un archivo real, con todos los datos inventados):

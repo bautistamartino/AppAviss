@@ -74,6 +74,9 @@ public sealed class EscenarioImportacion : IDisposable
     public IImportacionService Importacion => _proveedor.GetRequiredService<IImportacionService>();
     public IArranqueService Arranque => _proveedor.GetRequiredService<IArranqueService>();
 
+    /// <summary>La fachada de campo (spec 003) con un scope nuevo: sirve para leer animales ya importados (spec 010).</summary>
+    public ICampoService Campo => _proveedor.CreateScope().ServiceProvider.GetRequiredService<ICampoService>();
+
     public long Cuenta(string tabla, string? donde = null)
         => Base.Contar($"SELECT COUNT(*) FROM {tabla}" + (donde is null ? "" : " WHERE " + donde));
 
