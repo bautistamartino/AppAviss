@@ -110,21 +110,21 @@ Hasta ahora Aviss solo importa y guarda (specs 002 a 006). Esta spec cierra el c
 - **Archivo con campos entre comillas y saltos de línea dentro de un campo (CSV):** se conservan sin romper la fila (RF-15).
 
 ## Criterios de aceptación
-- [ ] La pantalla "Exportar" lista los rodeos activos por establecimiento, muestra el resumen y pide el formato recién al final (RF-1 a RF-3, RF-28).
-- [ ] El archivo de vuelta de la muestra de 226 vacas (`.xls`) y el de la de 282 (CSV) tienen todas las filas y columnas del original con los mismos valores, `RPRO` incluida, y las columnas nuevas a la derecha (RF-4, RF-13).
-- [ ] SCDAT sale `dd/mm/yyyy` y SCTIM `HHmm` con ceros (`0905`), en hora local, y con un registro cerca de la medianoche la fecha es la local (RF-6, RF-7).
-- [ ] La columna de evento lleva el nombre; Preñada fecha previa lleva los días de preñez; Aborto lleva días y resultado con sus cinco variantes (RF-8 a RF-10).
-- [ ] Vacas sin registro, con CVET 0, filas excluidas y la fila Total salen con las columnas nuevas vacías (RF-11).
-- [ ] Solo salen los registros de la jornada del rodeo (los de un día anterior no); un registro anulado no exporta nada y uno corregido con "Editar" exporta el nuevo (RF-12).
-- [ ] Un original con una columna llamada igual que una nueva se rechaza sin generar nada (RF-14).
-- [ ] Se generan los cuatro cruces (CSV a CSV, CSV a .xls, .xls a CSV, .xls a .xls) y cada uno pasa la validación; en CSV a CSV cada línea original queda byte por byte igual (RF-15 a RF-18).
-- [ ] Un archivo que no pasa la validación no se entrega ni se registra (RF-18).
-- [ ] El archivo queda guardado con nombre nuevo sin pisar otro y se puede compartir; queda la constancia y el rodeo figura exportado; exportar de nuevo funciona y se puede seguir tactando (RF-19 a RF-22).
-- [ ] Sin espacio o con falla de escritura: mensaje claro, sin archivo visible a medias, sin constancia (RF-24).
-- [ ] 20.000 vacas en el tope de tiempo del plan (RF-26).
-- [ ] Ningún log ni mensaje de error trae caravanas ni nombres de tambo; el archivo no trae veterinario ni tablet (RF-27).
+- [x] La pantalla "Exportar" lista los rodeos activos por establecimiento, muestra el resumen y pide el formato recién al final (RF-1 a RF-3, RF-28).
+- [x] El archivo de vuelta de la muestra de 226 vacas (`.xls`) y el de la de 282 (CSV) tienen todas las filas y columnas del original con los mismos valores, `RPRO` incluida, y las columnas nuevas a la derecha (RF-4, RF-13).
+- [x] SCDAT sale `dd/mm/yyyy` y SCTIM `HHmm` con ceros (`0905`), en hora local, y con un registro cerca de la medianoche la fecha es la local (RF-6, RF-7).
+- [x] La columna de evento lleva el nombre; Preñada fecha previa lleva los días de preñez; Aborto lleva días y resultado con sus cinco variantes (RF-8 a RF-10).
+- [x] Vacas sin registro, con CVET 0, filas excluidas y la fila Total salen con las columnas nuevas vacías (RF-11).
+- [x] Solo salen los registros de la jornada del rodeo (los de un día anterior no); un registro anulado no exporta nada y uno corregido con "Editar" exporta el nuevo (RF-12).
+- [x] Un original con una columna llamada igual que una nueva se rechaza sin generar nada (RF-14).
+- [x] Se generan los cuatro cruces (CSV a CSV, CSV a .xls, .xls a CSV, .xls a .xls) y cada uno pasa la validación; en CSV a CSV cada línea original queda byte por byte igual (RF-15 a RF-18).
+- [x] Un archivo que no pasa la validación no se entrega ni se registra (RF-18).
+- [x] El archivo queda guardado con nombre nuevo sin pisar otro y se puede compartir; queda la constancia y el rodeo figura exportado; exportar de nuevo funciona y se puede seguir tactando (RF-19 a RF-22).
+- [x] Sin espacio o con falla de escritura: mensaje claro, sin archivo visible a medias, sin constancia (RF-24).
+- [x] 20.000 vacas en el tope de tiempo del plan (RF-26).
+- [x] Ningún log ni mensaje de error trae caravanas ni nombres de tambo; el archivo no trae veterinario ni tablet (RF-27).
 - [ ] **A verificar en el emulador o la tablet (800x1340 vertical):** la pantalla, el guardado en el lugar elegido, el compartir y abrir el archivo generado en otra aplicación (RF-19, RF-20, RF-28).
-- [ ] `dotnet build` y `dotnet test` en verde.
+- [x] `dotnet build` y `dotnet test` en verde.
 - [ ] **Pendiente de la prueba 0.2:** que Dairy Comp acepte el archivo con las columnas nuevas (ver pregunta 2). No bloquea la spec.
 
 ## Preguntas abiertas

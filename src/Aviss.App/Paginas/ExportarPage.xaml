@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:Aviss.App.ViewModels"
+             xmlns:exp="clr-namespace:Aviss.Application.Exportacion;assembly=Aviss.Application"
+             x:Class="Aviss.App.Paginas.ExportarPage"
+             x:DataType="vm:ExportarViewModel"
+             BackgroundColor="White"
+             Title="Exportar">
+
+    <!--
+        Exportar el archivo de vuelta para Dairy Comp (spec 007): una sola pantalla con cuatro pasos (lista, resumen, generando,
+        resultado). Vertical, botones de 72, alto contraste, sin escribir nada. Sin lógica acá: todo está en ExportarViewModel.
+    -->
+    <Grid RowDefinitions="Auto,Auto,*" Padding="24,16" RowSpacing="12">
+
+        <Label Grid.Row="0" Text="Exportar" Style="{StaticResource TituloCuadro}" FontSize="36"
+               SemanticProperties.HeadingLevel="Level1" />
+
+        <!-- Mensaje de error (los textos son fijos, nunca llevan datos del tambo) -->
+        <Border Grid.Row="1" IsVisible="{Binding HayMensajeError}" BackgroundColor="{StaticResource CampoPeligro}" StrokeThickness="0" Padding="16,10">
+            <Label Text="{Binding MensajeError}" TextColor="White" FontSize="22" FontAttributes="Bold"
+                   SemanticProperties.Description="Mensaje de error" />
+        </Border>
+
+        <!-- ============ PASO 1: lista de rodeos por establecimiento ============ -->
+        <Grid Grid.Row="2" RowDefinitions="*,Auto" RowSpacing="12" IsVisible="{Binding EsPasoLista}">
+            <VerticalStackLayout Grid.Row="0" IsVisible="{Binding NoHayRodeos}" VerticalOptions="Center" Spacing="16">
+                <Label Text="No hay rodeos para exportar." Style="{StaticResource TituloCuadro}" FontSize="28" HorizontalTextAlignment="Center" />
+                <Label Text="Primero importá el Excel de Dairy Comp de un rodeo." Style="{StaticResource TextoCampo}" HorizontalTextAlignment="Center" />
+            </VerticalStackLayout>
+
+            <CollectionView Grid.Row="0" ItemsSource="{Binding Grupos}" IsGrouped="True" SelectionMode="None" IsVisible="{Binding HayRodeos}">
+                <CollectionView.GroupHeaderTemplate>
+                    <DataTemplate x:DataType="vm:GrupoRodeosExportacion">
+                        <Label Text="{Binding EstablecimientoNombre}" Style="{StaticResource TituloCuadro}" FontSize="26" Margin="0,12,0,6" />
+                    </DataTemplate>
+                </CollectionView.GroupHeaderTemplate>
+                <CollectionView.ItemTemplate>
+                    <DataTemplate x:DataType="exp:RodeoParaExportarDto">
+                        <Border BackgroundColor="{StaticResource CampoClaro}" StrokeThickness="0" Padding="16,12" Margin="0,0,0,8" MinimumHeightRequest="72">
+                            <Border.GestureRecognizers>
+                                <TapGestureRecognizer
+                                    Command="{Binding Source={RelativeSource AncestorType={x:Type vm:ExportarViewModel}}, Path=ElegirRodeoCommand, x:DataType=vm:ExportarViewModel}"
+                                    CommandParameter="{Binding .}" />
+                            </Border.GestureRecognizers>
+                            <VerticalStackLayout VerticalOptions="Center">
+                                <Label Text="{Binding RodeoNombre}" Style="{StaticResource TextoCampo}" FontSize="26" FontAttributes="Bold" />
+                                <Label Text="{Binding CantidadVacas, StringFormat='{0} vacas'}" Style="{StaticResource TextoCampo}" FontSize="20" />
+                            </VerticalStackLayout>
+                        </Border>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+
+            <ActivityIndicator Grid.Row="0" IsRunning="{Binding EstaCargando}" IsVisible="{Binding EstaCargando}"
+                               HeightRequest="48" WidthRequest="48" VerticalOptions="Center" HorizontalOptions="Center" />
+
+            <Button Grid.Row="1" Text="Volver" Style="{StaticResource BotonCampoSecundario}" Command="{Binding VolverCommand}" />
+        </Grid>
+
+        <!-- ============ PASO 2: resumen y formato (se elige acá, al final) ============ -->
+        <Grid Grid.Row="2" RowDefinitions="*,Auto" RowSpacing="12" IsVisible="{Binding EsPasoResumen}">
+            <ScrollView Grid.Row="0">
+                <VerticalStackLayout Spacing="14">
+                    <Label Text="{Binding RodeoElegido.RodeoNombre}" Style="{StaticResource TituloCuadro}" FontSize="30" />
+                    <Label Text="{Binding RodeoElegido.EstablecimientoNombre}" Style="{StaticResource TextoCampo}" FontSize="22"
+                           TextColor="{StaticResource Gray600}" />
+                    <Label Text="{Binding TextoConEvento}" Style="{StaticResource TituloCuadro}" FontSize="28" />
+                    <Label Text="{Binding TextoSinEvento}" Style="{StaticResource TextoCampo}" FontSize="24" />
+                    <Label Text="{Binding TextoCvetCero}" IsVisible="{Binding HayCvetCero}" Style="{StaticResource TextoCampo}" FontSize="22" />
+                    <Label Text="{Binding TextoJornada}" IsVisible="{Binding HayJornada}" Style="{StaticResource TextoCampo}" FontSize="22" />
+                    <Label Text="{Binding TextoUltimaExportacion}" IsVisible="{Binding HayUltimaExportacion}" Style="{StaticResource TextoCampo}" FontSize="22" />
+
+                    <Label Text="¿En qué formato?" Style="{StaticResource TituloCuadro}" FontSize="28" Margin="0,12,0,0" />
+                    <!-- Ningún formato viene elegido: cada botón genera el suyo (RF-3). -->
+                    <Button Text="Generar CSV" Style="{StaticResource BotonCampo}" Command="{Binding GenerarCsvCommand}"
+                            SemanticProperties.Hint="Genera el archivo en formato CSV" />
+                    <Button Text="Generar Excel (.xls)" Style="{StaticResource BotonCampo}" Command="{Binding GenerarXlsCommand}"
+                            SemanticProperties.Hint="Genera el archivo en formato Excel .xls" />
+                    <Button Text="Reintentar" Style="{StaticResource BotonCampoAlerta}" IsVisible="{Binding HayReintento}"
+                            Command="{Binding ReintentarCommand}" />
+                </VerticalStackLayout>
+            </ScrollView>
+            <Button Grid.Row="1" Text="Volver" Style="{StaticResource BotonCampoSecundario}" Command="{Binding VolverCommand}" />
+        </Grid>
+
+        <!-- ============ PASO 3: generando ============ -->
+        <Grid Grid.Row="2" RowDefinitions="*,Auto" RowSpacing="12" IsVisible="{Binding EsPasoGenerando}">
+            <VerticalStackLayout Grid.Row="0" VerticalOptions="Center" Spacing="24">
+                <ActivityIndicator IsRunning="{Binding EsPasoGenerando}" HeightRequest="72" WidthRequest="72" HorizontalOptions="Center" />
+                <Label Text="Generando el archivo..." Style="{StaticResource TituloCuadro}" FontSize="28" HorizontalTextAlignment="Center" />
+                <Label Text="No cierres la app. Si cancelás, no se guarda nada." Style="{StaticResource TextoCampo}" HorizontalTextAlignment="Center" />
+            </VerticalStackLayout>
+            <Button Grid.Row="1" Text="Cancelar" Style="{StaticResource BotonCampoPeligro}" Command="{Binding CancelarGeneracionCommand}" />
+        </Grid>
+
+        <!-- ============ PASO 4: resultado ============ -->
+        <Grid Grid.Row="2" RowDefinitions="*,Auto,Auto" RowSpacing="12" IsVisible="{Binding EsPasoResultado}">
+            <ScrollView Grid.Row="0">
+                <VerticalStackLayout Spacing="14">
+                    <Label Text="Listo, el archivo está generado" Style="{StaticResource TituloCuadro}" FontSize="28" TextColor="{StaticResource CampoExito}" />
+                    <Label Text="{Binding NombreArchivo}" Style="{StaticResource TextoCampo}" FontSize="24" FontAttributes="Bold" />
+                    <Label Text="{Binding TextoLugar}" Style="{StaticResource TextoCampo}" FontSize="24" />
+                    <Label Text="{Binding TextoCantidades}" Style="{StaticResource TextoCampo}" FontSize="22" />
+                    <Border IsVisible="{Binding HayAvisoConstancia}" BackgroundColor="{StaticResource CampoAlerta}" StrokeThickness="0" Padding="16,10">
+                        <Label Text="{Binding AvisoConstanciaNoGuardada}" TextColor="Black" FontSize="20" FontAttributes="Bold" />
+                    </Border>
+                </VerticalStackLayout>
+            </ScrollView>
+            <Button Grid.Row="1" Text="Compartir" Style="{StaticResource BotonCampo}" Command="{Binding CompartirCommand}"
+                    SemanticProperties.Hint="Abre las opciones de Android para enviar el archivo" />
+            <Button Grid.Row="2" Text="Listo" Style="{StaticResource BotonCampo}" BackgroundColor="{StaticResource CampoExito}" Command="{Binding ListoCommand}" />
+        </Grid>
+    </Grid>
+</ContentPage>

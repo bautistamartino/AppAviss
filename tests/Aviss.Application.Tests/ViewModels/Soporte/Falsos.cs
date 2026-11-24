@@ -82,6 +82,7 @@ public sealed class FakeNavegacion : INavegacion
     public List<string> Destinos { get; } = [];
     public Task IrAInicioAsync() { Destinos.Add("Inicio"); return Task.CompletedTask; }
     public Task IrAImportarAsync() { Destinos.Add("Importar"); return Task.CompletedTask; }
+    public Task IrAExportarAsync() { Destinos.Add("Exportar"); return Task.CompletedTask; }
     public Task IrAEleccionTrabajoAsync() { Destinos.Add("Eleccion"); return Task.CompletedTask; }
     public Task IrATrabajoAsync() { Destinos.Add("Trabajo"); return Task.CompletedTask; }
     public Task IrAMovimientosAsync() { Destinos.Add("Movimientos"); return Task.CompletedTask; }

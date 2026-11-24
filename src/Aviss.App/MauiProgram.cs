@@ -36,6 +36,10 @@ public static class MauiProgram
 		builder.Services.AddSingleton<PreferenciasMaui>();
 		builder.Services.AddSingleton<ILimpiezaPreferencias>(sp => sp.GetRequiredService<PreferenciasMaui>());
 
+		// Exportación (spec 007, RF-19, RF-20): guardar en Descargas con MediaStore y compartir. Va ANTES de AddAvissInfrastructure,
+		// que registra con TryAdd un respaldo "no disponible" y por eso no lo pisa.
+		builder.Services.AddSingleton<Aviss.Application.Exportacion.IEntregaArchivo, EntregaArchivoAndroid>();
+
 		// Todo lo de datos vive en el almacenamiento privado de la app (en Android, /data/data/com.aviss.app/files).
 		// Infrastructure no conoce MAUI: acá se le pasa la carpeta.
 		builder.Services.AddAvissInfrastructure(new RutasAviss(FileSystem.AppDataDirectory));
@@ -71,11 +75,13 @@ public static class MauiProgram
 		builder.Services.AddTransient<EleccionTrabajoViewModel>();
 		builder.Services.AddTransient<TrabajoViewModel>();
 		builder.Services.AddTransient<MovimientosViewModel>();
+		builder.Services.AddTransient<ExportarViewModel>();
 		builder.Services.AddTransient<InicioPage>();
 		builder.Services.AddTransient<ImportarPage>();
 		builder.Services.AddTransient<TrabajoPage>();
 		builder.Services.AddTransient<EleccionTrabajoPage>();
 		builder.Services.AddTransient<MovimientosPage>();
+		builder.Services.AddTransient<ExportarPage>();
 
 		var app = builder.Build();
 

@@ -65,6 +65,7 @@ public class ImportarViewModelTests
         public int AImportar { get; private set; }
         public Task IrAInicioAsync() { AInicio++; return Task.CompletedTask; }
         public Task IrAImportarAsync() { AImportar++; return Task.CompletedTask; }
+        public Task IrAExportarAsync() => Task.CompletedTask;
         public Task IrAEleccionTrabajoAsync() => Task.CompletedTask;
         public Task IrATrabajoAsync() => Task.CompletedTask;
         public Task IrAMovimientosAsync() => Task.CompletedTask;

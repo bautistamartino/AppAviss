@@ -13,6 +13,10 @@ public sealed partial class InicioViewModel : ObservableObject
     [RelayCommand]
     private Task ImportarRodeoAsync() => _navegacion.IrAImportarAsync();
 
+    /// <summary>"Exportar": va a la pantalla del archivo de vuelta para Dairy Comp (spec 007, RF-1).</summary>
+    [RelayCommand]
+    private Task ExportarAsync() => _navegacion.IrAExportarAsync();
+
     /// <summary>"Trabajar": va a elegir establecimiento y rodeo (RF-1, RF-2).</summary>
     [RelayCommand]
     private Task TrabajarAsync() => _navegacion.IrAEleccionTrabajoAsync();

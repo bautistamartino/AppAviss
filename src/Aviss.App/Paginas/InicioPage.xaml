@@ -25,6 +25,11 @@
                     HeightRequest="72"
                     Command="{Binding ImportarRodeoCommand}"
                     SemanticProperties.Hint="Elegir el Excel de Dairy Comp para cargar un rodeo" />
+            <Button Text="Exportar"
+                    FontSize="24" FontAttributes="Bold"
+                    HeightRequest="72"
+                    Command="{Binding ExportarCommand}"
+                    SemanticProperties.Hint="Generar el archivo con los tactos para volver a Dairy Comp" />
         </VerticalStackLayout>
     </ScrollView>
 </ContentPage>

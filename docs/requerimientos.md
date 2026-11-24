@@ -50,7 +50,7 @@ Dairy Comp **usa el `ID`** para cruzar con la vaca y **crea eventos con historia
   - **Registros y catálogos de campo** (spec 004, borrador): tratamientos, nota y días de preñez del tacto, rechazo y estados nuevos creados en el campo.
 - **Historial**: registrar fecha, animal, estado anterior y nuevo y hora de cada cambio (sin quién lo hizo, spec 006). Nunca borrar ni sobrescribir. Deshacer mediante anulación.
 - **Sin veterinario** (spec 006): al abrir se elige solo el establecimiento y el rodeo; no se elige, no se registra ni se exporta ningún veterinario.
-- **Exportación**: generar un Excel compatible con Dairy Comp a partir del original, con los cambios; validarlo antes de entregarlo.
+- **Exportación** (spec 007): generar un archivo nuevo (CSV o .xls, a elección al final) a partir de la copia del original, con todas sus filas y columnas intactas y columnas nuevas a la derecha (fecha y hora del tacto, evento por nombre, días de preñez, días y resultado del aborto) con el tacto de la jornada del rodeo; reabrirlo y compararlo antes de entregarlo; guardarlo en Descargas (sin pisar otro) y ofrecer Compartir; dejar constancia de cada exportación. La prueba de reimportación en Dairy Comp (0.2) sigue pendiente.
 - **Lector RFID**: conectarse con el XRS2 (Bluetooth u otro método según el spike), reconectar solo, ignorar lecturas repetidas. Debe poder cambiarse el método de comunicación sin tocar el resto.
 - **Autoguardado y recuperación**: no perder datos ante un apagón o cierre inesperado; backups automáticos de la base.
 

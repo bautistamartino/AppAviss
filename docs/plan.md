@@ -23,7 +23,7 @@ Cada ítem es una spec o un paso chico. Se marca con `[x]` cuando está terminad
 
 
 ## Etapa 4 — Exportación
-- [ ] 4.1 Exportar el Excel sobre la copia del original, con validación (spec **007**). Depende de 0.2.
+- [ ] 4.1 Exportar el archivo de vuelta sobre la copia del original, con validación (spec **007**, rama `spec/007-exportacion`, implementada T1 a T4 el 2026-11-24; falta mirarla en el emulador o la tablet y pasar el revisor): pantalla "Exportar", CSV o .xls elegido al final, columnas nuevas a la derecha (`SCDAT`, `SCTIM`, `Evento1`, `DIASPRE`, `DIASABO`, `RESABO`), solo la jornada del rodeo, guardado en Descargas y Compartir, constancia en la tabla `Exportacion`. **Pendiente de la prueba 0.2:** que Dairy Comp acepte el archivo con las columnas nuevas y sus nombres reales.
 
 ## Etapa 5 — Bastón real
 - [ ] 5.1 Spike del XRS2 (transporte y trama) y lector real con reconexión (spec **008**). Requiere bastón y tablet.
