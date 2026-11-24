@@ -52,7 +52,10 @@ internal sealed class CampoService : ICampoService
         var codigo = Aviss.Domain.Reglas.CodigoEstado.DesdeNombre(nombre);
         if (codigo.Length == 0)
             return Task.FromResult(Resultado.Error<Guid>(CodigoError.DatosInvalidos, "Escribí un nombre con letras o números."));
-        return EscribirAsync(p => p.GetRequiredService<ICatalogoEstadosService>().CrearAsync(codigo, nombre, codigoDairyComp, ct), ct);
+        // El nombre se guarda en MAYÚSCULAS (recortado; la Ñ y las tildes se mantienen) como los eventos de Dairy Comp. Los eventos que
+        // ya existían no se tocan.
+        var nombreMayusculas = nombre.Trim().ToUpperInvariant();
+        return EscribirAsync(p => p.GetRequiredService<ICatalogoEstadosService>().CrearAsync(codigo, nombreMayusculas, codigoDairyComp, ct), ct);
     }
 
     // ---- Mangas ----

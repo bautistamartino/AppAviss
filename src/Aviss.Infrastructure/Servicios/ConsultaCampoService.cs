@@ -138,7 +138,7 @@ internal sealed class ConsultaCampoService
             var (caravana, json) = animalesRechazados.GetValueOrDefault(r.AnimalId);
             // Un solo evento del catálogo muestra su nombre (aunque esté desactivado: salen de todo el catálogo); el Rechazo fijo, "Rechazo".
             var (descripcion, resultadoRechazo) = DescriptorEventos.DescribirConResultado(estados, r.EventoId, null, null, r.DiasAborto, true);
-            var nombreEvento = descripcion ?? "Rechazo";
+            var nombreEvento = descripcion ?? EventosCampo.NombreRechazo;
             candidatos.Add((new MovimientoDto(TipoMovimiento.Rechazo, r.Id, r.AnimalId, caravana, null, nombreEvento,
                 r.FechaHoraUtc, r.Anulado, false, null, null, null,
                 ConstructorFicha.LeerCvet(json), r.Observaciones, r.EventoId ?? EventosCampo.Rechazo,

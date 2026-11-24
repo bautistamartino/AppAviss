@@ -946,7 +946,7 @@ public class TrabajoViewModelTests
         b.Campo.Lecturas["1001"] = Datos.Repetido(Guid.NewGuid(), "1001", ultimo, puedeCorregir: true);
         await b.LeerAsync("1001");
 
-        Assert.Equal($"Rechazo · sucia · {HoraLocal(ultimo)}", b.Vm.AvisoDetalle);
+        Assert.Equal($"RECHAZO · sucia · {HoraLocal(ultimo)}", b.Vm.AvisoDetalle);
     }
 
     [Fact]
