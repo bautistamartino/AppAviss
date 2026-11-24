@@ -25,6 +25,12 @@ public sealed class Rechazo : EntidadEditable
     /// </summary>
     public Guid? EventoId { get; private set; }
 
+    /// <summary>
+    /// Spec 005 (segunda vuelta): los días de aborto (0 a 400) cuando este registro es un Aborto cuyo resultado fue Rechazo
+    /// (RF-30). Solo con evento; en un solo evento común o en el Rechazo fijo es nulo.
+    /// </summary>
+    public int? DiasAborto { get; private set; }
+
     public string? Observaciones { get; private set; }
     public bool Anulado { get; private set; }
     public DateTime? AnuladoEnUtc { get; private set; }
@@ -34,17 +40,22 @@ public sealed class Rechazo : EntidadEditable
 
     public static Rechazo Registrar(
         Guid animalId, DateTime fechaHoraUtc, long ordenInsercion, string? observaciones,
-        DateTime ahoraUtc, Guid? eventoId = null)
+        DateTime ahoraUtc, Guid? eventoId = null, int? diasAborto = null)
     {
         var obs = Validar.TextoOpcional(observaciones);
         if (obs is not null && obs.Length > MaximoObservaciones)
             throw new DominioException($"La observación no puede superar los {MaximoObservaciones} caracteres.");
+        if (diasAborto is int da && !RangosDias.Aborto.Contiene(da))
+            throw new DominioException($"Los días de aborto deben estar entre {RangosDias.Aborto.Minimo} y {RangosDias.Aborto.Maximo}.");
+        if (diasAborto is not null && eventoId is null)
+            throw new DominioException("Los días de aborto necesitan el evento Aborto.");
         return new(ahoraUtc)
         {
             AnimalId = Validar.IdObligatorio(animalId, "El animal"),
             FechaHoraUtc = Validar.Utc(fechaHoraUtc, nameof(fechaHoraUtc)),
             OrdenInsercion = ordenInsercion,
             EventoId = eventoId,
+            DiasAborto = diasAborto,
             Observaciones = obs,
         };
     }

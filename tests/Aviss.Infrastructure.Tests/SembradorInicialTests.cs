@@ -19,14 +19,14 @@ public sealed class SembradorInicialTests : IDisposable
     }
 
     [Fact]
-    public async Task Siembra_los_nueve_estados_con_codigo_de_dairy_comp_igual_al_nombre()
+    public async Task Siembra_los_diez_estados_con_codigo_de_dairy_comp_igual_al_nombre()
     {
         await SembrarEstadosAsync();
 
-        Assert.Equal(9, _base.Contar("SELECT COUNT(*) FROM EstadoReproductivo"));
-        Assert.Equal("PREÑADA", _base.Escalar("SELECT Nombre FROM EstadoReproductivo WHERE Codigo = 'PRENADA'"));
+        Assert.Equal(10, _base.Contar("SELECT COUNT(*) FROM EstadoReproductivo"));
+        Assert.Equal("Preñada fecha correcta", _base.Escalar("SELECT Nombre FROM EstadoReproductivo WHERE Codigo = 'PRENADA'"));
         Assert.Equal("PREÑADA", _base.Escalar("SELECT CodigoDairyComp FROM EstadoReproductivo WHERE Codigo = 'PRENADA'"));
-        Assert.Equal(9, _base.Contar("SELECT COUNT(*) FROM EstadoReproductivo WHERE UPPER(Nombre) = CodigoDairyComp AND Activo = 1")); // OK, Aborto y Revisar Nuevamente: código provisorio = nombre en mayúsculas
+        Assert.Equal(8, _base.Contar("SELECT COUNT(*) FROM EstadoReproductivo WHERE UPPER(Nombre) = CodigoDairyComp AND Activo = 1")); // los ocho cuyo nombre es igual al código (los provisorios y los seis de siempre menos PREÑADA); UPPER de SQLite no toca la ñ, así que fecha previa tampoco cuenta
     }
 
     [Fact]
@@ -35,7 +35,7 @@ public sealed class SembradorInicialTests : IDisposable
         await SembrarEstadosAsync();
         await SembrarEstadosAsync();
 
-        Assert.Equal(9, _base.Contar("SELECT COUNT(*) FROM EstadoReproductivo"));
+        Assert.Equal(10, _base.Contar("SELECT COUNT(*) FROM EstadoReproductivo"));
     }
 
     [Fact]
@@ -47,7 +47,7 @@ public sealed class SembradorInicialTests : IDisposable
 
         await SembrarEstadosAsync();
 
-        Assert.Equal(9, _base.Contar("SELECT COUNT(*) FROM EstadoReproductivo"));
+        Assert.Equal(10, _base.Contar("SELECT COUNT(*) FROM EstadoReproductivo"));
         Assert.Equal("Seca larga", _base.Escalar("SELECT Nombre FROM EstadoReproductivo WHERE Codigo = 'SECA'"));
         Assert.Equal("SECA2", _base.Escalar("SELECT CodigoDairyComp FROM EstadoReproductivo WHERE Codigo = 'SECA'"));
         Assert.Equal(0, _base.Contar("SELECT Activo FROM EstadoReproductivo WHERE Codigo = 'VACIA'"));
@@ -60,7 +60,7 @@ public sealed class SembradorInicialTests : IDisposable
 
         await SembrarEstadosAsync();
 
-        Assert.Equal(9, _base.Contar("SELECT COUNT(*) FROM EstadoReproductivo"));
+        Assert.Equal(10, _base.Contar("SELECT COUNT(*) FROM EstadoReproductivo"));
         Assert.Equal(1, _base.Contar("SELECT COUNT(*) FROM EstadoReproductivo WHERE Codigo = 'SECA'"));
     }
 
@@ -74,6 +74,6 @@ public sealed class SembradorInicialTests : IDisposable
         await SembrarEstadosAsync();
 
         Assert.Equal(0, _base.Contar("SELECT COUNT(*) FROM EstadoReproductivo WHERE Codigo = 'INSEMIN'"));
-        Assert.Equal(7, _base.Contar("SELECT COUNT(*) FROM EstadoReproductivo WHERE Codigo <> 'SECA'"));
+        Assert.Equal(8, _base.Contar("SELECT COUNT(*) FROM EstadoReproductivo WHERE Codigo <> 'SECA'"));
     }
 }

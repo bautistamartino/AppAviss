@@ -111,20 +111,25 @@ public sealed class BaseDeDatosDePrueba : IDisposable
     /// <c>principal</c> u <c>orden</c> (spec 005) exige la base nueva.
     /// </summary>
     public Guid Estado(string codigo, string nombre, string codigoDairyComp, bool activo = true,
-        string? tipo = null, string? clave = null, bool principal = false, int orden = 0, DateTime? creadoEnUtc = null)
+        string? tipo = null, string? clave = null, bool principal = false, int orden = 0, DateTime? creadoEnUtc = null,
+        string? pasos = null, Guid? destinoId = null)
     {
         var id = Guid.NewGuid();
         var creado = Fecha(creadoEnUtc ?? Reloj.UtcAhora);
-        if (tipo is null && clave is null && !principal && orden == 0)
+        if (tipo is null && clave is null && !principal && orden == 0 && pasos is null && destinoId is null)
         {
             Ejecutar("INSERT INTO EstadoReproductivo (Id, Codigo, Nombre, CodigoDairyComp, Activo, CreadoEnUtc, ActualizadoEnUtc) VALUES ($id, $c, $n, $d, $a, $f, $f)",
                 ("$id", id), ("$c", codigo), ("$n", nombre), ("$d", codigoDairyComp), ("$a", activo ? 1 : 0), ("$f", creado));
             return id;
         }
-        Ejecutar(@"INSERT INTO EstadoReproductivo (Id, Codigo, Nombre, CodigoDairyComp, Activo, Tipo, ClaveEstandar, EsPrincipal, Orden, CreadoEnUtc, ActualizadoEnUtc)
-                   VALUES ($id, $c, $n, $d, $a, $t, $k, $p, $o, $f, $f)",
+        // Las columnas de pasos y destino (spec 005, segunda vuelta) solo se nombran si se piden, así el helper sigue
+        // sirviendo sobre una base anterior a "EventosConPasos".
+        var conPasos = pasos is not null || destinoId is not null;
+        Ejecutar($@"INSERT INTO EstadoReproductivo (Id, Codigo, Nombre, CodigoDairyComp, Activo, Tipo, ClaveEstandar, EsPrincipal, Orden, CreadoEnUtc, ActualizadoEnUtc{(conPasos ? ", Pasos, EstadoDestinoId" : "")})
+                   VALUES ($id, $c, $n, $d, $a, $t, $k, $p, $o, $f, $f{(conPasos ? ", $ps, $dest" : "")})",
             ("$id", id), ("$c", codigo), ("$n", nombre), ("$d", codigoDairyComp), ("$a", activo ? 1 : 0),
-            ("$t", tipo ?? "Estado"), ("$k", clave), ("$p", principal ? 1 : 0), ("$o", orden), ("$f", creado));
+            ("$t", tipo ?? "Estado"), ("$k", clave), ("$p", principal ? 1 : 0), ("$o", orden), ("$f", creado),
+            ("$ps", pasos), ("$dest", destinoId));
         return id;
     }
 
@@ -159,15 +164,19 @@ public sealed class BaseDeDatosDePrueba : IDisposable
     }
 
     public Guid Tacto(Guid animalId, Guid? estadoNuevoId, string tipo = "Normal", Guid? tactoAnuladoId = null,
-        int? diasPrenez = null, DateTime? fechaHora = null, long? orden = null, bool anulado = false)
+        int? diasPrenez = null, DateTime? fechaHora = null, long? orden = null, bool anulado = false,
+        Guid? eventoId = null, int? diasPreniezInformados = null, int? diasAborto = null)
     {
         var id = Guid.NewGuid();
-        Ejecutar(@"INSERT INTO Tacto (Id, AnimalId, FechaHoraUtc, OrdenInsercion, EstadoNuevoId, DiasPrenez,
-                       Tipo, TactoAnuladoId, Anulado, CreadoEnUtc, ActualizadoEnUtc)
-                   VALUES ($id, $a, $fh, $o, $en, $d, $t, $ta, $an, $f, $f)",
+        // Las columnas de evento y días (spec 005, segunda vuelta) solo se nombran si se piden (base anterior a "EventosConPasos").
+        var conEvento = eventoId is not null || diasPreniezInformados is not null || diasAborto is not null;
+        Ejecutar($@"INSERT INTO Tacto (Id, AnimalId, FechaHoraUtc, OrdenInsercion, EstadoNuevoId, DiasPrenez,
+                       Tipo, TactoAnuladoId, Anulado, CreadoEnUtc, ActualizadoEnUtc{(conEvento ? ", EventoId, DiasPreniezInformados, DiasAborto" : "")})
+                   VALUES ($id, $a, $fh, $o, $en, $d, $t, $ta, $an, $f, $f{(conEvento ? ", $ev, $dp, $da" : "")})",
             ("$id", id), ("$a", animalId), ("$fh", Fecha(fechaHora ?? Reloj.UtcAhora)), ("$o", orden ?? ++_orden),
             ("$en", estadoNuevoId), ("$d", diasPrenez),
-            ("$t", tipo), ("$ta", tactoAnuladoId), ("$an", anulado ? 1 : 0), ("$f", Fecha(Reloj.UtcAhora)));
+            ("$t", tipo), ("$ta", tactoAnuladoId), ("$an", anulado ? 1 : 0), ("$f", Fecha(Reloj.UtcAhora)),
+            ("$ev", eventoId), ("$dp", diasPreniezInformados), ("$da", diasAborto));
         return id;
     }
 
@@ -230,17 +239,17 @@ public sealed class BaseDeDatosDePrueba : IDisposable
     }
 
     public Guid Rechazo(Guid animalId, string? observaciones = null, DateTime? fechaHora = null,
-        long? orden = null, bool anulado = false, Guid? eventoId = null)
+        long? orden = null, bool anulado = false, Guid? eventoId = null, int? diasAborto = null)
     {
         var id = Guid.NewGuid();
-        var columnaEvento = eventoId is null ? "" : ", EventoId";
-        var valorEvento = eventoId is null ? "" : ", $ev";
+        var columnaEvento = (eventoId is null ? "" : ", EventoId") + (diasAborto is null ? "" : ", DiasAborto");
+        var valorEvento = (eventoId is null ? "" : ", $ev") + (diasAborto is null ? "" : ", $da");
         var parametros = new List<(string, object?)>
         {
             ("$id", id), ("$a", animalId), ("$fh", Fecha(fechaHora ?? Reloj.UtcAhora)), ("$o", orden ?? ++_orden),
             ("$ob", observaciones), ("$an", anulado ? 1 : 0),
             ("$ae", anulado ? Fecha(Reloj.UtcAhora) : null),
-            ("$f", Fecha(Reloj.UtcAhora)), ("$ev", eventoId)
+            ("$f", Fecha(Reloj.UtcAhora)), ("$ev", eventoId), ("$da", diasAborto)
         };
         // $ev se manda siempre (un parámetro sin usar no molesta a SQLite); la columna solo se nombra si hay evento, así
         // el helper sigue sirviendo sobre una base anterior a "EventosDelCatalogo".

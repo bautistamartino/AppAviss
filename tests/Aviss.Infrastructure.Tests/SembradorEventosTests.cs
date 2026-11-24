@@ -26,27 +26,28 @@ public sealed class SembradorEventosTests : IDisposable
     }
 
     [Fact]
-    public async Task Una_base_nueva_tiene_los_nueve_con_tipo_principal_y_orden_de_RF3()
+    public async Task Una_base_nueva_tiene_los_diez_con_tipo_principal_y_orden_de_RF3()
     {
         await SembrarAsync();
 
-        Assert.Equal(9, _db.Contar("SELECT COUNT(*) FROM EstadoReproductivo"));
-        Assert.Equal(9, _db.Contar("SELECT COUNT(*) FROM EstadoReproductivo WHERE ClaveEstandar = Codigo AND Activo = 1"));
+        Assert.Equal(10, _db.Contar("SELECT COUNT(*) FROM EstadoReproductivo"));
+        Assert.Equal(10, _db.Contar("SELECT COUNT(*) FROM EstadoReproductivo WHERE ClaveEstandar = Codigo AND Activo = 1"));
 
         // Principales, en orden, y los códigos provisorios de los tres nuevos (RF-1).
         Assert.Equal(("Revisar Nuevamente", "REVISAR NUEVAMENTE", "SoloEvento", 1L, 1L, true), Fila("REVISAR_NUEVAMENTE"));
         Assert.Equal(("OK", "OK", "SoloEvento", 1L, 2L, true), Fila("OK"));
         Assert.Equal(("VACIA", "VACIA", "Estado", 1L, 3L, true), Fila("VACIA"));
-        Assert.Equal(("PREÑADA", "PREÑADA", "Estado", 1L, 4L, true), Fila("PRENADA"));
-        Assert.Equal(("Aborto", "ABORTO", "SoloEvento", 1L, 5L, true), Fila("ABORTO"));
-        Assert.Equal(("NOINSEM", "NOINSEM", "Estado", 1L, 6L, true), Fila("NOINSEM"));
+        Assert.Equal(("Preñada fecha correcta", "PREÑADA", "Estado", 1L, 4L, true), Fila("PRENADA"));
+        Assert.Equal(("Preñada fecha previa", "PREÑADA FECHA PREVIA", "Estado", 1L, 5L, true), Fila("PRENADA_FECHA_PREVIA"));
+        Assert.Equal(("Aborto", "ABORTO", "Estado", 1L, 6L, true), Fila("ABORTO"));
+        Assert.Equal(("NOINSEM", "NOINSEM", "Estado", 1L, 7L, true), Fila("NOINSEM"));
         // De "Otro evento".
         foreach (var k in new[] { "INSEMIN", "SECA", "FRESCA" })
         {
             var f = Fila(k);
             Assert.Equal(("Estado", 0L, 0L), (f.Tipo, f.Principal, f.Orden));
         }
-        Assert.Equal(3, _db.Contar("SELECT COUNT(*) FROM EstadoReproductivo WHERE Tipo = 'SoloEvento'"));
+        Assert.Equal(2, _db.Contar("SELECT COUNT(*) FROM EstadoReproductivo WHERE Tipo = 'SoloEvento'"));
     }
 
     [Fact]
@@ -55,8 +56,8 @@ public sealed class SembradorEventosTests : IDisposable
         await SembrarAsync();
         await SembrarAsync();
 
-        Assert.Equal(9, _db.Contar("SELECT COUNT(*) FROM EstadoReproductivo"));
-        Assert.Equal(9, _db.Contar("SELECT COUNT(DISTINCT ClaveEstandar) FROM EstadoReproductivo"));
+        Assert.Equal(10, _db.Contar("SELECT COUNT(*) FROM EstadoReproductivo"));
+        Assert.Equal(10, _db.Contar("SELECT COUNT(DISTINCT ClaveEstandar) FROM EstadoReproductivo"));
     }
 
     [Fact]
@@ -69,8 +70,8 @@ public sealed class SembradorEventosTests : IDisposable
 
         Assert.Equal(1, _db.Contar("SELECT COUNT(*) FROM EstadoReproductivo WHERE Codigo = 'ABORTO'"));
         var f = Fila("ABORTO");
-        Assert.Equal(("aborto vaca", "ABORT-DC", "SoloEvento", 1L, 5L, false), f);
-        Assert.Equal(9, _db.Contar("SELECT COUNT(*) FROM EstadoReproductivo")); // adoptó en vez de crear otro
+        Assert.Equal(("aborto vaca", "ABORT-DC", "Estado", 1L, 6L, false), f);
+        Assert.Equal(10, _db.Contar("SELECT COUNT(*) FROM EstadoReproductivo")); // adoptó en vez de crear otro
     }
 
     [Fact]
@@ -82,7 +83,7 @@ public sealed class SembradorEventosTests : IDisposable
 
         Assert.Equal("MI_OK", _db.Escalar("SELECT Codigo FROM EstadoReproductivo WHERE ClaveEstandar = 'OK'"));
         Assert.Equal("CODIGO-PROPIO", Fila("OK").Dairy);
-        Assert.Equal(9, _db.Contar("SELECT COUNT(*) FROM EstadoReproductivo"));
+        Assert.Equal(10, _db.Contar("SELECT COUNT(*) FROM EstadoReproductivo"));
     }
 
     [Fact]
@@ -94,7 +95,7 @@ public sealed class SembradorEventosTests : IDisposable
 
         Assert.Equal("OTRO_NOMBRE", _db.Escalar("SELECT Codigo FROM EstadoReproductivo WHERE ClaveEstandar = 'REVISAR_NUEVAMENTE'"));
         Assert.Equal("Algo distinto", Fila("REVISAR_NUEVAMENTE").Nombre);
-        Assert.Equal(9, _db.Contar("SELECT COUNT(*) FROM EstadoReproductivo"));
+        Assert.Equal(10, _db.Contar("SELECT COUNT(*) FROM EstadoReproductivo"));
     }
 
     [Fact]
@@ -123,7 +124,7 @@ public sealed class SembradorEventosTests : IDisposable
         // crear (su código de Dairy Comp lo tiene el MIXTO, activo), así que se omite sin fallar.
         Assert.Equal("OK", _db.Escalar("SELECT ClaveEstandar FROM EstadoReproductivo WHERE Codigo = 'MIXTO'"));
         Assert.Equal(0, _db.Contar("SELECT COUNT(*) FROM EstadoReproductivo WHERE ClaveEstandar = 'ABORTO'"));
-        Assert.Equal(8, _db.Contar("SELECT COUNT(*) FROM EstadoReproductivo"));
+        Assert.Equal(9, _db.Contar("SELECT COUNT(*) FROM EstadoReproductivo"));
     }
 
     [Fact]
@@ -137,7 +138,7 @@ public sealed class SembradorEventosTests : IDisposable
 
         Assert.Equal(0, _db.Contar("SELECT COUNT(*) FROM EstadoReproductivo WHERE ClaveEstandar = 'INSEMIN'"));
         Assert.Equal("INSEMIN", _db.Escalar("SELECT Nombre FROM EstadoReproductivo WHERE ClaveEstandar = 'SECA'"));
-        Assert.Equal(8, _db.Contar("SELECT COUNT(*) FROM EstadoReproductivo"));
+        Assert.Equal(9, _db.Contar("SELECT COUNT(*) FROM EstadoReproductivo"));
     }
 
     [Fact]

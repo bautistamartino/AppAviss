@@ -50,7 +50,7 @@ public sealed class MigracionEventosTests : IDisposable
         var tactoSeca = _db.Tacto(animal, seca);
         var rechazo = _db.Rechazo(animal, "motivo");
 
-        _db.MigrarHasta(null);
+        _db.MigrarHasta("EventosDelCatalogo");
 
         // --- Después de la migración (antes de sembrar): clave, principal y orden de los 6; nada más cambió ---
         string Clave(Guid id) => _db.Escalar("SELECT ClaveEstandar FROM EstadoReproductivo WHERE Id = $id", ("$id", id))?.ToString() ?? "(nula)";
@@ -65,16 +65,17 @@ public sealed class MigracionEventosTests : IDisposable
         Assert.Equal("Seca larga", _db.Escalar("SELECT Nombre FROM EstadoReproductivo WHERE Id = $id", ("$id", seca)));
         Assert.Equal(8, _db.Contar("SELECT COUNT(*) FROM EstadoReproductivo"));
 
-        // --- Sembrar: agrega OK y Revisar Nuevamente y adopta el Aborto ---
+        // --- Seguir hasta la última migración (EventosConPasos) y sembrar: agrega OK, Revisar Nuevamente y fecha previa, y adopta el Aborto ---
+        _db.MigrarHasta(null);
         await SembrarAsync();
         await SembrarAsync(); // dos arranques seguidos no duplican
 
-        Assert.Equal(10, _db.Contar("SELECT COUNT(*) FROM EstadoReproductivo")); // 9 estándar + PROSTAG
+        Assert.Equal(11, _db.Contar("SELECT COUNT(*) FROM EstadoReproductivo")); // 10 estándar + PROSTAG
         Assert.Equal("ABORTO", Clave(aborto));
         Assert.Equal("Aborto", _db.Escalar("SELECT Nombre FROM EstadoReproductivo WHERE Id = $id", ("$id", aborto)));
         Assert.Equal("ABORTO-DC", _db.Escalar("SELECT CodigoDairyComp FROM EstadoReproductivo WHERE Id = $id", ("$id", aborto)));
-        Assert.Equal("SoloEvento", _db.Escalar("SELECT Tipo FROM EstadoReproductivo WHERE Id = $id", ("$id", aborto)));
-        Assert.Equal(5, _db.Contar("SELECT Orden FROM EstadoReproductivo WHERE Id = $id", ("$id", aborto)));
+        Assert.Equal("Estado", _db.Escalar("SELECT Tipo FROM EstadoReproductivo WHERE Id = $id", ("$id", aborto)));   // desde la segunda vuelta Aborto tiene pasos
+        Assert.Equal(6, _db.Contar("SELECT Orden FROM EstadoReproductivo WHERE Id = $id", ("$id", aborto)));
         Assert.Equal(0, _db.Contar("SELECT Activo FROM EstadoReproductivo WHERE Id = $id", ("$id", vacia)));    // no se reactivó
         Assert.Equal("(nula)", Clave(prostag));
         Assert.Equal(0, _db.Contar("SELECT EsPrincipal FROM EstadoReproductivo WHERE Id = $id", ("$id", prostag)));  // queda en "Otro evento"

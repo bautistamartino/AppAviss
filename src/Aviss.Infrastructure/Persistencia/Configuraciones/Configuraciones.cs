@@ -1,5 +1,6 @@
 using Aviss.Domain.Entidades;
 using Aviss.Domain.Enums;
+using Aviss.Domain.Reglas;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -95,6 +96,16 @@ internal sealed class EstadoReproductivoConfig : IEntityTypeConfiguration<Estado
         b.HasCheckConstraint("CK_Estado_Orden", "\"Orden\" >= 0");
         b.HasCheckConstraint("CK_Estado_ClaveEstandar",
             "ClaveEstandar IS NULL OR (length(ClaveEstandar) > 0 AND ClaveEstandar NOT GLOB '*[^A-Z0-9_]*')");
+
+        // Spec 005, segunda vuelta (migración "EventosConPasos", escrita a mano): los pasos que pide el evento y el estado en
+        // que deja a la vaca. El CHECK de Pasos no fija los valores (solo letras y comas): un tercer evento con pasos no
+        // pide migración; los valores válidos los conoce el código (PasoEvento).
+        b.Property(e => e.Pasos);
+        b.Property(e => e.EstadoDestinoId);
+        b.HasOne<EstadoReproductivo>().WithMany().HasForeignKey(e => e.EstadoDestinoId).OnDelete(DeleteBehavior.Restrict);
+        b.HasIndex(e => e.EstadoDestinoId);
+        b.HasCheckConstraint("CK_Estado_Pasos",
+            "Pasos IS NULL OR (length(Pasos) > 0 AND Pasos NOT GLOB '*[^A-Za-z,]*')");
     }
 }
 
@@ -162,6 +173,26 @@ internal sealed class TactoConfig : IEntityTypeConfiguration<Tacto>
         b.HasCheckConstraint("CK_Tacto_Anulacion", "(Tipo = 'Anulacion') = (TactoAnuladoId IS NOT NULL)");
         b.HasCheckConstraint("CK_Tacto_NoAnulaAnulacion", "Tipo = 'Normal' OR Anulado = 0");
         b.HasCheckConstraint("CK_Tacto_EstadoNuevo", "Tipo = 'Anulacion' OR EstadoNuevoId IS NOT NULL");
+
+        // Spec 005, segunda vuelta (migración "EventosConPasos", escrita a mano). Los rangos salen de RangosDias, que es
+        // la única fuente en el código; el SQL de la migración los repite como números porque una migración publicada
+        // no debe cambiar. Si un rango cambia hay que escribir una migración chica de CHECK.
+        b.Property(e => e.EventoId);
+        b.Property(e => e.DiasPreniezInformados);
+        b.Property(e => e.DiasAborto);
+        b.HasOne<EstadoReproductivo>().WithMany().HasForeignKey(e => e.EventoId).OnDelete(DeleteBehavior.Restrict);
+        b.HasIndex(e => e.EventoId);
+        b.HasCheckConstraint("CK_Tacto_DiasPreniezInformados",
+            $"DiasPreniezInformados IS NULL OR DiasPreniezInformados BETWEEN {RangosDias.Preniez.Minimo} AND {RangosDias.Preniez.Maximo}");
+        b.HasCheckConstraint("CK_Tacto_DiasAborto",
+            $"DiasAborto IS NULL OR DiasAborto BETWEEN {RangosDias.Aborto.Minimo} AND {RangosDias.Aborto.Maximo}");
+        // Un tacto informa días de preñez o de aborto, no los dos; y los días siempre vienen con el evento que los pide.
+        b.HasCheckConstraint("CK_Tacto_DiasExclusivos", "DiasPreniezInformados IS NULL OR DiasAborto IS NULL");
+        b.HasCheckConstraint("CK_Tacto_DiasConEvento",
+            "EventoId IS NOT NULL OR (DiasPreniezInformados IS NULL AND DiasAborto IS NULL)");
+        // Una anulación no copia datos del original (que los conserva).
+        b.HasCheckConstraint("CK_Tacto_AnulacionSinEvento",
+            "Tipo = 'Normal' OR (EventoId IS NULL AND DiasPreniezInformados IS NULL AND DiasAborto IS NULL)");
     }
 }
 
@@ -293,5 +324,11 @@ internal sealed class RechazoConfig : IEntityTypeConfiguration<Rechazo>
         b.HasCheckConstraint("CK_Rechazo_Anulacion",
             "(Anulado = 0 AND AnuladoEnUtc IS NULL)"
             + " OR (Anulado = 1 AND AnuladoEnUtc IS NOT NULL)");
+
+        // Spec 005, segunda vuelta: días de aborto de un Aborto con resultado Rechazo. Solo con evento y en rango.
+        b.Property(e => e.DiasAborto);
+        b.HasCheckConstraint("CK_Rechazo_DiasAborto",
+            $"DiasAborto IS NULL OR DiasAborto BETWEEN {RangosDias.Aborto.Minimo} AND {RangosDias.Aborto.Maximo}");
+        b.HasCheckConstraint("CK_Rechazo_DiasConEvento", "DiasAborto IS NULL OR EventoId IS NOT NULL");
     }
 }

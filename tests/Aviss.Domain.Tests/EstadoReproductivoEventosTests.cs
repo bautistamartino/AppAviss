@@ -34,13 +34,14 @@ public class EstadoReproductivoEventosTests
     }
 
     [Fact]
-    public void Los_nueve_estandar_cumplen_RF1_y_RF3()
+    public void Los_estandar_cumplen_RF1_y_RF3()
     {
-        Assert.Equal(9, EstadosIniciales.Todos.Count);
+        // Desde la segunda vuelta son diez (con Preñada fecha previa); el detalle está en EstadoReproductivoPasosTests.
+        Assert.Equal(10, EstadosIniciales.Todos.Count);
         var principales = EstadosIniciales.Todos.Where(x => x.EsPrincipal).OrderBy(x => x.Orden).Select(x => x.Codigo);
-        Assert.Equal(["REVISAR_NUEVAMENTE", "OK", "VACIA", "PRENADA", "ABORTO", "NOINSEM"], principales);
+        Assert.Equal(["REVISAR_NUEVAMENTE", "OK", "VACIA", "PRENADA", "PRENADA_FECHA_PREVIA", "ABORTO", "NOINSEM"], principales);
         Assert.Equal(
-            ["ABORTO", "OK", "REVISAR_NUEVAMENTE"],
+            ["OK", "REVISAR_NUEVAMENTE"],
             EstadosIniciales.Todos.Where(x => x.Tipo == TipoEvento.SoloEvento).Select(x => x.Codigo).Order(StringComparer.Ordinal));
         Assert.Equal("REVISAR NUEVAMENTE", Inicial("REVISAR_NUEVAMENTE").CodigoDairyComp);
         Assert.Equal("ABORTO", Inicial("ABORTO").CodigoDairyComp);
@@ -59,9 +60,9 @@ public class EstadoReproductivoEventosTests
         Assert.Equal(id, e.Id);
         Assert.Equal("ABORTO", e.ClaveEstandar);
         Assert.Equal("ABORTO", e.Codigo);
-        Assert.Equal(TipoEvento.SoloEvento, e.Tipo);
+        Assert.Equal(TipoEvento.Estado, e.Tipo);
         Assert.True(e.EsPrincipal);
-        Assert.Equal(5, e.Orden);
+        Assert.Equal(6, e.Orden);
     }
 
     [Fact]
@@ -77,9 +78,9 @@ public class EstadoReproductivoEventosTests
         Assert.Equal("Aborto vaca", aMano.CodigoDairyComp);
         Assert.False(aMano.Activo);
         Assert.Equal("ABORTO", aMano.ClaveEstandar);
-        Assert.Equal(TipoEvento.SoloEvento, aMano.Tipo);
+        Assert.Equal(TipoEvento.Estado, aMano.Tipo);
         Assert.True(aMano.EsPrincipal);
-        Assert.Equal(5, aMano.Orden);
+        Assert.Equal(6, aMano.Orden);
     }
 
     [Fact]

@@ -48,28 +48,74 @@ public sealed class EstadoReproductivo : EntidadEditable
             Activo = true
         };
 
-    /// <summary>Un evento estándar nuevo (siembra): con su clave, tipo, principal y orden (RF-1 a RF-3).</summary>
-    public static EstadoReproductivo CrearEstandar(EstadoInicial inicial, DateTime ahoraUtc)
+    /// <summary>
+    /// Spec 005 (segunda vuelta): los pasos que pide este evento después de elegirlo, como nombres de
+    /// <see cref="PasoEvento"/> separados por coma ("DiasAborto,ResultadoAborto"). Nulo = no pide nada. Los declara el
+    /// catálogo, no la pantalla (RF-27): un evento nuevo con pasos no obliga a tocar un "if" por nombre.
+    /// </summary>
+    public string? Pasos { get; private set; }
+
+    /// <summary>
+    /// El estado en que queda la vaca al elegir este evento, si no es el propio evento (Preñada fecha previa → PREÑADA,
+    /// RF-26). Nulo en el resto.
+    /// </summary>
+    public Guid? EstadoDestinoId { get; private set; }
+
+    /// <summary>Los pasos como lista, en el orden en que se piden. Un nombre desconocido (de una versión futura) se ignora.</summary>
+    public IReadOnlyList<PasoEvento> ListarPasos()
+    {
+        if (string.IsNullOrWhiteSpace(Pasos)) return [];
+        var lista = new List<PasoEvento>();
+        foreach (var texto in Pasos.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+            if (Enum.TryParse<PasoEvento>(texto, out var paso)) lista.Add(paso);
+        return lista;
+    }
+
+    /// <summary>
+    /// Un evento estándar nuevo (siembra): con su clave, tipo, principal, orden, pasos y destino (RF-1 a RF-3, RF-26).
+    /// <paramref name="estadoDestinoId"/> es el Id del estado que nombra <c>inicial.DestinoClave</c>, ya resuelto por quien siembra.
+    /// </summary>
+    public static EstadoReproductivo CrearEstandar(EstadoInicial inicial, DateTime ahoraUtc, Guid? estadoDestinoId = null)
     {
         var e = Crear(inicial.Codigo, inicial.Nombre, inicial.CodigoDairyComp, ahoraUtc);
         e.ClaveEstandar = inicial.Codigo;
-        e.Tipo = inicial.Tipo;
-        e.EsPrincipal = inicial.EsPrincipal;
-        e.Orden = inicial.Orden;
+        e.AplicarEstandar(inicial, estadoDestinoId);
         return e;
     }
 
     /// <summary>
     /// Un estado ya existente (por ejemplo un "Aborto" creado a mano) pasa a ser el estándar (RF-20): recibe clave, tipo,
-    /// principal y orden. NO cambia nombre, código interno, código de Dairy Comp ni si está activo.
+    /// principal, orden, pasos y destino. NO cambia nombre, código interno, código de Dairy Comp ni si está activo.
     /// </summary>
-    public void AdoptarComoEstandar(EstadoInicial inicial, DateTime ahoraUtc)
+    public void AdoptarComoEstandar(EstadoInicial inicial, DateTime ahoraUtc, Guid? estadoDestinoId = null)
     {
         ClaveEstandar = inicial.Codigo;
+        AplicarEstandar(inicial, estadoDestinoId);
+        Tocar(ahoraUtc);
+    }
+
+    /// <summary>
+    /// Iguala tipo, principal, orden, pasos y destino a la tabla de estándar (los que reconcilia el sembrador en cada
+    /// arranque). No toca nombre, códigos ni si está activo. Devuelve si cambió algo: así un arranque que no tiene nada
+    /// para corregir no modifica la fila ni su fecha de actualización (idempotente).
+    /// </summary>
+    public bool Reconciliar(EstadoInicial inicial, Guid? estadoDestinoId, DateTime ahoraUtc)
+    {
+        if (Tipo == inicial.Tipo && EsPrincipal == inicial.EsPrincipal && Orden == inicial.Orden
+            && Pasos == inicial.Pasos && EstadoDestinoId == estadoDestinoId)
+            return false;
+        AplicarEstandar(inicial, estadoDestinoId);
+        Tocar(ahoraUtc);
+        return true;
+    }
+
+    private void AplicarEstandar(EstadoInicial inicial, Guid? estadoDestinoId)
+    {
         Tipo = inicial.Tipo;
         EsPrincipal = inicial.EsPrincipal;
         Orden = inicial.Orden;
-        Tocar(ahoraUtc);
+        Pasos = inicial.Pasos;
+        EstadoDestinoId = estadoDestinoId;
     }
 
     /// <summary>Cambia nombre y código de Dairy Comp. El código interno y la identidad estándar no cambian nunca.</summary>

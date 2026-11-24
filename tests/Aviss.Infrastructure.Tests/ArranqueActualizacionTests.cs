@@ -44,14 +44,25 @@ public sealed class ArranqueActualizacionTests : IDisposable
     }
 
     /// <summary>
-    /// Las filas de antes siguen idénticas. Se deja afuera el catálogo de estados: al abrir, el arranque siembra los que falten
-    /// (las que ya estaban se comprueban una por una).
+    /// Las filas de antes siguen idénticas. Del catálogo de estados se compara solo la identidad (Id, código, código de Dairy
+    /// Comp y si está activo): al abrir, el arranque siembra los que falten y, la primera vez de la spec 005 (segunda vuelta),
+    /// renombra PREÑADA a "Preñada fecha correcta", así que el nombre y la fecha de actualización pueden cambiar (eso se
+    /// prueba aparte en SembradorPasosTests).
     /// </summary>
     private static void AssertIguales(Dictionary<string, List<string>> antes, Dictionary<string, List<string>> despues)
     {
+        static string Identidad(string fila)
+        {
+            var p = fila.Split('|');
+            return $"{p[0]}|{p[1]}|{p[3]}|{p[4]}";
+        }
         foreach (var (tabla, filas) in antes)
         {
-            if (tabla == "EstadoReproductivo") Assert.All(filas, f => Assert.Contains(f, despues[tabla]));
+            if (tabla == "EstadoReproductivo")
+            {
+                var ahora = despues[tabla].Select(Identidad).ToHashSet();
+                Assert.All(filas.Select(Identidad), f => Assert.Contains(f, ahora));
+            }
             else Assert.True(filas.SequenceEqual(despues[tabla]), $"La tabla {tabla} cambió.");
         }
     }

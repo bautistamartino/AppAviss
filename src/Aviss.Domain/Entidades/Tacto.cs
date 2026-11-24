@@ -32,15 +32,37 @@ public sealed class Tacto : EntidadEditable
 
     public bool Anulado { get; private set; }
 
+    /// <summary>
+    /// Spec 005 (segunda vuelta): el evento del catálogo que el veterinario eligió (Preñada fecha previa, Aborto), cuando es
+    /// distinto del estado en que queda la vaca. Nulo = el evento es el propio <see cref="EstadoNuevoId"/> (todo lo viejo).
+    /// Una anulación nunca lo copia: el tacto anulado conserva el suyo.
+    /// </summary>
+    public Guid? EventoId { get; private set; }
+
+    /// <summary>Días de preñez informados al elegir "Preñada fecha previa" (1 a 400). Distinto de <see cref="DiasPrenez"/>.</summary>
+    public int? DiasPreniezInformados { get; private set; }
+
+    /// <summary>Días de aborto informados al elegir "Aborto" (0 a 400).</summary>
+    public int? DiasAborto { get; private set; }
+
     private Tacto() { }
     private Tacto(DateTime ahoraUtc) : base(ahoraUtc) { }
 
     public static Tacto Registrar(
         Guid animalId, DateTime fechaHoraUtc, long ordenInsercion, Guid? estadoAnteriorId, Guid estadoNuevoId,
-        int? diasPrenez, string? observaciones, DateTime ahoraUtc)
+        int? diasPrenez, string? observaciones, DateTime ahoraUtc,
+        Guid? eventoId = null, int? diasPreniezInformados = null, int? diasAborto = null)
     {
         if (diasPrenez is int d && (d < ReglasTacto.DiasPrenezMinimo || d > ReglasTacto.DiasPrenezMaximo))
             throw new DominioException("Los días de preñez deben estar entre 0 y 300.");
+        if (diasPreniezInformados is int dp && !RangosDias.Preniez.Contiene(dp))
+            throw new DominioException($"Los días de preñez deben estar entre {RangosDias.Preniez.Minimo} y {RangosDias.Preniez.Maximo}.");
+        if (diasAborto is int da && !RangosDias.Aborto.Contiene(da))
+            throw new DominioException($"Los días de aborto deben estar entre {RangosDias.Aborto.Minimo} y {RangosDias.Aborto.Maximo}.");
+        if (diasPreniezInformados is not null && diasAborto is not null)
+            throw new DominioException("Un tacto no puede informar días de preñez y de aborto a la vez.");
+        if (eventoId is null && (diasPreniezInformados is not null || diasAborto is not null))
+            throw new DominioException("Los días informados necesitan el evento que los pide.");
         return new Tacto(ahoraUtc)
         {
             AnimalId = Validar.IdObligatorio(animalId, "El animal"),
@@ -50,7 +72,10 @@ public sealed class Tacto : EntidadEditable
             EstadoNuevoId = Validar.IdObligatorio(estadoNuevoId, "El estado nuevo"),
             DiasPrenez = diasPrenez,
             Observaciones = Validar.TextoOpcional(observaciones),
-            Tipo = TipoTacto.Normal
+            Tipo = TipoTacto.Normal,
+            EventoId = eventoId,
+            DiasPreniezInformados = diasPreniezInformados,
+            DiasAborto = diasAborto
         };
     }
 

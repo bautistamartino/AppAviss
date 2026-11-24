@@ -12,7 +12,7 @@ Tests primero en cada tarea de lógica. Ninguna tarea se da por terminada con `d
 
 ## Segunda vuelta: cambio de requisitos (RF-3, RF-6 a RF-10, RF-14, RF-16, RF-17 y RF-23 a RF-31)
 
-- [ ] **T6** — Dominio, base y siembra: migración `EventosConPasos`, Aborto con pasos, Preñada fecha previa, importación.
+- [x] **T6** — Dominio, base y siembra: migración `EventosConPasos`, Aborto con pasos, Preñada fecha previa, importación.
   - Qué se hace (tests primero):
     - Dominio: `PasoEvento`, `ResultadoAborto`, `RangosDias` (preñez 1 a 400, aborto 0 a 400), `ValidadorDias`, `ReglasResultadoAborto`; `EstadoReproductivo` con `Pasos` y `EstadoDestinoId` (`CrearEstandar` / `AdoptarComoEstandar` los reciben; no cambian nombre, código ni `Activo`); `Tacto` con `EventoId`, `DiasPreniezInformados`, `DiasAborto`; `Rechazo` con `DiasAborto`; `EstadosIniciales` con los **10** (Preñada fecha correcta = clave `PRENADA`; nueva `PRENADA_FECHA_PREVIA`, código provisorio `PREÑADA FECHA PREVIA`, destino `PRENADA`).
     - Migración `EventosConPasos` (EF genera Designer y snapshot; **`Up` a mano**, sin reconstruir tablas): columnas `Pasos` y `EstadoDestinoId` en `EstadoReproductivo`; `EventoId`, `DiasPreniezInformados` (1 a 400) y `DiasAborto` (0 a 400) en `Tacto`; `DiasAborto` en `Rechazo`; CHECK y FK con índices; Aborto pasa a `Tipo = Estado` con pasos y `Orden = 6`, NOINSEM `Orden = 7`; **recrear los triggers** (inmutabilidad de `Tacto` y de `Rechazo` con las columnas nuevas; inserción de `Rechazo` que acepta `SoloEvento` o Aborto; validez del evento en el insert de `Tacto`: ni `SoloEvento`, destino coherente, días solo si el evento los pide, Aborto solo con VACIA/INSEMIN/SECA/FRESCA). Leer antes los triggers reales de T1 y de la 004.

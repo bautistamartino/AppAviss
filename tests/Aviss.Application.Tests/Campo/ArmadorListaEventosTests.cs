@@ -10,7 +10,7 @@ public sealed class ArmadorListaEventosTests
     private static readonly DateTime Ahora = new(2026, 11, 1, 12, 0, 0, DateTimeKind.Utc);
 
     private static List<EstadoReproductivo> Estandar() =>
-        EstadosIniciales.Todos.Select(i => EstadoReproductivo.CrearEstandar(i, Ahora)).ToList();
+        EstadosIniciales.Todos.Select(i => EstadoReproductivo.CrearEstandar(i, Ahora, i.DestinoClave is null ? null : Guid.NewGuid())).ToList();
 
     private static EstadoReproductivo ABano(string nombre, int minutos = 0) =>
         EstadoReproductivo.Crear("E" + Guid.NewGuid().ToString("N").ToUpperInvariant(), nombre, nombre, Ahora.AddMinutes(minutos));
@@ -20,7 +20,7 @@ public sealed class ArmadorListaEventosTests
     {
         var lista = ArmadorListaEventos.Armar(Estandar());
 
-        Assert.Equal(["Revisar Nuevamente", "OK", "VACIA", "PREÑADA", "Aborto", "NOINSEM"], lista.Principales.Select(e => e.Nombre));
+        Assert.Equal(["Revisar Nuevamente", "OK", "VACIA", "Preñada fecha correcta", "Preñada fecha previa", "Aborto", "NOINSEM"], lista.Principales.Select(e => e.Nombre));
         Assert.Equal(["Rechazo", "FRESCA", "INSEMIN", "SECA"], lista.Otros.Select(e => e.Nombre));
         Assert.Equal(EventosCampo.Rechazo, lista.Otros[0].Id);
     }
@@ -32,7 +32,7 @@ public sealed class ArmadorListaEventosTests
         var porNombre = lista.Principales.Concat(lista.Otros).ToDictionary(e => e.Nombre);
 
         Assert.False(porNombre["OK"].CambiaEstado);
-        Assert.False(porNombre["Aborto"].CambiaEstado);
+        Assert.True(porNombre["Aborto"].CambiaEstado);       // desde la segunda vuelta Aborto cambia el estado (según su resultado)
         Assert.False(porNombre["Rechazo"].CambiaEstado);
         Assert.True(porNombre["VACIA"].CambiaEstado);
         Assert.True(porNombre["SECA"].CambiaEstado);
@@ -71,7 +71,7 @@ public sealed class ArmadorListaEventosTests
 
         var lista = ArmadorListaEventos.Armar(catalogo);
 
-        Assert.Equal(5, lista.Principales.Count);
+        Assert.Equal(6, lista.Principales.Count);
         Assert.DoesNotContain(lista.Principales, e => e.Nombre == "OK");
         Assert.DoesNotContain(lista.Otros, e => e.Nombre == "SECA");
     }

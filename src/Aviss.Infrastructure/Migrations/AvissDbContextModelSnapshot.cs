@@ -254,6 +254,9 @@ namespace Aviss.Infrastructure.Migrations
                         .HasColumnType("INTEGER")
                         .HasDefaultValue(false);
 
+                    b.Property<Guid?>("EstadoDestinoId")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("Nombre")
                         .IsRequired()
                         .HasColumnType("TEXT");
@@ -268,6 +271,9 @@ namespace Aviss.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER")
                         .HasDefaultValue(0);
+
+                    b.Property<string>("Pasos")
+                        .HasColumnType("TEXT");
 
                     b.Property<string>("Tipo")
                         .IsRequired()
@@ -288,6 +294,8 @@ namespace Aviss.Infrastructure.Migrations
                         .IsUnique()
                         .HasFilter("Activo = 1");
 
+                    b.HasIndex("EstadoDestinoId");
+
                     b.HasIndex("NombreClaveBd")
                         .IsUnique();
 
@@ -300,6 +308,8 @@ namespace Aviss.Infrastructure.Migrations
                             t.HasCheckConstraint("CK_Estado_EsPrincipal", "EsPrincipal IN (0,1)");
 
                             t.HasCheckConstraint("CK_Estado_Orden", "\"Orden\" >= 0");
+
+                            t.HasCheckConstraint("CK_Estado_Pasos", "Pasos IS NULL OR (length(Pasos) > 0 AND Pasos NOT GLOB '*[^A-Za-z,]*')");
 
                             t.HasCheckConstraint("CK_Estado_Tipo", "Tipo IN ('Estado','SoloEvento')");
                         });
@@ -445,6 +455,9 @@ namespace Aviss.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
+                    b.Property<int?>("DiasAborto")
+                        .HasColumnType("INTEGER");
+
                     b.Property<Guid?>("EventoId")
                         .HasColumnType("TEXT");
 
@@ -472,6 +485,10 @@ namespace Aviss.Infrastructure.Migrations
                             t.HasCheckConstraint("CK_Rechazo_Anulacion", "(Anulado = 0 AND AnuladoEnUtc IS NULL) OR (Anulado = 1 AND AnuladoEnUtc IS NOT NULL)");
 
                             t.HasCheckConstraint("CK_Rechazo_Anulado", "Anulado IN (0,1)");
+
+                            t.HasCheckConstraint("CK_Rechazo_DiasAborto", "DiasAborto IS NULL OR DiasAborto BETWEEN 0 AND 400");
+
+                            t.HasCheckConstraint("CK_Rechazo_DiasConEvento", "DiasAborto IS NULL OR EventoId IS NOT NULL");
                         });
                 });
 
@@ -555,13 +572,22 @@ namespace Aviss.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
+                    b.Property<int?>("DiasAborto")
+                        .HasColumnType("INTEGER");
+
                     b.Property<int?>("DiasPrenez")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("DiasPreniezInformados")
                         .HasColumnType("INTEGER");
 
                     b.Property<Guid?>("EstadoAnteriorId")
                         .HasColumnType("TEXT");
 
                     b.Property<Guid?>("EstadoNuevoId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("EventoId")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("FechaHoraUtc")
@@ -587,6 +613,8 @@ namespace Aviss.Infrastructure.Migrations
 
                     b.HasIndex("EstadoNuevoId");
 
+                    b.HasIndex("EventoId");
+
                     b.HasIndex("FechaHoraUtc");
 
                     b.HasIndex("OrdenInsercion")
@@ -604,7 +632,17 @@ namespace Aviss.Infrastructure.Migrations
                         {
                             t.HasCheckConstraint("CK_Tacto_Anulacion", "(Tipo = 'Anulacion') = (TactoAnuladoId IS NOT NULL)");
 
+                            t.HasCheckConstraint("CK_Tacto_AnulacionSinEvento", "Tipo = 'Normal' OR (EventoId IS NULL AND DiasPreniezInformados IS NULL AND DiasAborto IS NULL)");
+
                             t.HasCheckConstraint("CK_Tacto_Dias", "DiasPrenez IS NULL OR DiasPrenez BETWEEN 0 AND 300");
+
+                            t.HasCheckConstraint("CK_Tacto_DiasAborto", "DiasAborto IS NULL OR DiasAborto BETWEEN 0 AND 400");
+
+                            t.HasCheckConstraint("CK_Tacto_DiasConEvento", "EventoId IS NOT NULL OR (DiasPreniezInformados IS NULL AND DiasAborto IS NULL)");
+
+                            t.HasCheckConstraint("CK_Tacto_DiasExclusivos", "DiasPreniezInformados IS NULL OR DiasAborto IS NULL");
+
+                            t.HasCheckConstraint("CK_Tacto_DiasPreniezInformados", "DiasPreniezInformados IS NULL OR DiasPreniezInformados BETWEEN 1 AND 400");
 
                             t.HasCheckConstraint("CK_Tacto_EstadoNuevo", "Tipo = 'Anulacion' OR EstadoNuevoId IS NOT NULL");
 
@@ -644,6 +682,14 @@ namespace Aviss.Infrastructure.Migrations
                         .HasForeignKey("AnimalId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("Aviss.Domain.Entidades.EstadoReproductivo", b =>
+                {
+                    b.HasOne("Aviss.Domain.Entidades.EstadoReproductivo", null)
+                        .WithMany()
+                        .HasForeignKey("EstadoDestinoId")
+                        .OnDelete(DeleteBehavior.Restrict);
                 });
 
             modelBuilder.Entity("Aviss.Domain.Entidades.Manga", b =>
@@ -709,6 +755,11 @@ namespace Aviss.Infrastructure.Migrations
                     b.HasOne("Aviss.Domain.Entidades.EstadoReproductivo", null)
                         .WithMany()
                         .HasForeignKey("EstadoNuevoId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Aviss.Domain.Entidades.EstadoReproductivo", null)
+                        .WithMany()
+                        .HasForeignKey("EventoId")
                         .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("Aviss.Domain.Entidades.Tacto", null)

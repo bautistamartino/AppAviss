@@ -28,6 +28,18 @@ public enum AccionHistorial
 /// </summary>
 public enum TipoEvento { Estado, SoloEvento }
 
+/// <summary>
+/// Los pasos que un evento del catálogo puede pedir después de elegirlo (spec 005, RF-27). El evento los declara en su
+/// columna <c>Pasos</c> (nombres separados por coma); un único mecanismo de pantalla los recorre en orden.
+/// </summary>
+public enum PasoEvento { DiasPreniez, DiasAborto, ResultadoAborto }
+
+/// <summary>
+/// Cómo terminó un aborto (spec 005, RF-28). No se guarda en una columna: se deriva del estado del tacto (VACIA, INSEMIN,
+/// SECA, FRESCA) o de que el registro sea un <c>Rechazo</c>.
+/// </summary>
+public enum ResultadoAborto { VaciaOk, Inseminada, Seca, Fresca, Rechazo }
+
 /// <summary>En qué quedó una espera (spec 004, RF-13): pendiente, o resuelta (con un tacto o rechazo) o salteada.</summary>
 public enum EstadoEspera { Pendiente, Resuelta, Salteada }
 

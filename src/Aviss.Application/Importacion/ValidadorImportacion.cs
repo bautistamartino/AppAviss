@@ -95,13 +95,15 @@ public static class ValidadorImportacion
     /// <summary>
     /// Código de Dairy Comp (sin distinguir mayúsculas, sin normalizar acentos) → estado ACTIVO. Los dados de baja
     /// no entran, así que sus códigos cuentan como desconocidos (RF-11). Ante dos activos iguales gana el primero.
-    /// Spec 005: los eventos de tipo SoloEvento (OK, Aborto, Revisar Nuevamente) tampoco entran: no son un estado
+    /// Spec 005: los eventos que no son un estado inicial tampoco entran: los de tipo SoloEvento (OK, Revisar Nuevamente),
+    /// los que tienen destino (Preñada fecha previa) y los que piden pasos (Aborto, que ahora es de tipo Estado). No son un estado
     /// reproductivo, así que un RPRO igual a su código entra sin estado y con advertencia, como un código desconocido.
     /// </summary>
     private static Dictionary<string, Guid> IndexarEstadosActivos(IReadOnlyList<EstadoReproductivo> estados)
     {
         var mapa = new Dictionary<string, Guid>();
-        foreach (var e in estados.Where(e => e.Activo && e.Tipo == TipoEvento.Estado))
+        foreach (var e in estados.Where(e => e.Activo && e.Tipo == TipoEvento.Estado
+                     && e.EstadoDestinoId is null && string.IsNullOrEmpty(e.Pasos)))
             mapa.TryAdd(Caravana.CalcularClave(e.CodigoDairyComp.Trim()), e.Id);
         return mapa;
     }
