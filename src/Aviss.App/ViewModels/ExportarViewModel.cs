@@ -69,7 +69,7 @@ public sealed partial class ExportarViewModel : ObservableObject
     private RodeoParaExportarDto? _rodeoElegido;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(TextoConEvento), nameof(TextoSinEvento), nameof(HayCvetCero), nameof(TextoCvetCero), nameof(HayFueraDelArchivo), nameof(TextoFueraDelArchivo),
+    [NotifyPropertyChangedFor(nameof(TextoConEvento), nameof(TextoSinEvento), nameof(HayFueraDelArchivo), nameof(TextoFueraDelArchivo),
         nameof(HayJornada), nameof(TextoJornada), nameof(HayUltimaExportacion), nameof(TextoUltimaExportacion), nameof(PuedeGenerar))]
     [NotifyCanExecuteChangedFor(nameof(GenerarCsvCommand), nameof(GenerarXlsCommand))]
     private ResumenExportacionDto? _resumen;
@@ -107,10 +107,6 @@ public sealed partial class ExportarViewModel : ObservableObject
     public string TextoConEvento => Resumen is null ? "" : $"{Resumen.VacasConEvento} de {Resumen.TotalVacas} vacas con evento";
 
     public string TextoSinEvento => Resumen is null ? "" : $"Sin evento: {Resumen.VacasSinEvento}";
-
-    public bool HayCvetCero => Resumen is { VacasCvetCeroConRegistro: > 0 };
-
-    public string TextoCvetCero => Resumen is null ? "" : $"Con CVET 0 y registro guardado: {Resumen.VacasCvetCeroConRegistro} (salen vacías)";
 
     public bool HayFueraDelArchivo => Resumen is { VacasFueraDelArchivoConEvento: > 0 };
 

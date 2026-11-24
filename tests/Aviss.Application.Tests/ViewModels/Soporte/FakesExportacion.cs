@@ -40,7 +40,7 @@ public sealed class FakeExportacionService : IExportacionService
     {
         Resumenes.Add(rodeoId);
         if (ExcepcionAlResumir is not null) throw ExcepcionAlResumir;
-        return Task.FromResult(ResumenAEntregar ?? Resultado.Ok(new ResumenExportacionDto(rodeoId, 20, 12, 8, 0, null, null)));
+        return Task.FromResult(ResumenAEntregar ?? Resultado.Ok(new ResumenExportacionDto(rodeoId, 20, 12, 8, null, null)));
     }
 
     public async Task<Resultado<ExportacionEntregadaDto>> ExportarAsync(Guid rodeoId, FormatoExportacion formato, CancellationToken ct = default)

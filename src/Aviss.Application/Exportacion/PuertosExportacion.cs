@@ -10,17 +10,15 @@ namespace Aviss.Application.Exportacion;
 /// <param name="Jornada">El día local del registro vigente más reciente del rodeo; nulo si no hay ningún registro.</param>
 /// <param name="TotalVacas">Vacas del ARCHIVO original (las importadas y no anuladas; sin las altas en campo): el mismo criterio que la constancia.</param>
 /// <param name="VacasConEvento">Cuántas de esas vacas del archivo llevan evento.</param>
-/// <param name="VacasCvetCeroConRegistro">Vacas con CVET 0 que tienen registro en la jornada: salen vacías y el resumen las cuenta (RF-11).</param>
 /// <param name="VacasFueraDelArchivoConEvento">Vacas con evento que no figuran en el archivo (altas en campo o un ID repetido): están en <paramref name="ValoresPorCaravana"/> pero no salen en el archivo.</param>
 public sealed record DatosExportacion(
     IReadOnlyDictionary<string, ValoresExportacion> ValoresPorCaravana,
     DateOnly? Jornada,
     int TotalVacas,
     int VacasConEvento,
-    int VacasCvetCeroConRegistro,
     int VacasFueraDelArchivoConEvento = 0)
 {
-    /// <summary>Vacas que no llevan evento (no pasaron, CVET 0, anulados...): el "sin evento" del resumen.</summary>
+    /// <summary>Vacas que no llevan evento (no pasaron, anulados...): el "sin evento" del resumen.</summary>
     public int VacasSinEvento => TotalVacas - VacasConEvento;
 }
 

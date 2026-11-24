@@ -10,12 +10,12 @@ public sealed record RodeoParaExportarDto(Guid RodeoId, string RodeoNombre, Guid
 public sealed record UltimaExportacionDto(DateTime FechaUtc, string ArchivoNombre, FormatoExportacion Formato, int CantidadVacasConEvento);
 
 /// <summary>
-/// El resumen previo a generar (RF-2 y RF-11): cuántas vacas llevan evento, cuántas no, cuántas con CVET 0 tienen registro
-/// (salen vacías), el día de la jornada y la última exportación. El total y el "con evento" son de las vacas del archivo original
-/// (el mismo criterio que la constancia); las que llevan evento pero no están en el archivo (altas en campo, ID repetido) van aparte.
+/// El resumen previo a generar (RF-2): cuántas vacas llevan evento, cuántas no, el día de la jornada y la última exportación.
+/// El total y el "con evento" son de las vacas del archivo original (el mismo criterio que la constancia); las que llevan evento
+/// pero no están en el archivo (altas en campo, ID repetido) van aparte. Las vacas de CVET 0 tactadas a propósito cuentan como cualquier otra.
 /// </summary>
 public sealed record ResumenExportacionDto(
-    Guid RodeoId, int TotalVacas, int VacasConEvento, int VacasSinEvento, int VacasCvetCeroConRegistro,
+    Guid RodeoId, int TotalVacas, int VacasConEvento, int VacasSinEvento,
     DateOnly? Jornada, UltimaExportacionDto? UltimaExportacion, int VacasFueraDelArchivoConEvento = 0);
 
 /// <summary>
