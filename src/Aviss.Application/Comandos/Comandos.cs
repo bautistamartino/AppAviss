@@ -15,6 +15,8 @@ public sealed record CrearRodeoCommand(
 
 /// <summary>
 /// El tacto no trae fecha: la hora la toma el servicio de su reloj (RF-8b).
+/// Con <see cref="Eleccion"/> (evento con pasos: Preñada fecha previa, Aborto con estado) el <c>EstadoNuevoId</c> debe ser el mismo Id del evento elegido
+/// (el servicio resuelve el estado en que queda la vaca y revalida los datos).
 /// <see cref="EstadoAnteriorEsperado"/>: nulo = no informado (se toma el actual del animal);
 /// si no es nulo, lleva el estado que la pantalla creía que tenía el animal (o vacío si creía que no tenía).
 /// </summary>
@@ -23,7 +25,8 @@ public sealed record RegistrarTactoCommand(
     Guid EstadoNuevoId,
     int? DiasPrenez,
     string? Observaciones,
-    EstadoEsperado? EstadoAnteriorEsperado = null);
+    EstadoEsperado? EstadoAnteriorEsperado = null,
+    Aviss.Application.Campo.EleccionEvento? Eleccion = null);
 
 public sealed record AnularTactoCommand(Guid TactoId);
 

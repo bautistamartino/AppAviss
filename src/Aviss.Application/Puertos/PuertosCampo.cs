@@ -200,4 +200,4 @@ public readonly record struct HorarioDeRegistros(DateTime? PrimeroUtc, DateTime?
 /// <summary>El último registro de campo vigente de una vaca, sin importar de qué tipo sea.</summary>
 public sealed record RegistroCampoVigente(
     TipoRegistroCampo Tipo, Guid Id, DateTime FechaHoraUtc, long OrdenInsercion, Guid? EstadoId, Guid? MangaId,
-    string? Observaciones = null, Guid? EventoId = null);
+    string? Observaciones = null, Guid? EventoId = null, int? DiasPreniez = null, int? DiasAborto = null);

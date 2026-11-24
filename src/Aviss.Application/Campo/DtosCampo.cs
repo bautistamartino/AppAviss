@@ -133,7 +133,10 @@ public sealed record ResultadoDeshacerDto(
     TipoDeshacer Tipo, Guid? AnimalId, Guid? MangaId, int? NumeroManga, int? ContadorManga);
 
 /// <param name="RegistroId">Id del tacto, de la marca o del cierre: es lo que se manda a deshacer.</param>
-/// <param name="Detalle">Estado del tacto (nombre) o tipo de cierre.</param>
+/// <param name="Detalle">La descripción del evento ("Aborto, 45 días, Vacía OK", el estado del tacto, el nombre del solo evento) o el tipo de cierre.</param>
+/// <param name="DiasPreniez">Spec 005: días de preñez informados (Preñada fecha previa); precargan "Editar".</param>
+/// <param name="DiasAborto">Spec 005: días de aborto informados.</param>
+/// <param name="ResultadoAborto">Spec 005: el resultado del aborto, derivado del estado del tacto o de ser un registro de rechazo.</param>
 /// <param name="CantidadAviss">Solo en cierres: lo que contaba Aviss al cerrar, lo confirmado y el contador de hoy (RF-8).</param>
 /// <param name="Cvet">El CVET de la vaca (por qué estaba en la lista de tacto); vacío en los cierres o si el Excel no lo traía.</param>
 /// <param name="EventoId">Spec 005: el evento del registro (estado del tacto, solo evento o <see cref="EventosCampo.Rechazo"/>); sirve para resaltarlo al editar sin comparar nombres.</param>
@@ -153,7 +156,10 @@ public sealed record MovimientoDto(
     int? ContadorActual,
     string? Cvet = null,
     string? Observaciones = null,
-    Guid? EventoId = null);
+    Guid? EventoId = null,
+    int? DiasPreniez = null,
+    int? DiasAborto = null,
+    ResultadoAborto? ResultadoAborto = null);
 
 public sealed record RodeoParaTrabajarDto(
     Guid EstablecimientoId,
@@ -169,7 +175,25 @@ public sealed record RodeoParaTrabajarDto(
 /// tacto); un solo evento (OK, Aborto, Revisar Nuevamente, Rechazo) solo queda registrado. <see cref="EsPrincipal"/>: se ve siempre
 /// en la lista (si no, está detrás de "Otro evento").
 /// </summary>
-public sealed record EventoCampoDto(Guid Id, string Nombre, bool CambiaEstado, bool EsPrincipal);
+/// <param name="Pasos">Spec 005 (segunda vuelta): lo que el evento pide después de elegirlo (días de preñez, días de aborto, resultado).</param>
+/// <param name="EstadoDestinoId">El estado en que queda la vaca si no es el propio evento (Preñada fecha previa → PREÑADA).</param>
+/// <param name="ClaveEstandar">Identidad estable del evento estándar; nula en los creados a mano.</param>
+public sealed record EventoCampoDto(
+    Guid Id, string Nombre, bool CambiaEstado, bool EsPrincipal,
+    IReadOnlyList<PasoEvento> Pasos, Guid? EstadoDestinoId, string? ClaveEstandar)
+{
+    /// <summary>Un evento sin pasos (el Rechazo fijo y los eventos de antes de la segunda vuelta).</summary>
+    public EventoCampoDto(Guid Id, string Nombre, bool CambiaEstado, bool EsPrincipal)
+        : this(Id, Nombre, CambiaEstado, EsPrincipal, Array.Empty<PasoEvento>(), null, null) { }
+
+    public bool TienePasos => Pasos.Count > 0;
+}
 
 /// <summary>La lista de eventos en dos niveles: los principales (en su orden) y los de "Otro evento" (Rechazo primero, el resto alfabético).</summary>
-public sealed record ListaEventosDto(IReadOnlyList<EventoCampoDto> Principales, IReadOnlyList<EventoCampoDto> Otros);
+/// <param name="ResultadosAborto">Los resultados que se ofrecen al elegir Aborto: los de VACIA, INSEMIN, SECA y FRESCA activos, y Rechazo siempre (RF-28).</param>
+public sealed record ListaEventosDto(
+    IReadOnlyList<EventoCampoDto> Principales, IReadOnlyList<EventoCampoDto> Otros, IReadOnlyList<ResultadoAborto> ResultadosAborto)
+{
+    public ListaEventosDto(IReadOnlyList<EventoCampoDto> Principales, IReadOnlyList<EventoCampoDto> Otros)
+        : this(Principales, Otros, Array.Empty<ResultadoAborto>()) { }
+}

@@ -173,10 +173,10 @@ internal sealed class MarcaPasadaService
         UltimoRegistroDto? ultimoDto = null;
         if (ultimo is not null)
         {
-            string? estado = null;
-            // El estado de un tacto o el nombre del solo evento (OK, Aborto...) de un rechazo; el Rechazo fijo no tiene nombre propio.
-            if ((ultimo.EstadoId ?? ultimo.EventoId) is Guid estadoId)
-                estado = (await _estados.ObtenerAsync(estadoId, ct))?.Nombre;
+// La descripción del evento ("Aborto, 45 días, Vacía OK", el estado de un tacto, el solo evento de un rechazo); el Rechazo fijo no tiene nombre propio.
+            var catalogo = (await _estados.ListarAsync(ct)).ToDictionary(e => e.Id);
+            var estado = DescriptorEventos.Describir(catalogo, ultimo.EventoId, ultimo.EstadoId,
+                ultimo.DiasPreniez, ultimo.DiasAborto, ultimo.Tipo == TipoRegistroCampo.Rechazo);
             ultimoDto = new UltimoRegistroDto(ultimo.Tipo, ultimo.Id, ultimo.FechaHoraUtc, estado, numeroManga, ultimo.Observaciones);
         }
 

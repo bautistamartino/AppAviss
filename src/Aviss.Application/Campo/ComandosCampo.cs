@@ -24,7 +24,8 @@ public sealed record SaltearEsperaCommand(Guid AnimalId);
 /// Un "solo evento" (spec 005): un registro que no cambia el estado de la vaca. <see cref="EventoId"/> es un evento del catálogo de tipo
 /// SoloEvento (OK, Aborto, Revisar Nuevamente) o <see cref="EventosCampo.Rechazo"/> (el Rechazo fijo de la spec 004). <see cref="Observaciones"/> es el motivo o la nota.
 /// </summary>
-public sealed record RegistrarSoloEventoCommand(Guid AnimalId, Guid EventoId, string? Observaciones);
+/// <remarks>Segunda vuelta: con <see cref="Eleccion"/> (por ejemplo un Aborto con resultado Rechazo y sus días) el <c>EventoId</c> debe ser el mismo que el de la elección; el servicio lo revalida.</remarks>
+public sealed record RegistrarSoloEventoCommand(Guid AnimalId, Guid EventoId, string? Observaciones, EleccionEvento? Eleccion = null);
 
 public sealed record AnularRechazoCommand(Guid RechazoId);
 
@@ -32,7 +33,7 @@ public sealed record AnularRechazoCommand(Guid RechazoId);
 /// "Editar" un movimiento (RF-8): se anula el registro (un tacto o un rechazo) y se guarda uno nuevo. <see cref="Evento"/> es el
 /// Id de un evento del catálogo (un estado guarda un tacto; un solo evento guarda un registro sin cambio de estado) o <see cref="EventosCampo.Rechazo"/> (se guarda un rechazo).
 /// </summary>
-public sealed record CorregirRegistroCommand(Guid RegistroId, Guid Evento, string? Observaciones);
+public sealed record CorregirRegistroCommand(Guid RegistroId, Guid Evento, string? Observaciones, EleccionEvento? Eleccion = null);
 
 /// <summary>Eventos fijos de la lista de eventos de la ficha que no pertenecen al catálogo de estados.</summary>
 public static class EventosCampo

@@ -63,13 +63,17 @@ internal sealed class ArmadorFicha
 
     public async Task<FichaAnimalDto> ArmarAsync(Animal animal, CancellationToken ct)
     {
-        var estados = (await _estados.ListarAsync(ct)).ToDictionary(e => e.Id, e => e.Nombre);
-        string? Nombre(Guid? id) => id is Guid g && estados.TryGetValue(g, out var n) ? n : null;
+        var catalogo = (await _estados.ListarAsync(ct)).ToDictionary(e => e.Id);
+        string? Nombre(Guid? id) => id is Guid g && catalogo.TryGetValue(g, out var n) ? n.Nombre : null;
 
         var tactos = (await _tactos.ListarPorAnimalAsync(animal.Id, ct))
-            .Select(t => new TactoParaFicha(t.FechaHoraUtc, Nombre(t.EstadoNuevoId), t.Anulado));
+            // Con eventos con pasos el título dice todo: "Tacto: Aborto, 45 días, Vacía OK" (RF-25, RF-30).
+            .Select(t => new TactoParaFicha(t.FechaHoraUtc,
+                DescriptorEventos.Describir(catalogo, t.EventoId, t.EstadoNuevoId, t.DiasPreniezInformados, t.DiasAborto, false) ?? Nombre(t.EstadoNuevoId),
+                t.Anulado));
         var rechazos = (await _rechazos.ListarPorAnimalAsync(animal.Id, ct))
-            .Select(r => new RechazoParaFicha(r.Id, r.FechaHoraUtc, r.OrdenInsercion, r.Observaciones, r.Anulado, r.EventoId, Nombre(r.EventoId)));
+            .Select(r => new RechazoParaFicha(r.Id, r.FechaHoraUtc, r.OrdenInsercion, r.Observaciones, r.Anulado, r.EventoId,
+                DescriptorEventos.Describir(catalogo, r.EventoId, null, null, r.DiasAborto, esRechazo: true)));
         var armada = ConstructorFicha.Armar(animal.DatosOriginalesJson, tactos, _reloj.UtcAhora, _zona.Zona, rechazos);
         var enEspera = await _esperas.ObtenerPendienteAsync(animal.Id, ct) is not null;
 

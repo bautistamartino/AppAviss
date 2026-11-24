@@ -1,3 +1,4 @@
+using Aviss.Domain.Catalogo;
 using Aviss.Domain.Entidades;
 using Aviss.Domain.Enums;
 using Aviss.Domain.Reglas;
@@ -29,8 +30,17 @@ public static class ArmadorListaEventos
             .OrderBy(e => OrdenAlfabetico.Clave(e.Nombre), StringComparer.Ordinal).ThenBy(e => e.CreadoEnUtc)
             .Select(Dto));
 
-        return new ListaEventosDto(principales, otros);
+        // Los resultados del aborto se calculan sobre todo el catálogo (también si el estado es de "Otro evento").
+        var resultados = new List<ResultadoAborto>();
+        foreach (var r in ReglasResultadoAborto.Todos)
+        {
+            var clave = ReglasResultadoAborto.ClaveEstado(r);
+            if (clave is null || activos.Any(e => e.ClaveEstandar == clave)) resultados.Add(r);
+        }
+
+        return new ListaEventosDto(principales, otros, resultados);
     }
 
-    private static EventoCampoDto Dto(EstadoReproductivo e) => new(e.Id, e.Nombre, e.Tipo == TipoEvento.Estado, e.EsPrincipal);
+    private static EventoCampoDto Dto(EstadoReproductivo e)
+        => new(e.Id, e.Nombre, e.Tipo == TipoEvento.Estado, e.EsPrincipal, e.ListarPasos(), e.EstadoDestinoId, e.ClaveEstandar);
 }
