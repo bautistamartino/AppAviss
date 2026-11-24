@@ -242,4 +242,19 @@ public class ConstructorFichaTests
         Assert.Equal("0", mostrados["LECHE"]);
         Assert.Equal("0", f.Cvet);
     }
+
+    // ---- EID (spec 010, RF-17) ----
+
+    [Fact]
+    public void El_EID_del_Excel_no_sale_entre_los_extras_porque_la_ficha_lo_muestra_aparte()
+    {
+        var f = Armar("""{"ID":"30092","EID":"999 000 458013169","CVET":"PRE","LACT":"6","LECHE":"12"}""");
+
+        Assert.DoesNotContain(f.Extras!, c => c.Nombre.Equals("EID", StringComparison.OrdinalIgnoreCase));
+        Assert.Equal([("LECHE", "12")], f.Extras!.Select(c => (c.Nombre, c.Valor)));
+    }
+
+    [Fact]
+    public void El_EID_en_minusculas_tampoco_sale_entre_los_extras()
+        => Assert.Empty(Armar("""{"ID":"1","eid":"999000458013169"}""").Extras!);
 }
