@@ -19,6 +19,11 @@ public sealed class ResultadoValidacion
     public IReadOnlyList<AdvertenciaImportacion> Advertencias { get; init; } = [];
     public IReadOnlyList<ConteoEstado> ConteoPorEstado { get; init; } = [];
 
+    /// <summary>Spec 010: el archivo trae columna EID; con ella, cuántos animales entran con y sin EID.</summary>
+    public bool HayColumnaEid { get; init; }
+    public int ConEid { get; init; }
+    public int SinEid { get; init; }
+
     public bool PuedeConfirmar => Rechazo is null && Validas.Count > 0;
 }
 
@@ -55,6 +60,33 @@ public static class ValidadorImportacion
         foreach (var (fila, _) in repetidos)
             excluidas[fila.NumeroFila] = MotivoFila.IdRepetido;
 
+        // 3b. Spec 010: EID de las filas que siguen en pie. El EID NUNCA excluye una fila: uno inválido o repetido se
+        // descarta (el animal entra sin EID) y se avisa. Las excluidas por ID no participan (RF-6).
+        var eidPorFila = new Dictionary<int, string>();       // fila -> EID válido y no repetido
+        var filasEidInvalido = new List<int>();
+        var filasEidRepetido = new List<int>();
+        if (lectura.NombreColumnaEid is { } columnaEid)
+        {
+            var validos = new List<(int NumeroFila, string Eid)>();
+            foreach (var (fila, _) in conId)
+            {
+                if (excluidas.ContainsKey(fila.NumeroFila)) continue;
+                fila.Celdas.TryGetValue(columnaEid, out var celdaEid);
+                var r = ReglasEidImportacion.Evaluar(celdaEid);
+                if (r.Estado == EstadoEid.Invalido) filasEidInvalido.Add(fila.NumeroFila);
+                else if (r.Estado == EstadoEid.Valido) validos.Add((fila.NumeroFila, r.Valor!));
+            }
+
+            // Comparación ordinal, igual que el índice único de la base: si dos filas comparten EID, no se sabe cuál es la correcta.
+            foreach (var grupo in validos.GroupBy(v => v.Eid, StringComparer.Ordinal))
+            {
+                var filasGrupo = grupo.Select(v => v.NumeroFila).ToList();
+                if (filasGrupo.Count > 1) filasEidRepetido.AddRange(filasGrupo);
+                else eidPorFila[filasGrupo[0]] = grupo.Key;
+            }
+            filasEidRepetido.Sort();
+        }
+
         // 4. Las que quedan: estado (RPRO) y JSON de originales.
         var estadosPorCodigo = IndexarEstadosActivos(estados);
         var validas = new List<FilaAnimalImportada>(conId.Count);
@@ -79,16 +111,22 @@ public static class ValidadorImportacion
                 }
             }
 
-            validas.Add(new FilaAnimalImportada(fila.NumeroFila, caravana, estadoId, ArmarJson(lectura.Encabezados, fila)));
+            eidPorFila.TryGetValue(fila.NumeroFila, out var eid);   // nulo si no hay columna, venía "-", inválido o repetido
+            validas.Add(new FilaAnimalImportada(fila.NumeroFila, caravana, estadoId, ArmarJson(lectura.Encabezados, fila), eid));
         }
+
+        int conEid = validas.Count(v => v.IdElectronico is not null);
 
         return new ResultadoValidacion
         {
             FilasLeidas = lectura.Filas.Count,
             Validas = validas,
             Excluidas = excluidas.OrderBy(kv => kv.Key).Select(kv => new FilaExcluida(kv.Key, kv.Value)).ToList(),
-            Advertencias = ArmarAdvertencias(lectura, desconocidos.Values.ToList()),
-            ConteoPorEstado = ContarPorEstado(validas, estados)
+            Advertencias = ArmarAdvertencias(lectura, desconocidos.Values.ToList(), filasEidInvalido, filasEidRepetido),
+            ConteoPorEstado = ContarPorEstado(validas, estados),
+            HayColumnaEid = lectura.NombreColumnaEid is not null,
+            ConEid = conEid,
+            SinEid = lectura.NombreColumnaEid is null ? 0 : validas.Count - conEid
         };
     }
 
@@ -129,7 +167,8 @@ public static class ValidadorImportacion
     }
 
     private static List<AdvertenciaImportacion> ArmarAdvertencias(
-        LecturaExcel lectura, List<(string Valor, List<int> Filas)> desconocidos)
+        LecturaExcel lectura, List<(string Valor, List<int> Filas)> desconocidos,
+        List<int> filasEidInvalido, List<int> filasEidRepetido)
     {
         var lista = new List<AdvertenciaImportacion>();
 
@@ -148,6 +187,16 @@ public static class ValidadorImportacion
                 TipoAdvertencia.EstadoDesconocido,
                 $"El estado \"{valor}\" no está en el catálogo: {filas.Count} fila(s) se importan sin estado.",
                 valor, filas.Count, filas.Take(LimitesImportacion.MaxEjemplosAdvertencia).ToList()));
+
+        // Spec 010: avisos agrupados de EID, sin mostrar el valor (RF-19). Primero los inválidos, después los repetidos.
+        if (filasEidInvalido.Count > 0)
+            lista.Add(new AdvertenciaImportacion(
+                TipoAdvertencia.EidInvalido, MensajesImportacion.EidInvalido(filasEidInvalido.Count), null,
+                filasEidInvalido.Count, filasEidInvalido.Take(LimitesImportacion.MaxEjemplosAdvertencia).ToList()));
+        if (filasEidRepetido.Count > 0)
+            lista.Add(new AdvertenciaImportacion(
+                TipoAdvertencia.EidRepetido, MensajesImportacion.EidRepetido(filasEidRepetido.Count), null,
+                filasEidRepetido.Count, filasEidRepetido.Take(LimitesImportacion.MaxEjemplosAdvertencia).ToList()));
 
         return lista;
     }

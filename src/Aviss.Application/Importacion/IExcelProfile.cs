@@ -57,7 +57,8 @@ public sealed record LecturaExcel(
     string NombreColumnaEstado,
     IReadOnlyList<string> ColumnasOpcionalesFaltantes,
     IReadOnlyList<FilaLeida> Filas,
-    int? TotalDeclarado);
+    int? TotalDeclarado,
+    string? NombreColumnaEid = null);   // spec 010: encabezado original de la columna EID, o nulo si el archivo no la trae
 
 /// <summary>O bien una lectura, o bien el motivo por el que se rechaza el archivo entero (con su mensaje).</summary>
 public sealed class ResultadoLectura
