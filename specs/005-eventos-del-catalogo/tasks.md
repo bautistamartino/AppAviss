@@ -46,7 +46,7 @@ Tests primero en cada tarea de lógica. Ninguna tarea se da por terminada con `d
   - Hecho cuando: los tests de ViewModel cubren: los 7 principales y "Otro evento" en orden; elegir un evento sin pasos no guarda y habilita Entrar; Preñada fecha previa y Aborto usan el mismo mecanismo (nada se guarda con un paso abierto, Cancelar, Volver, validación, resumen en el casillero, reabrir con valores actuales); los 5 resultados con los desactivados fuera (Rechazo siempre); cuenta de toques (2 o 3 sin pasos); Entrar con cada evento llama al comando correcto; Editar precarga; el resaltado de todos los casos; tests de la capa de aplicación en verde.
   - Qué mirar en el emulador: nada todavía (la pantalla va en T9).
 
-- [ ] **T9** — Pantalla: 8 botones, paneles de días y de resultado, "+ Agregar evento".
+- [x] **T9** — Pantalla: 8 botones, paneles de días y de resultado, "+ Agregar evento".
   - Qué se hace:
     - `SelectorEventosView`: lista principal con 8 botones de 60 dp sin desplazar (alto máximo de la lista ≈ 560, o botones de 56 si hace falta) y barra visible por si hay más; **panel de días** (título del evento, campo numérico, mensaje de error, Cancelar, Confirmar o Siguiente, Volver); **panel de resultado** con los 5 botones (Vacía OK, Inseminada, Seca, Fresca, Rechazo), Volver y Cancelar; resumen en el casillero de la ficha; "+ Agregar evento" fijo (fuera del scroll) solo en "Otro evento".
     - `TrabajoPage` y `MovimientosPage` usan el selector con los pasos (en Editar con los datos precargados).

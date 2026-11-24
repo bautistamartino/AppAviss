@@ -569,7 +569,7 @@
                     <VerticalStackLayout Spacing="12" IsVisible="{Binding HayFormularioEvento, Converter={StaticResource Invertir}}">
                     <ctl:SelectorEventosView Selector="{Binding Selector}" NuevoEventoCommand="{Binding AbrirNuevoEventoCommand}" />
                     <Button Text="Cancelar" Style="{StaticResource BotonCampoSecundario}" HeightRequest="52" FontSize="20"
-                            Command="{Binding CerrarCuadroAgregarCommand}" />
+                            IsVisible="{Binding Selector.MostrandoLista}" Command="{Binding CerrarCuadroAgregarCommand}" />
                     </VerticalStackLayout>
                 </VerticalStackLayout>
             </Border>
