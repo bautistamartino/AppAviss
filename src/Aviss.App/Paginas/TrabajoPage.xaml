@@ -371,6 +371,38 @@
         </Grid>
 
 
+        <!-- "Leyó otra vaca" (spec 009, RF-2): con una ficha abierta, el bastón leyó otra vaca que entra en tacto. La nueva todavía NO
+             se marcó: el veterinario elige con tres botones grandes, pensados para una mano. Atrás de Android = Cancelar lectura. -->
+        <Grid IsVisible="{Binding HayConfirmarReemplazo}" BackgroundColor="{StaticResource CampoVelo}" Padding="14">
+            <Grid.GestureRecognizers><TapGestureRecognizer /></Grid.GestureRecognizers>
+            <Border BackgroundColor="White" StrokeThickness="6" Stroke="{StaticResource CampoAlerta}" Padding="18,16"
+                    HorizontalOptions="Fill" VerticalOptions="Center">
+                <VerticalStackLayout Spacing="12">
+                    <Label Text="Leyó otra vaca" Style="{StaticResource TituloCuadro}" FontSize="30" HorizontalTextAlignment="Center" />
+                    <Label Text="Ficha abierta" Style="{StaticResource TextoCampo}" FontSize="20" HorizontalTextAlignment="Center" />
+                    <Label Text="{Binding ReemplazoCaravanaActual}" Style="{StaticResource CaravanaGrande}" FontSize="44"
+                           HorizontalTextAlignment="Center" LineBreakMode="TailTruncation" />
+                    <Label Text="Vaca recién leída (todavía no se marcó)" Style="{StaticResource TextoCampo}" FontSize="20" HorizontalTextAlignment="Center" />
+                    <Label Text="{Binding ReemplazoCaravanaNueva}" Style="{StaticResource CaravanaGrande}" FontSize="44"
+                           HorizontalTextAlignment="Center" LineBreakMode="TailTruncation" />
+                    <Border IsVisible="{Binding HayReemplazoConEventoSinGuardar}" BackgroundColor="{StaticResource CampoAlerta}" StrokeThickness="0" Padding="14,10">
+                        <Label Text="{Binding TextoReemplazoAdvertencia}" TextColor="Black" FontSize="20" FontAttributes="Bold" />
+                    </Border>
+                    <Border IsVisible="{Binding HayMensajeCuadro}" BackgroundColor="{StaticResource CampoPeligro}" StrokeThickness="0" Padding="16,10">
+                        <Label Text="{Binding MensajeCuadro}" TextColor="White" FontSize="22" FontAttributes="Bold" />
+                    </Border>
+                    <Grid RowDefinitions="Auto,Auto,Auto" RowSpacing="10" Margin="0,8,0,0">
+                        <Button Grid.Row="0" Text="Poner en espera y abrir la nueva" Style="{StaticResource BotonCampo}"
+                                Command="{Binding PonerEnEsperaYAbrirNuevaCommand}" />
+                        <Button Grid.Row="1" Text="Cancelar lectura" Style="{StaticResource BotonCampoSecundario}"
+                                Command="{Binding CancelarLecturaCommand}" />
+                        <Button Grid.Row="2" Text="Saltar la actual y abrir la nueva" Style="{StaticResource BotonCampoPeligro}"
+                                Command="{Binding SaltarYAbrirNuevaCommand}" />
+                    </Grid>
+                </VerticalStackLayout>
+            </Border>
+        </Grid>
+
         <!-- Verificación de "Finalizar manga" / "Terminar el tacto" (RF-6): contador y caravanas -->
         <Grid IsVisible="{Binding HayVerificacion}" BackgroundColor="{StaticResource CampoVelo}" Padding="14">
             <Grid.GestureRecognizers><TapGestureRecognizer /></Grid.GestureRecognizers>

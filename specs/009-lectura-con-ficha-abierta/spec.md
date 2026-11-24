@@ -94,7 +94,7 @@ Esta spec **modifica** el texto de los requisitos de abajo. Al aprobarse, se les
 - **Vaca nueva ya procesada hoy:** aviso de repetido; sin las tres opciones (RF-8.4). Si el veterinario toca "Ver ficha" abre esa ficha con un toque explícito (pregunta 1).
 - **Vaca actual con CVET 0:** si se abrió con "Ver ficha", es una ficha con tacto abierta como cualquier otra: una lectura de otra vaca que entra en tacto muestra el aviso de tres opciones (RF-8.5). Al tactarla o ponerla en espera se guarda como a cualquier vaca.
 - **Vaca de CVET 0 con datos "vacíos":** la ficha debe mostrar sus datos aunque el CVET sea 0 y aunque `LECHE` sea 0; solo se omiten las columnas sin valor (RF-15). Caso de referencia: vaca 1019 del rodeo BAUTI1.
-- **Vaca de CVET 0 ya tactada y exportación:** ver pregunta abierta 3.
+- **Vaca de CVET 0 ya tactada y exportación:** sale en el archivo como cualquier otra (spec 007 RF-11, ya modificada el 2026-11-24).
 - **Lectura mientras el evento o la observación están abiertos como cuadro:** esos cuadros ya frenan las lecturas (spec 003 RF-19); la lectura se procesa al cerrarlos y recién ahí aparece el aviso (RF-1).
 - **Dos lecturas seguidas de vacas distintas con el aviso abierto:** se conserva la última; la primera no se marca (RF-9). Antes, las dos quedaban marcadas.
 - **Manga que se completa con la vaca nueva:** el cierre automático por cantidad corre al marcarla, como siempre (RF-12). Con "Cancelar la lectura" no corre.
@@ -103,23 +103,23 @@ Esta spec **modifica** el texto de los requisitos de abajo. Al aprobarse, se les
 - **Varios veterinarios o tambos en la misma tablet:** sin efecto: la app no registra veterinario ni tablet (spec 006) y las lecturas se buscan solo en el rodeo en trabajo.
 
 ## Criterios de aceptación
-- [ ] Con la ficha de una vaca con CVET distinto de 0 abierta, leer otra vaca con CVET distinto de 0 que no pasó hoy muestra el aviso con las dos caravanas y las tres opciones, y **no marca** a la nueva (el conteo y el avance no cambian) (RF-1, RF-2).
-- [ ] El aviso aparece igual con y sin evento u observación elegidos, y cuando hay algo elegido lo dice (RF-1, RF-2).
-- [ ] "Poner en espera la actual y abrir la nueva": la actual aparece en la botonera de En espera, la nueva queda marcada (el conteo suma uno) y su ficha se abre (RF-3, RF-12).
-- [ ] "Cancelar la lectura" (y el botón Atrás): la nueva no se marca ni cuenta, la ficha actual sigue abierta con su evento y su observación, y no queda ningún registro (RF-2, RF-4, RF-12, RF-13).
-- [ ] "Saltar la actual y abrir la nueva": la actual se cierra sin tacto, la nueva queda marcada y se abre su ficha (RF-5).
-- [ ] Una vaca nueva en espera pasa por el aviso y, al abrirse, no se marca otra vez ni suma (RF-6).
-- [ ] Con la actual viniendo de una espera: la opción 1 la deja pendiente sin crear otra, y la opción 3 la deja salteada (RF-7).
-- [ ] Misma vaca: se ignora. CVET 0: se marca y suena la chicharra, y la ficha abierta sigue abierta. No encontrada: la ficha sigue ahí al cerrar. Ya procesada: aviso de repetido y "Seguir" no cierra la ficha. Ficha de CVET 0 abierta con "Ver ficha": cuenta como ficha con tacto abierta y una lectura de otra vaca que entra en tacto muestra el aviso (RF-8).
-- [ ] Con el aviso abierto, varias lecturas dejan solo la última, la del mismo código se ignora, y se procesa al cerrar con el resultado de la opción elegida (RF-9).
-- [ ] Si "En espera" o "Saltar" fallan, el motivo se ve en el aviso, no cambia nada y el aviso sigue abierto; si falla la marca de la nueva después de cerrar la actual, la actual conserva su espera o salto y la nueva queda sin marcar (RF-10).
-- [ ] Cerrar y reabrir la app con el aviso abierto no deja ninguna marca de la vaca nueva ni pierde nada (RF-11).
-- [ ] El cierre automático de la manga corre al marcar con las opciones 1 y 3, y no con "Cancelar" (RF-12).
-- [ ] No hay migración nueva; `dotnet ef migrations has-pending-model-changes` sin cambios (RF-13).
-- [ ] **Ficha de CVET 0 completa (RF-15):** con la vaca 1019 del rodeo BAUTI1 (datos originales `{"ID":"1019","CVET":"0","LACT":"2","DEL":"211","FPART":"23/04/26","FCELO":"10/07/26","UTORO":"WINDSTAR","DDUC":"133","DCC":"133","RPRO":"PREÑADA","FAPAR":"18/04/27","LECHE":"0"}`), "Ver ficha" abre una ficha cuya pestaña Datos muestra `LACT` 2, `DEL` 211, `FPART`, `FCELO`, `UTORO` WINDSTAR, `DDUC` 133, `DCC` 133, `RPRO` PREÑADA, `FAPAR` y `LECHE` 0, con el cartel informativo "CVET 0: no estaba en la lista de tacto", los casilleros Evento y Observación y los botones Saltar, En espera y Entrar. Un test arma la ficha con esos datos y comprueba cada campo (RF-15).
-- [ ] Una vaca de CVET 0 abierta con "Ver ficha" se puede tactar (Entrar guarda el tacto, sin volver a marcar ni sumar al conteo) y poner en espera (RF-15), y con esa ficha abierta, leer otra vaca que entra en tacto muestra el aviso de tres opciones (RF-8.5).
+- [x] Con la ficha de una vaca con CVET distinto de 0 abierta, leer otra vaca con CVET distinto de 0 que no pasó hoy muestra el aviso con las dos caravanas y las tres opciones, y **no marca** a la nueva (el conteo y el avance no cambian) (RF-1, RF-2).
+- [x] El aviso aparece igual con y sin evento u observación elegidos, y cuando hay algo elegido lo dice (RF-1, RF-2).
+- [x] "Poner en espera la actual y abrir la nueva": la actual aparece en la botonera de En espera, la nueva queda marcada (el conteo suma uno) y su ficha se abre (RF-3, RF-12).
+- [x] "Cancelar la lectura" (y el botón Atrás): la nueva no se marca ni cuenta, la ficha actual sigue abierta con su evento y su observación, y no queda ningún registro (RF-2, RF-4, RF-12, RF-13).
+- [x] "Saltar la actual y abrir la nueva": la actual se cierra sin tacto, la nueva queda marcada y se abre su ficha (RF-5).
+- [x] Una vaca nueva en espera pasa por el aviso y, al abrirse, no se marca otra vez ni suma (RF-6).
+- [x] Con la actual viniendo de una espera: la opción 1 la deja pendiente sin crear otra, y la opción 3 la deja salteada (RF-7).
+- [x] Misma vaca: se ignora. CVET 0: se marca y suena la chicharra, y la ficha abierta sigue abierta. No encontrada: la ficha sigue ahí al cerrar. Ya procesada: aviso de repetido y "Seguir" no cierra la ficha. Ficha de CVET 0 abierta con "Ver ficha": cuenta como ficha con tacto abierta y una lectura de otra vaca que entra en tacto muestra el aviso (RF-8).
+- [x] Con el aviso abierto, varias lecturas dejan solo la última, la del mismo código se ignora, y se procesa al cerrar con el resultado de la opción elegida (RF-9).
+- [x] Si "En espera" o "Saltar" fallan, el motivo se ve en el aviso, no cambia nada y el aviso sigue abierto; si falla la marca de la nueva después de cerrar la actual, la actual conserva su espera o salto y la nueva queda sin marcar (RF-10).
+- [x] Cerrar y reabrir la app con el aviso abierto no deja ninguna marca de la vaca nueva ni pierde nada (RF-11).
+- [x] El cierre automático de la manga corre al marcar con las opciones 1 y 3, y no con "Cancelar" (RF-12).
+- [x] No hay migración nueva; `dotnet ef migrations has-pending-model-changes` sin cambios (RF-13).
+- [x] **Ficha de CVET 0 completa (RF-15):** con la vaca 1019 del rodeo BAUTI1 (datos originales `{"ID":"1019","CVET":"0","LACT":"2","DEL":"211","FPART":"23/04/26","FCELO":"10/07/26","UTORO":"WINDSTAR","DDUC":"133","DCC":"133","RPRO":"PREÑADA","FAPAR":"18/04/27","LECHE":"0"}`), "Ver ficha" abre una ficha cuya pestaña Datos muestra `LACT` 2, `DEL` 211, `FPART`, `FCELO`, `UTORO` WINDSTAR, `DDUC` 133, `DCC` 133, `RPRO` PREÑADA, `FAPAR` y `LECHE` 0, con el cartel informativo "CVET 0: no estaba en la lista de tacto", los casilleros Evento y Observación y los botones Saltar, En espera y Entrar. Un test arma la ficha con esos datos y comprueba cada campo (RF-15).
+- [x] Una vaca de CVET 0 abierta con "Ver ficha" se puede tactar (Entrar guarda el tacto, sin volver a marcar ni sumar al conteo) y poner en espera (RF-15), y con esa ficha abierta, leer otra vaca que entra en tacto muestra el aviso de tres opciones (RF-8.5).
 - [ ] **A verificar en la tablet** (no con tests): los tres botones se alcanzan con una mano en 800x1340 y se distinguen de un vistazo; el sonido o vibración se nota con la vaca en la manga; Atrás cancela; con el bastón real que repite la lectura, el aviso no reaparece mientras está abierto (RF-2, RF-9, RF-14).
-- [ ] `dotnet build` y `dotnet test` en verde.
+- [x] `dotnet build` y `dotnet test` en verde.
 
 ## Decisiones
 **Del responsable (2026-11-24):**
@@ -149,5 +149,5 @@ Esta spec **modifica** el texto de los requisitos de abajo. Al aprobarse, se les
 ## Preguntas abiertas
 1. **Toques explícitos con una ficha abierta** (botonera de espera, lista de espera, "Ver ficha" y "Corregir" del aviso de repetido): hoy reemplazan la ficha actual sin preguntar. **Recomendación:** dejarlos así (el veterinario eligió esa vaca con el dedo, no por un error del bastón) y revisarlo después de usar la app en la tablet. Si se prefiere que también pregunten, el aviso se reutiliza tal cual y es una tarea más chica en otra spec.
 2. **"Seguir" del aviso de repetido deja abierta la ficha con tacto** (RF-8.4, decisión 9): es un cambio chico al comportamiento de hoy que no estaba en el pedido. **Recomendación:** confirmarlo; si no, se vuelve a cerrar la ficha como hoy y se quita ese punto de RF-8.4. *(Confirmado por el responsable al aprobar.)*
-3. **Exportación de una vaca de CVET 0 que se tactó (cambia la spec 007 RF-11):** la 007 deja vacías las columnas nuevas de las vacas con CVET 0 **aunque tengan un registro guardado** (y las cuenta en el resumen), con el supuesto de que "no debería pasar: la ficha no abre". Ahora puede pasar a propósito. **Recomendación:** una vaca de CVET 0 **con registro vigente (tacto o rechazo de hoy) debe salir en el archivo** como cualquier otra, porque si no el veterinario tacta y el dato no vuelve a Dairy Comp; las de CVET 0 sin registro siguen saliendo vacías. Hay que modificar 007 RF-11, su caso límite de CVET 0, el criterio de aceptación y la pregunta 8, y su plan/tests; **no se toca la 007 ni se planifica hasta que el responsable lo decida** (esta spec solo guarda la vaca, como cualquier otra, en la base).
+3. **Exportación de una vaca de CVET 0 que se tactó:** *(Resuelta el 2026-11-24, fuera de esta spec.)* La spec 007 RF-11 ya quedó modificada y la exportación implementada: una vaca de CVET 0 con registro vigente (tacto o rechazo de hoy) sale en el archivo como cualquier otra; las de CVET 0 sin registro siguen saliendo vacías. Esta spec no toca la exportación.
 4. **Specs 005 (eventos del catálogo) y 007:** la 005 solo dice que las vacas de CVET 0 no abren ficha con la lista de eventos (sin cambios: la lectura sigue sin abrirla; "Ver ficha" abre la lista completa). No hay otro efecto.
