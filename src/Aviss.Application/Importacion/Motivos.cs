@@ -37,6 +37,14 @@ public static class MensajesImportacion
     /// <summary>Texto exacto pedido por la spec (RF-15).</summary>
     public const string EstablecimientoRepetido = "Ya existe un establecimiento con ese nombre; elegilo de la lista.";
 
+    /// <summary>Spec 010 RF-4: texto fijo, sin el valor del EID (RF-19).</summary>
+    public static string EidInvalido(int cantidad)
+        => $"El EID de {cantidad} fila(s) no tiene 15 dígitos; esos animales se importan sin EID.";
+
+    /// <summary>Spec 010 RF-5: texto fijo, sin el valor del EID (RF-19).</summary>
+    public static string EidRepetido(int cantidad)
+        => $"{cantidad} fila(s) comparten el mismo EID; esos animales se importan sin EID.";
+
     public static string Para(MotivoFila motivo) => motivo switch
     {
         MotivoFila.IdVacio => "La fila no tiene número de caravana (ID).",

@@ -22,7 +22,7 @@ public sealed class ImportacionRendimientoTests : IDisposable
     {
         using var libro = new HSSFWorkbook();
         var hoja = libro.CreateSheet("Hoja1");
-        string[] encabezados = ["ID", "CVET", "FPART", "LACT", "DEL", "COM", "RPRO"];
+        string[] encabezados = ["ID", "CVET", "FPART", "LACT", "DEL", "COM", "RPRO", "EID"];   // EID: spec 010 (RF-20)
         var fila0 = hoja.CreateRow(0);
         for (var c = 0; c < encabezados.Length; c++) fila0.CreateCell(c).SetCellValue(encabezados[c]);
         string[] estados = ["PREÑADA", "INSEMIN", "SECA", "VACIA", "FRESCA", "NOINSEM", ""];
@@ -36,6 +36,7 @@ public sealed class ImportacionRendimientoTests : IDisposable
             f.CreateCell(4).SetCellValue(i % 400);
             f.CreateCell(5).SetCellValue("observación " + (i % 50));
             f.CreateCell(6).SetCellValue(estados[i % estados.Length]);
+            f.CreateCell(7).SetCellValue("999" + i.ToString("D12"));   // EID de 15 dígitos, todos distintos (cuenta la detección de repetidos)
         }
         using var ms = new MemoryStream();
         libro.Write(ms, true);
@@ -52,6 +53,7 @@ public sealed class ImportacionRendimientoTests : IDisposable
         var lectura = reloj.Elapsed;
         Assert.True(prep.EsCorrecto, prep.Mensaje);
         Assert.Equal(LimitesImportacion.MaxFilas, prep.Valor.Validas.Count);
+        Assert.Equal(LimitesImportacion.MaxFilas, prep.Valor.ConEid);
 
         reloj.Restart();
         var r = await _e.Importacion.ConfirmarAsync(new ConfirmarImportacionCommand(prep.Valor.Id, null, "Tambo grande", "Rodeo grande", false));

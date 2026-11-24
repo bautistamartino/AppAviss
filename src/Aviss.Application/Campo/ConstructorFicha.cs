@@ -102,7 +102,9 @@ public static class ConstructorFicha
     // extras (spec 009, RF-15): son datos del Excel que el veterinario quiere ver, también en la ficha de una vaca con CVET 0.
     private static readonly HashSet<string> ColumnasPropias = new(StringComparer.OrdinalIgnoreCase)
     {
-        "ID", "CVET", "LACT", "DEL", "FPART", "FAPAR", "COM", "VINS", "UTORO"
+        "ID", "CVET", "LACT", "DEL", "FPART", "FAPAR", "COM", "VINS", "UTORO",
+        // EID (spec 010): la ficha lo muestra una sola vez, con el valor guardado en el animal (no la celda original).
+        "EID"
     };
 
     /// <summary>

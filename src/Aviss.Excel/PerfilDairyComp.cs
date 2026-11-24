@@ -179,6 +179,9 @@ public sealed class PerfilDairyComp : IExcelProfile
         string? nombreEstado = encabezados.FirstOrDefault(e => Igual(e.Nombre, "RPRO")).Nombre;
         if (nombreEstado is null) return ResultadoLectura.Rechazado(MotivoRechazoArchivo.FaltaColumna, "RPRO");
 
+        // Spec 010: columna EID opcional. NO va en ColumnasOpcionales: un archivo sin EID se importa como siempre, sin aviso.
+        string? nombreEid = encabezados.FirstOrDefault(e => Igual(e.Nombre, "EID")).Nombre;
+
         var repetido = encabezados.GroupBy(e => e.Nombre, StringComparer.OrdinalIgnoreCase).FirstOrDefault(g => g.Count() > 1);
         if (repetido is not null)
             return ResultadoLectura.Rechazado(MotivoRechazoArchivo.EncabezadoDuplicado, repetido.First().Nombre);
@@ -238,7 +241,8 @@ public sealed class PerfilDairyComp : IExcelProfile
             nombreEstado,
             opcionalesFaltantes,
             filas,
-            totalDeclarado));
+            totalDeclarado,
+            nombreEid));
     }
 
     // ---- Detección de formato y contraseña ----
