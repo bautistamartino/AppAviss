@@ -9,10 +9,11 @@ public static class MensajesExportacion
     public const string ExportacionNoValida = "El archivo generado no coincide con el original, así que no se entregó. No se guardó nada; probá de nuevo.";
     public const string ConstanciaNoGuardada = "El archivo se guardó, pero no quedó registrada la exportación en la app.";
 
-    /// <summary>RF-14: nombra las columnas nuevas (no son datos del tambo) para que el veterinario sepa cuál chocó.</summary>
-    public static string ColumnaDuplicada()
-        => "El archivo original ya trae una columna con el nombre de una de las nuevas ("
-           + string.Join(", ", ColumnasExportacion.Todas.Select(c => c.Nombre)) + "). No se generó nada.";
+    public const string CsvNoAdmiteCaracteres = "El archivo tiene un carácter que el CSV no admite. Exportalo en Excel (.xls). No se generó nada.";
+
+    /// <summary>RF-14: nombra la columna nueva que chocó (un nombre fijo de la app, no un dato del tambo).</summary>
+    public static string ColumnaDuplicada(string columna)
+        => $"El archivo original ya trae una columna llamada {columna}, que es una de las nuevas. No se generó nada.";
 
     public static string Para(FalloGuardado fallo) => fallo switch
     {

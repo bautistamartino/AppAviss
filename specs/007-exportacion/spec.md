@@ -53,7 +53,7 @@ Hasta ahora Aviss solo importa y guarda (specs 002 a 006). Esta spec cierra el c
 
 ### Pantalla y flujo
 - **RF-1** — Cuando el veterinario toca "Exportar" en la pantalla de inicio, el sistema deberá mostrar los rodeos activos, agrupados por establecimiento, con su cantidad de vacas.
-- **RF-2** — Cuando el veterinario elige un rodeo, el sistema deberá mostrar un resumen antes de generar: cuántas vacas del archivo tienen evento para exportar y cuántas no, y, si ya se exportó antes, la fecha y hora de la última exportación y cuántas vacas llevaba.
+- **RF-2** — Cuando el veterinario elige un rodeo, el sistema deberá mostrar un resumen antes de generar: cuántas vacas del archivo original tienen evento para exportar y cuántas no (el mismo criterio que la constancia), mostrar aparte, con una línea corta fija, las vacas con evento que no están en el archivo (altas en campo o ID repetido) cuando las haya, y, si ya se exportó antes, la fecha y hora de la última exportación y cuántas vacas llevaba.
 - **RF-3** — El sistema deberá pedir el **formato (CSV o .xls) recién en la pantalla de exportar, antes de generar**, sin ninguno elegido de antemano, y no deberá generar nada hasta que el veterinario lo elija.
 
 ### El archivo de vuelta

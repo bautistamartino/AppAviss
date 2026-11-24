@@ -35,8 +35,11 @@ public sealed class ExportadorDairyComp : IExportadorArchivo
 
         // RF-14: si el original ya trae una columna con el nombre de una nueva (sin distinguir mayúsculas), no hay forma segura de
         // elegir cuál manda: se rechaza sin escribir nada.
-        if (lectura.Encabezados.Any(e => ColumnasExportacion.Todas.Any(c => string.Equals(c.Nombre, e, StringComparison.OrdinalIgnoreCase))))
-            return ResultadoGeneracionArchivo.Fallido(FalloGeneracion.ColumnaDuplicada);
+        // Se devuelve el nombre de la columna NUEVA que choca (un texto fijo de la app), nunca el encabezado del archivo.
+        var choca = ColumnasExportacion.Todas.FirstOrDefault(c =>
+            lectura.Encabezados.Any(e => string.Equals(c.Nombre, e, StringComparison.OrdinalIgnoreCase)));
+        if (choca is not null)
+            return ResultadoGeneracionArchivo.Fallido(FalloGeneracion.ColumnaDuplicada, choca.Nombre);
 
         try
         {
@@ -46,7 +49,11 @@ public sealed class ExportadorDairyComp : IExportadorArchivo
             if (formato == FormatoExportacion.Xls)
                 bytes = EscritorXls.Escribir(hoja, lectura, valoresPorFila);
             else if (PerfilDairyComp.EsLibroOle2(original))
+            {
                 bytes = EscritorCsv.DesdeHoja(hoja, lectura, valoresPorFila);
+                // Desde un .xls, el único motivo de no poder escribir es un carácter que Latin-1 no tiene: se orienta al .xls.
+                if (bytes is null) return ResultadoGeneracionArchivo.Fallido(FalloGeneracion.CsvNoAdmiteCaracteres);
+            }
             else
             {
                 var csv = LectorCsv.Analizar(original);

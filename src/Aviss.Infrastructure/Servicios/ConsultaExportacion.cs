@@ -28,7 +28,7 @@ public sealed class ConsultaExportacion : IConsultaExportacion
     }
 
     // Lo que se lee de la base, sin tipos anónimos para poder pasarlo entre métodos.
-    private sealed record AnimalLeido(Guid Id, string NumeroCaravana, string? DatosOriginalesJson);
+    private sealed record AnimalLeido(Guid Id, string NumeroCaravana, string? DatosOriginalesJson, OrigenAnimal Origen);
     private sealed record TactoLeido(Guid AnimalId, DateTime FechaHoraUtc, long OrdenInsercion, Guid? EstadoNuevoId, Guid? EventoId, int? DiasPreniezInformados, int? DiasAborto);
     private sealed record RechazoLeido(Guid AnimalId, DateTime FechaHoraUtc, long OrdenInsercion, Guid? EventoId, int? DiasAborto);
     private sealed record EstadoLeido(Guid Id, string Nombre, string? ClaveEstandar);
@@ -81,7 +81,13 @@ public sealed class ConsultaExportacion : IConsultaExportacion
             valores[porVaca.Key] = ArmadorValoresExportacion.Armar(elegido, zona);
         }
 
-        return new DatosExportacion(valores, jornada.Dia, lectura.Animales.Count, valores.Count, cvetCeroConRegistro);
+        // "Vacas del archivo" = las importadas (cada una es una fila del original). Las altas en campo no tienen fila, y un ID repetido
+        // no se importa: aunque lleven valores, no salen en el archivo, así que el resumen las cuenta aparte (RF-2).
+        var clavesDelArchivo = lectura.Animales.Where(a => a.Origen == OrigenAnimal.Importado).Select(a => infoAnimal[a.Id].Clave).ToHashSet();
+        var conEventoEnElArchivo = valores.Keys.Count(clavesDelArchivo.Contains);
+
+        return new DatosExportacion(valores, jornada.Dia, clavesDelArchivo.Count, conEventoEnElArchivo, cvetCeroConRegistro,
+            valores.Count - conEventoEnElArchivo);
     }
 
     /// <summary>
@@ -121,7 +127,7 @@ public sealed class ConsultaExportacion : IConsultaExportacion
     {
         var animales = await _db.Animales.AsNoTracking()
             .Where(a => a.RodeoId == rodeoId && !a.Anulado)
-            .Select(a => new AnimalLeido(a.Id, a.NumeroCaravana, a.DatosOriginalesJson))
+            .Select(a => new AnimalLeido(a.Id, a.NumeroCaravana, a.DatosOriginalesJson, a.Origen))
             .ToListAsync(ct);
 
         // Solo los tactos Normal vigentes: las anulaciones y los tactos anulados no cuentan (RF-12).

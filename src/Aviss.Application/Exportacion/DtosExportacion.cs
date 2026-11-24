@@ -11,11 +11,12 @@ public sealed record UltimaExportacionDto(DateTime FechaUtc, string ArchivoNombr
 
 /// <summary>
 /// El resumen previo a generar (RF-2 y RF-11): cuántas vacas llevan evento, cuántas no, cuántas con CVET 0 tienen registro
-/// (salen vacías), el día de la jornada y la última exportación.
+/// (salen vacías), el día de la jornada y la última exportación. El total y el "con evento" son de las vacas del archivo original
+/// (el mismo criterio que la constancia); las que llevan evento pero no están en el archivo (altas en campo, ID repetido) van aparte.
 /// </summary>
 public sealed record ResumenExportacionDto(
     Guid RodeoId, int TotalVacas, int VacasConEvento, int VacasSinEvento, int VacasCvetCeroConRegistro,
-    DateOnly? Jornada, UltimaExportacionDto? UltimaExportacion);
+    DateOnly? Jornada, UltimaExportacionDto? UltimaExportacion, int VacasFueraDelArchivoConEvento = 0);
 
 /// <summary>
 /// Lo que devuelve una exportación bien hecha. <paramref name="ConstanciaGuardada"/> es falso si el archivo quedó guardado pero la

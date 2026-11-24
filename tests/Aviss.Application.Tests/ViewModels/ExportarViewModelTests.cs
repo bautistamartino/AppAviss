@@ -1,6 +1,7 @@
 using Aviss.App.ViewModels;
 using Aviss.Application.Comun;
 using Aviss.Application.Exportacion;
+using Aviss.Application.Puertos;
 using Aviss.Application.Tests.ViewModels.Soporte;
 using Aviss.Domain.Enums;
 
@@ -15,13 +16,19 @@ public class ExportarViewModelTests
     private static readonly RodeoParaExportarDto Norte2 = new(Guid.NewGuid(), "Norte 2", Tambo1, "La Aurora", 282);
     private static readonly RodeoParaExportarDto Sur = new(Guid.NewGuid(), "Sur", Tambo2, "El Trébol", 90);
 
+    private sealed class ZonaFija(TimeSpan desfase) : IZonaHoraria
+    {
+        public TimeZoneInfo Zona { get; } = TimeZoneInfo.CreateCustomTimeZone("fija", desfase, "fija", "fija");
+    }
+
     private sealed class Entorno
     {
         public FakeExportacionService Servicio { get; } = new() { Rodeos = [Norte1, Norte2, Sur] };
         public FakeEntregaArchivoPantalla Entrega { get; } = new();
         public FakeNavegacion Navegacion { get; } = new();
         public ExportarViewModel Vm { get; }
-        public Entorno() => Vm = new ExportarViewModel(Servicio, Entrega, Navegacion);
+        public ZonaFija Zona { get; } = new(TimeSpan.FromHours(-3));   // Argentina: la hora de la tablet no es la de UTC
+        public Entorno() => Vm = new ExportarViewModel(Servicio, Entrega, Navegacion, Zona);
 
         public async Task<Entorno> EnResumenAsync(RodeoParaExportarDto? rodeo = null)
         {
@@ -89,7 +96,21 @@ public class ExportarViewModelTests
         Assert.Equal("Con CVET 0 y registro guardado: 3 (salen vacías)", e.Vm.TextoCvetCero);
         Assert.Equal("Tacto del día 05/11/2026", e.Vm.TextoJornada);
         Assert.True(e.Vm.HayUltimaExportacion);
-        Assert.Equal($"Última exportación: {ultima.FechaUtc.ToLocalTime():dd/MM/yyyy HH:mm}, 150 vacas", e.Vm.TextoUltimaExportacion);
+        // 13:30 UTC en la zona de la tablet (UTC-3) son las 10:30: sale en la hora de IZonaHoraria, no en la de la PC que corre el test.
+        Assert.Equal("Última exportación: 06/11/2026 10:30, 150 vacas", e.Vm.TextoUltimaExportacion);
+    }
+
+    [Fact]
+    public async Task Las_vacas_con_evento_fuera_del_archivo_se_muestran_aparte_con_una_linea_fija()
+    {
+        var e = new Entorno();
+        e.Servicio.ResumenAEntregar = Resultado.Ok(new ResumenExportacionDto(Norte1.RodeoId, 226, 150, 76, 0, null, null, VacasFueraDelArchivoConEvento: 2));
+
+        await e.EnResumenAsync();
+
+        Assert.Equal("150 de 226 vacas con evento", e.Vm.TextoConEvento);   // solo las del archivo
+        Assert.True(e.Vm.HayFueraDelArchivo);
+        Assert.Equal("Con evento y fuera del archivo (altas en campo o ID repetido): 2", e.Vm.TextoFueraDelArchivo);
     }
 
     [Fact]
@@ -98,6 +119,7 @@ public class ExportarViewModelTests
         var e = await new Entorno().EnResumenAsync();
 
         Assert.False(e.Vm.HayCvetCero);
+        Assert.False(e.Vm.HayFueraDelArchivo);
         Assert.False(e.Vm.HayUltimaExportacion);
         Assert.False(e.Vm.HayJornada);
     }
@@ -382,11 +404,11 @@ public class ExportarViewModelTests
     public async Task Las_columnas_duplicadas_o_un_original_ilegible_no_ofrecen_reintentar()
     {
         var e = await new Entorno().EnResumenAsync();
-        e.Servicio.ResultadoExportar = () => Resultado.Error<ExportacionEntregadaDto>(CodigoError.ColumnaDuplicada, MensajesExportacion.ColumnaDuplicada());
+        e.Servicio.ResultadoExportar = () => Resultado.Error<ExportacionEntregadaDto>(CodigoError.ColumnaDuplicada, MensajesExportacion.ColumnaDuplicada("SCDAT"));
 
         await e.Vm.GenerarCsvCommand.ExecuteAsync(null);
 
-        Assert.Equal(MensajesExportacion.ColumnaDuplicada(), e.Vm.MensajeError);
+        Assert.Equal(MensajesExportacion.ColumnaDuplicada("SCDAT"), e.Vm.MensajeError);
         Assert.False(e.Vm.HayReintento);
         Assert.False(e.Vm.ReintentarCommand.CanExecute(null));
     }

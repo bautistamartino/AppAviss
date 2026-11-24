@@ -301,6 +301,24 @@ public sealed class ConsultaExportacionTests : IDisposable
     }
 
     [Fact]
+    public async Task Una_alta_en_campo_con_evento_no_cuenta_como_vaca_del_archivo_y_se_informa_aparte()
+    {
+        var delArchivo = Vaca("1");
+        Vaca("2");
+        var alta = Db.Animal(_e.RodeoId, "900", "AltaEnCampo");   // no tiene fila en el original
+        Db.Tacto(delArchivo, _seca, fechaHora: Hora(10));
+        Db.Tacto(alta, _vacia, fechaHora: Hora(10, 1));
+
+        var d = await Consultar();
+
+        Assert.Equal(2, d.TotalVacas);                       // solo las del archivo
+        Assert.Equal(1, d.VacasConEvento);
+        Assert.Equal(1, d.VacasSinEvento);
+        Assert.Equal(1, d.VacasFueraDelArchivoConEvento);    // la alta: tiene valores pero no sale en el archivo
+        Assert.Equal(2, d.ValoresPorCaravana.Count);
+    }
+
+    [Fact]
     public async Task Una_vaca_con_CVET_0_sin_registro_no_se_cuenta_como_con_registro()
     {
         Vaca("1", cvet: "0");

@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using Aviss.Application.Comun;
 using Aviss.Application.Exportacion;
+using Aviss.Application.Puertos;
 using Aviss.Domain.Enums;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -35,13 +36,14 @@ public sealed partial class ExportarViewModel : ObservableObject
     private readonly IExportacionService _servicio;
     private readonly IEntregaArchivo _entrega;
     private readonly INavegacion _navegacion;
+    private readonly IZonaHoraria _zona;
 
     // Se cancela al volver atrás mientras se genera (RF-28): el servicio no guarda nada si se cancela.
     private CancellationTokenSource? _cancelacion;
     private FormatoExportacion? _ultimoFormato;
 
-    public ExportarViewModel(IExportacionService servicio, IEntregaArchivo entrega, INavegacion navegacion)
-        => (_servicio, _entrega, _navegacion) = (servicio, entrega, navegacion);
+    public ExportarViewModel(IExportacionService servicio, IEntregaArchivo entrega, INavegacion navegacion, IZonaHoraria zona)
+        => (_servicio, _entrega, _navegacion, _zona) = (servicio, entrega, navegacion, zona);
 
     // ------------------------------------------------------------------ estado
 
@@ -67,7 +69,7 @@ public sealed partial class ExportarViewModel : ObservableObject
     private RodeoParaExportarDto? _rodeoElegido;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(TextoConEvento), nameof(TextoSinEvento), nameof(HayCvetCero), nameof(TextoCvetCero),
+    [NotifyPropertyChangedFor(nameof(TextoConEvento), nameof(TextoSinEvento), nameof(HayCvetCero), nameof(TextoCvetCero), nameof(HayFueraDelArchivo), nameof(TextoFueraDelArchivo),
         nameof(HayJornada), nameof(TextoJornada), nameof(HayUltimaExportacion), nameof(TextoUltimaExportacion), nameof(PuedeGenerar))]
     [NotifyCanExecuteChangedFor(nameof(GenerarCsvCommand), nameof(GenerarXlsCommand))]
     private ResumenExportacionDto? _resumen;
@@ -101,7 +103,7 @@ public sealed partial class ExportarViewModel : ObservableObject
     /// <summary>Se puede generar solo desde el resumen y con el resumen ya cargado: nunca antes de elegir el formato (RF-3).</summary>
     public bool PuedeGenerar => Paso == PasoExportacion.Resumen && Resumen is not null && !EstaCargando;
 
-    /// <summary>"N de M vacas con evento" (RF-2).</summary>
+    /// <summary>"N de M vacas con evento" (RF-2): las vacas del archivo original, el mismo criterio que la constancia.</summary>
     public string TextoConEvento => Resumen is null ? "" : $"{Resumen.VacasConEvento} de {Resumen.TotalVacas} vacas con evento";
 
     public string TextoSinEvento => Resumen is null ? "" : $"Sin evento: {Resumen.VacasSinEvento}";
@@ -109,6 +111,11 @@ public sealed partial class ExportarViewModel : ObservableObject
     public bool HayCvetCero => Resumen is { VacasCvetCeroConRegistro: > 0 };
 
     public string TextoCvetCero => Resumen is null ? "" : $"Con CVET 0 y registro guardado: {Resumen.VacasCvetCeroConRegistro} (salen vacías)";
+
+    public bool HayFueraDelArchivo => Resumen is { VacasFueraDelArchivoConEvento: > 0 };
+
+    /// <summary>Línea fija: son vacas con evento que no tienen fila en el archivo original, así que no salen en él (RF-2).</summary>
+    public string TextoFueraDelArchivo => Resumen is null ? "" : $"Con evento y fuera del archivo (altas en campo o ID repetido): {Resumen.VacasFueraDelArchivoConEvento}";
 
     public bool HayJornada => Resumen?.Jornada is not null;
 
@@ -118,7 +125,7 @@ public sealed partial class ExportarViewModel : ObservableObject
 
     /// <summary>"Última exportación: dd/MM/yyyy HH:mm, N vacas", en la hora de la tablet (RF-2).</summary>
     public string TextoUltimaExportacion => Resumen?.UltimaExportacion is { } u
-        ? $"Última exportación: {u.FechaUtc.ToLocalTime():dd/MM/yyyy HH:mm}, {u.CantidadVacasConEvento} vacas"
+        ? $"Última exportación: {TimeZoneInfo.ConvertTimeFromUtc(u.FechaUtc, _zona.Zona):dd/MM/yyyy HH:mm}, {u.CantidadVacasConEvento} vacas"
         : "";
 
     public string NombreArchivo => Resultado?.Archivo.Nombre ?? "";

@@ -6,7 +6,7 @@ Spec: [spec.md](spec.md)
 >
 > **Ajuste 2026-11-24 (2):** solo se exporta el tacto de la **jornada** del rodeo (día local del registro vigente más reciente); no hay lógica ni preguntas sobre segundos tactos. En `ConsultaExportacion` el filtro por jornada se aplica sobre los registros ya traídos (`JornadaDeTacto`); el resumen muestra la fecha de la jornada. La pregunta 10 está resuelta.
 >
-> **Estado de la spec:** `borrador`. Este plan se escribió por pedido del coordinador antes de la aprobación formal y trabaja con la **recomendación** de cada pregunta abierta como valor provisional. Antes de ejecutar las tareas, la spec debe pasar a `aprobada`; si el responsable cambia una recomendación, se cambia en un solo lugar (ver "Lo provisional").
+> **Estado de la spec:** `aprobada` (2026-11-24). Este plan se escribió antes de la aprobación formal con la **recomendación** de cada pregunta abierta como valor provisional; la aprobación cerró todas con lo recomendado. Si el responsable cambia una recomendación, se cambia en un solo lugar (ver "Lo provisional").
 
 ## Resumen
 Un servicio de exportación lee de SQLite el **último registro vigente** de cada vaca, lo convierte en seis valores de texto (fecha, hora, evento, días de preñez, días de aborto, resultado) y se los pasa a un **exportador** (en `Aviss.Excel`) que toma el **original guardado en el rodeo**, agrega las columnas nuevas a la derecha y devuelve los bytes del archivo en CSV o .xls. El servicio **reabre y compara** el resultado con el original (constitución §2), recién entonces lo guarda en Descargas con un puerto de Android y deja la constancia en una tabla nueva. Una sola pantalla: lista de rodeos, resumen, elegir formato, resultado con "Compartir".
@@ -45,7 +45,7 @@ Constancia de cada archivo entregado (RF-21). Solo se agrega. Campos: `Id`, `Rod
 | Infrastructure | `ConsultaExportacion` (consultas por lote, ver abajo), `ExportacionRepository`, `ExportacionService` (singleton como `ImportacionService`: un scope por operación, `SemaphoreSlim` para la parte que escribe), configuración EF y registros en `DependencyInjection`. | RF-2, RF-12, RF-21, RF-25 |
 | Excel | `ExportadorDairyComp : IExportadorArchivo` con dos escritores (`EscritorXls`, `EscritorCsv`) y un `ValidadorExportacion`. Ver "Cómo se arma el archivo". | RF-4, RF-5, RF-15 a RF-18 |
 | App (compartida) | `ExportarViewModel`, `INavegacion.IrAExportarAsync`, botón "Exportar" en `InicioViewModel`. | RF-1 a RF-3, RF-28 |
-| App (Android) | `EntregaArchivoAndroid` en `Platforms/Android` (constitución §5): `MediaStore.Downloads` para guardar y `Share` de MAUI para compartir. | RF-19, RF-20, RF-24 |
+| App (Android) | `EntregaArchivoAndroid` en `Platforms/Android` (constitución §5): `MediaStore.Downloads` para guardar y un `Intent` `ACTION_SEND` con el `content://` de MediaStore para compartir (el `Share` de MAUI solo recibe rutas de archivo y no sirve para un archivo de MediaStore). | RF-19, RF-20, RF-24 |
 
 ### Consulta de datos (`ConsultaExportacion`)
 Sin consultar vaca por vaca (20.000 vacas: nada de N+1). Dentro de **una sola transacción de lectura** (WAL: una instantánea; RF-25) se traen tres listas y se unen en memoria:

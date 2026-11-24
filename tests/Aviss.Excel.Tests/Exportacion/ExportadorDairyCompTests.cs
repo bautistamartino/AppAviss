@@ -124,8 +124,23 @@ public class ExportadorDairyCompTests
             var r = new ExportadorDairyComp().Generar(original, formato, new Dictionary<string, ValoresExportacion>());
             Assert.False(r.EsCorrecto);
             Assert.Equal(FalloGeneracion.ColumnaDuplicada, r.Fallo);
+            Assert.Equal("SCDAT", r.ColumnaDuplicada);   // nombra la columna nueva que chocó (RF-14), en xls y en csv
             Assert.Null(r.Contenido);
         }
+    }
+
+    [Fact]
+    public void Un_xls_con_un_caracter_fuera_de_Latin1_pide_el_xls_cuando_se_quiere_csv()
+    {
+        var original = GeneradorMuestras.Construir(["ID", "RPRO"], [["1001", "Precio €"]]);
+        var exportador = new ExportadorDairyComp();
+        var vacio = new Dictionary<string, ValoresExportacion>();
+
+        var csv = exportador.Generar(original, FormatoExportacion.Csv, vacio);
+        var xls = exportador.Generar(original, FormatoExportacion.Xls, vacio);
+
+        Assert.Equal(FalloGeneracion.CsvNoAdmiteCaracteres, csv.Fallo);   // se orienta al .xls, sin copiar el valor
+        Assert.True(xls.EsCorrecto);                                      // en .xls sí se puede
     }
 
     [Fact]

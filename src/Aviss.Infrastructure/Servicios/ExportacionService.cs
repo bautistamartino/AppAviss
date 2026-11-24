@@ -78,7 +78,8 @@ internal sealed class ExportacionService : IExportacionService
 
         return Resultado.Ok(new ResumenExportacionDto(
             rodeoId, datos.TotalVacas, datos.VacasConEvento, datos.VacasSinEvento, datos.VacasCvetCeroConRegistro, datos.Jornada,
-            ultima is null ? null : new UltimaExportacionDto(ultima.FechaUtc, ultima.ArchivoNombre, ultima.Formato, ultima.CantidadVacasConEvento)));
+            ultima is null ? null : new UltimaExportacionDto(ultima.FechaUtc, ultima.ArchivoNombre, ultima.Formato, ultima.CantidadVacasConEvento),
+            datos.VacasFueraDelArchivoConEvento));
     }
 
     // ------------------------------------------------------------------ Exportar (RF-18 a RF-24)
@@ -109,7 +110,7 @@ internal sealed class ExportacionService : IExportacionService
         {
             generado = await Task.Run(() => _exportador.Generar(rodeo.Original, formato, datos.ValoresPorCaravana), ct);
             if (!generado.EsCorrecto)
-                return Error(CodigoGeneracion(generado.Fallo!.Value), MensajeGeneracion(generado.Fallo!.Value));
+                return Error(CodigoGeneracion(generado.Fallo!.Value), MensajeGeneracion(generado));
 
             validacion = await Task.Run(() => _exportador.Validar(rodeo.Original, generado.Contenido!, formato, datos.ValoresPorCaravana), ct);
         }
@@ -193,13 +194,15 @@ internal sealed class ExportacionService : IExportacionService
     {
         FalloGeneracion.OriginalIlegible => CodigoError.ArchivoRechazado,
         FalloGeneracion.ColumnaDuplicada => CodigoError.ColumnaDuplicada,
+        FalloGeneracion.CsvNoAdmiteCaracteres => CodigoError.CsvNoAdmiteCaracteres,
         _ => CodigoError.ExportacionNoValida
     };
 
-    private static string MensajeGeneracion(FalloGeneracion fallo) => fallo switch
+    private static string MensajeGeneracion(ResultadoGeneracionArchivo generado) => generado.Fallo switch
     {
         FalloGeneracion.OriginalIlegible => MensajesExportacion.OriginalIlegible,
-        FalloGeneracion.ColumnaDuplicada => MensajesExportacion.ColumnaDuplicada(),
+        FalloGeneracion.ColumnaDuplicada => MensajesExportacion.ColumnaDuplicada(generado.ColumnaDuplicada ?? ""),
+        FalloGeneracion.CsvNoAdmiteCaracteres => MensajesExportacion.CsvNoAdmiteCaracteres,
         _ => MensajesExportacion.NoSePudoGenerar
     };
 }

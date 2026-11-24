@@ -82,6 +82,21 @@ public sealed class ExportacionServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task El_resumen_habla_de_las_vacas_del_archivo_y_cuenta_aparte_las_altas_en_campo_con_evento()
+    {
+        var (rodeo, _) = RodeoConTrabajo();
+        var alta = _e.Base.Animal(rodeo, "9001", "AltaEnCampo");   // sin fila en el original
+        _e.Base.Tacto(alta, _e.EstadoSeca);
+
+        var r = await _e.Servicio.ObtenerResumenAsync(rodeo);
+
+        Assert.Equal(4, r.Valor.TotalVacas);                 // las del archivo, sin la alta
+        Assert.Equal(1, r.Valor.VacasConEvento);
+        Assert.Equal(3, r.Valor.VacasSinEvento);
+        Assert.Equal(1, r.Valor.VacasFueraDelArchivoConEvento);
+    }
+
+    [Fact]
     public async Task El_resumen_cuenta_vacas_con_y_sin_evento_el_cvet_cero_con_registro_y_la_jornada()
     {
         var (rodeo, _) = RodeoConTrabajo();
@@ -338,6 +353,21 @@ public sealed class ExportacionServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task Un_xls_con_caracteres_que_el_csv_no_admite_orienta_a_exportar_en_xls_sin_datos_del_tambo()
+    {
+        var (rodeo, _) = RodeoConTrabajo();
+        _e.Exportador.ResultadoGenerar = ResultadoGeneracionArchivo.Fallido(FalloGeneracion.CsvNoAdmiteCaracteres);
+
+        var r = await _e.Servicio.ExportarAsync(rodeo, FormatoExportacion.Csv);
+
+        Assert.Equal(CodigoError.CsvNoAdmiteCaracteres, r.Codigo);
+        Assert.Equal(MensajesExportacion.CsvNoAdmiteCaracteres, r.Mensaje);
+        Assert.Contains(".xls", r.Mensaje!);
+        SinDatosDelTambo(r);
+        Assert.Empty(_e.Entrega.Guardados);
+    }
+
+    [Fact]
     public async Task Un_original_con_una_columna_nueva_ya_existente_se_rechaza_sin_registrar_nada()
     {
         var (rodeo, _) = RodeoConTrabajo(EscenarioExportacion.CsvConColumna("scdat", Pasada, SinPasar, CvetCero, Anulada));
@@ -345,7 +375,9 @@ public sealed class ExportacionServiceTests : IDisposable
         var r = await _e.Servicio.ExportarAsync(rodeo, FormatoExportacion.Csv);
 
         Assert.Equal(CodigoError.ColumnaDuplicada, r.Codigo);
-        Assert.Contains("SCDAT", r.Mensaje!);   // el mensaje nombra las columnas nuevas (RF-14), no datos del tambo
+        Assert.Equal(MensajesExportacion.ColumnaDuplicada("SCDAT"), r.Mensaje);   // nombra la columna que chocó (RF-14), no datos del tambo
+        Assert.DoesNotContain("CVET", r.Mensaje!);
+        Assert.DoesNotContain("SCTIM", r.Mensaje!);
         SinDatosDelTambo(r);
         Assert.Empty(_e.Entrega.Guardados);
         Assert.Equal(0, _e.Cuenta("Exportacion"));

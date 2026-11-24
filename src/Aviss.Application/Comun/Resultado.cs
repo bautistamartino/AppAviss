@@ -73,7 +73,8 @@ public enum CodigoError
     // Exportación (spec 007); los mensajes fijos están en MensajesExportacion
     ExportacionNoValida,
     ColumnaDuplicada,
-    ArchivoNoGuardado
+    ArchivoNoGuardado,
+    CsvNoAdmiteCaracteres
 }
 
 /// <summary>Resultado de una operación sin valor de retorno. El mensaje está en español y nunca lleva datos de animales ni de tambos.</summary>

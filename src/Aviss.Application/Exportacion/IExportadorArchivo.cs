@@ -12,7 +12,10 @@ public enum FalloGeneracion
     ColumnaDuplicada,
 
     /// <summary>No se pudo escribir el archivo (por ejemplo, un texto con caracteres que la codificación del CSV original no admite).</summary>
-    NoSePudoGenerar
+    NoSePudoGenerar,
+
+    /// <summary>Se pidió CSV pero el original tiene un carácter que la codificación del CSV (Latin-1) no admite: en .xls sí se puede.</summary>
+    CsvNoAdmiteCaracteres
 }
 
 /// <summary>El archivo generado, o el motivo por el que no se pudo. Un resultado correcto trae bytes; uno fallido, el motivo.</summary>
@@ -20,14 +23,15 @@ public enum FalloGeneracion
 /// <param name="Extension">Sin punto: <c>csv</c> o <c>xls</c>.</param>
 /// <param name="Filas">Filas de datos del original que quedan en el archivo (sin la fila Total).</param>
 /// <param name="FilasConValores">Cuántas de esas filas llevan al menos un valor en las columnas nuevas.</param>
-public sealed record ResultadoGeneracionArchivo(byte[]? Contenido, string Extension, int Filas, int FilasConValores, FalloGeneracion? Fallo)
+/// <param name="ColumnaDuplicada">Solo con <see cref="FalloGeneracion.ColumnaDuplicada"/>: el nombre de la columna NUEVA que ya existía (un nombre fijo de la app, nunca un dato del tambo).</param>
+public sealed record ResultadoGeneracionArchivo(byte[]? Contenido, string Extension, int Filas, int FilasConValores, FalloGeneracion? Fallo, string? ColumnaDuplicada = null)
 {
     public bool EsCorrecto => Fallo is null && Contenido is not null;
 
     public static ResultadoGeneracionArchivo Correcto(byte[] contenido, string extension, int filas, int filasConValores)
         => new(contenido, extension, filas, filasConValores, null);
 
-    public static ResultadoGeneracionArchivo Fallido(FalloGeneracion fallo) => new(null, "", 0, 0, fallo);
+    public static ResultadoGeneracionArchivo Fallido(FalloGeneracion fallo, string? columnaDuplicada = null) => new(null, "", 0, 0, fallo, columnaDuplicada);
 }
 
 /// <summary>Qué encontró la validación (RF-18). Solo categorías: nunca se escribe un valor del archivo.</summary>
