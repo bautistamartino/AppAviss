@@ -199,6 +199,94 @@ public sealed partial class EleccionTrabajoViewModel : ObservableObject
         }
     }
 
+    // ------------------------------------------------------------------ editar el nombre de un establecimiento
+
+    /// <summary>El establecimiento cuyo nombre se está editando (la capa está abierta mientras no sea nulo).</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HayEdicionEstablecimiento))]
+    private EstablecimientoParaTrabajar? _establecimientoAEditar;
+
+    /// <summary>Lo que se escribe en la capa; arranca con el nombre actual.</summary>
+    [ObservableProperty]
+    private string _nombreEditado = "";
+
+    /// <summary>Por qué no se pudo guardar (nombre vacío, repetido o falla). Se muestra DENTRO de la capa, que queda abierta.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HayMensajeErrorEdicion))]
+    private string? _mensajeErrorEdicion;
+
+    [ObservableProperty]
+    private bool _estaGuardandoEdicion;
+
+    public bool HayEdicionEstablecimiento => EstablecimientoAEditar is not null;
+    public bool HayMensajeErrorEdicion => !string.IsNullOrEmpty(MensajeErrorEdicion);
+
+    /// <summary>El botón "Editar" de un establecimiento: abre la capa con su nombre actual. Todavía no se cambia nada.</summary>
+    [RelayCommand]
+    private void PedirEditarEstablecimiento(EstablecimientoParaTrabajar? establecimiento)
+    {
+        if (establecimiento is null || EstaGuardandoEdicion) return;
+        MensajeError = null;
+        MensajeInfo = null;
+        MensajeErrorEdicion = null;
+        NombreEditado = establecimiento.Nombre;
+        EstablecimientoAEditar = establecimiento;
+    }
+
+    [RelayCommand]
+    private void CancelarEdicionEstablecimiento()
+    {
+        if (EstaGuardandoEdicion) return;
+        EstablecimientoAEditar = null;
+        MensajeErrorEdicion = null;
+        NombreEditado = "";
+    }
+
+    /// <summary>
+    /// "Guardar": renombra y vuelve a leer la lista. Si el servicio rechaza (vacío, repetido) la capa queda abierta con el motivo.
+    /// El establecimiento y el rodeo que estaban elegidos se mantienen.
+    /// </summary>
+    [RelayCommand]
+    private async Task GuardarEdicionEstablecimientoAsync()
+    {
+        if (EstablecimientoAEditar is not { } editado || EstaGuardandoEdicion) return;
+
+        EstaGuardandoEdicion = true;
+        MensajeErrorEdicion = null;
+        try
+        {
+            var resultado = await _campo.RenombrarEstablecimientoAsync(editado.Id, NombreEditado);
+            if (!resultado.EsCorrecto)
+            {
+                MensajeErrorEdicion = resultado.Mensaje;
+                return;
+            }
+
+            // Se recuerda lo elegido ANTES de recargar: CargarAsync vacía las listas y la elección.
+            var establecimientoId = EstablecimientoSeleccionado?.Id;
+            var rodeoId = RodeoSeleccionado?.RodeoId;
+
+            EstablecimientoAEditar = null;
+            NombreEditado = "";
+            await CargarAsync();
+
+            if (establecimientoId is { } id && Establecimientos.FirstOrDefault(e => e.Id == id) is { } igual)
+            {
+                EstablecimientoSeleccionado = igual;   // recarga sus rodeos y deja el rodeo en nulo
+                if (rodeoId is { } rid) RodeoSeleccionado = Rodeos.FirstOrDefault(r => r.RodeoId == rid) ?? RodeoSeleccionado;
+            }
+            MensajeInfo = "Nombre del establecimiento actualizado.";
+        }
+        catch (Exception)
+        {
+            MensajeErrorEdicion = MensajeFalla;
+        }
+        finally
+        {
+            EstaGuardandoEdicion = false;
+        }
+    }
+
     // ------------------------------------------------------------------ empezar
 
     [RelayCommand(CanExecute = nameof(PuedeEmpezar))]

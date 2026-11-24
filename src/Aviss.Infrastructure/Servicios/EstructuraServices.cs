@@ -4,6 +4,7 @@ using Aviss.Application.Puertos;
 using Aviss.Application.Servicios;
 using Aviss.Domain;
 using Aviss.Domain.Entidades;
+using Aviss.Domain.Reglas;
 
 namespace Aviss.Infrastructure.Servicios;
 
@@ -36,6 +37,25 @@ internal sealed class EstablecimientoService : IEstablecimientoService
 
     public Task<Resultado> ReactivarAsync(Guid id, CancellationToken ct = default)
         => CambiarAsync(id, (e, ahora) => e.Reactivar(ahora), ct);
+
+    public Task<Resultado> RenombrarAsync(Guid id, string nombre, CancellationToken ct = default)
+        => _uow.EjecutarAsync(async () =>
+        {
+            var e = await _repo.ObtenerAsync(id, ct);
+            if (e is null || !e.Activo) return Resultado.Error(CodigoError.NoEncontrado, "El establecimiento no existe.");
+
+            try { e.Renombrar(nombre, _reloj.UtcAhora); }
+            catch (DominioException ex) { return Ayudas.DatosInvalidos(ex); }
+
+            // Mismo criterio que la importación (RF-15): se compara la clave sin mayúsculas ni tildes, con TODOS los
+            // establecimientos (incluidos los de baja) menos este mismo: dejarlo igual o cambiar solo mayúsculas no es repetido.
+            var clave = Caravana.CalcularClave(e.Nombre);
+            var todos = await _repo.ListarAsync(ct);
+            // Si hay repetido, el cambio hecho en memoria NO se guarda: la UnitOfWork revierte todo rechazo.
+            if (todos.Any(o => o.Id != id && Caravana.CalcularClave(o.Nombre) == clave))
+                return Resultado.Error(CodigoError.Duplicado, "Ya hay otro establecimiento con ese nombre.");
+            return Resultado.Ok();
+        }, ct);
 
     public Task<IReadOnlyList<Establecimiento>> ListarAsync(CancellationToken ct = default) => _repo.ListarAsync(ct);
 

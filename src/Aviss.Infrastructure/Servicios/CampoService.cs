@@ -55,6 +55,9 @@ internal sealed class CampoService : ICampoService
         return EscribirAsync(p => p.GetRequiredService<ICatalogoEstadosService>().CrearAsync(codigo, nombre, codigoDairyComp, ct), ct);
     }
 
+    public Task<Resultado> RenombrarEstablecimientoAsync(Guid establecimientoId, string nombre, CancellationToken ct = default)
+        => EscribirAsync(p => p.GetRequiredService<IEstablecimientoService>().RenombrarAsync(establecimientoId, nombre, ct), ct);
+
     // ---- Mangas ----
 
     public Task<Resultado<EstadoTrabajoDto>> IniciarTrabajoAsync(Guid rodeoId, CancellationToken ct = default)

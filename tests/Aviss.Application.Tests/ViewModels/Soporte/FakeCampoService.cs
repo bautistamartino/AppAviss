@@ -171,6 +171,15 @@ public class FakeCampoService : ICampoService
         return Task.FromResult(OnResetear?.Invoke(rodeoId) ?? Resultado.Ok(Guid.NewGuid()));
     }
 
+    public List<(Guid Id, string Nombre)> Renombrados { get; } = [];
+    public Func<Guid, string, Resultado>? OnRenombrarEstablecimiento { get; set; }
+
+    public Task<Resultado> RenombrarEstablecimientoAsync(Guid establecimientoId, string nombre, CancellationToken ct = default)
+    {
+        Renombrados.Add((establecimientoId, nombre));
+        return Task.FromResult(OnRenombrarEstablecimiento?.Invoke(establecimientoId, nombre) ?? Resultado.Ok());
+    }
+
     public virtual Task<IReadOnlyList<MovimientoDto>> ListarMovimientosAsync(Guid rodeoId, CancellationToken ct = default)
     {
         ConsultasDeMovimientos++;
