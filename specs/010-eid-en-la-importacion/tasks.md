@@ -16,7 +16,7 @@ Regla de verificación: tras cada tarea se corren **solo los proyectos de tests 
   - RF: RF-1 (guardado), RF-8, RF-10, RF-11, RF-12, RF-13, RF-14, RF-15, RF-16, RF-17, RF-18, RF-19, RF-20
   - Hecho cuando: `dotnet build` en verde; pasan `Aviss.Infrastructure.Tests`, `Aviss.Application.Tests` y `Aviss.Excel.Tests` (sin Rendimiento); `dotnet ef migrations has-pending-model-changes -p src/Aviss.Infrastructure -s src/Aviss.Infrastructure` sin cambios pendientes.
 
-- [ ] **T3** — Resumen en la pantalla de importación y cierre
+- [x] **T3** — Resumen en la pantalla de importación y cierre
   - Qué hace: `ImportarViewModel.HayResumenEid` y `ResumenEidTexto` ("Con EID: N · Sin EID: M", solo con la columna `EID`) y las dos líneas en `ImportarPage.xaml` (vista previa y resultado); las advertencias nuevas salen por la lista que ya existe. **Cierre:** `dotnet build`; `has-pending-model-changes`; **`dotnet test` completo con rendimiento**; documentos al día (`MEMORY.md` con estado, decisiones y el **pendiente `SCDAT`/`SCTIM` de la exportación** y el riesgo del bastón; `docs/arquitectura.md` secciones 6 y 7; notas "(modificado por la 010)" en las specs 002 y 003 según la tabla de la spec); se tildan los criterios que la suite demuestra y se dejan sin tildar los de la tablet.
   - Tests primero: `Application.Tests › ImportarViewModelTests` (o el archivo existente de ese ViewModel): `ResumenEidTexto` con columna `EID` (272/10), con advertencias de EID inválido y repetido en `AdvertenciasTexto`, y sin columna (sin línea).
   - RF: RF-8, RF-19 (y el cierre de toda la spec)

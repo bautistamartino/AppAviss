@@ -90,21 +90,21 @@ Al aprobarse, se agrega una nota "(modificado por la 010)" a lo que sigue; no se
 - **Coincidencia número corto / EID:** gana el número corto (RF-15).
 
 ## Criterios de aceptación
-- [ ] Importar la muestra con EID (282 animales, 10 con `-`) deja **272 con EID y 10 sin EID**, sin advertencias por los EID (RF-1, RF-2, RF-3, RF-8).
-- [ ] La vista previa y el resultado dicen "con EID / sin EID" con esos números; en un archivo sin columna `EID` no aparece esa línea ni cambia nada (RF-7, RF-8).
-- [ ] Un EID con espacios, un EID numérico de un `.xls`, un valor con letras, uno de 14 o 16 dígitos y dos filas con el mismo EID dan lo definido en RF-2, RF-4 y RF-5, y el animal siempre se importa (RF-6).
-- [ ] Un EID repetido solo con una fila excluida por `ID` no genera advertencia de repetido (RF-6).
-- [ ] Todas las columnas del archivo (incluidas `EID`, `SCDAT` y `SCTIM`) quedan en los datos originales; `SCDAT` y `SCTIM` no generan advertencias (RF-9).
-- [ ] Importar el mismo archivo dos veces (confirmando) o dos rodeos con los mismos EID no choca, y el primer rodeo no cambia (RF-10, RF-11).
-- [ ] Con el rodeo importado, leer un animal por su EID (con y sin espacios) marca la pasada y abre la ficha igual que por número; con CVET 0 suena la chicharra y no abre ficha; ya procesada da el aviso; en espera abre su ficha; con una ficha abierta aparece el aviso de la 009 (RF-13, RF-14).
-- [ ] Un código que coincide con el número corto de un animal y el EID de otro abre el del número corto (RF-15).
-- [ ] Un animal sin EID se encuentra por número y a mano; un código desconocido da "Caravana no encontrada" (RF-16).
-- [ ] La ficha de un animal con EID muestra **una** fila `EID`; sin EID no muestra ninguna (RF-17).
-- [ ] Exportar un rodeo cuyo original trae `EID` conserva esa columna y agrega las nuevas a la derecha, y el archivo generado pasa la validación (RF-18).
-- [ ] Sin migración nueva: `dotnet ef migrations has-pending-model-changes` sin cambios (alcance).
-- [ ] Importar 20.000 filas con EID cumple los tiempos de la spec 002 (RF-20).
+- [x] Importar la muestra con EID (282 animales, 10 con `-`) deja **272 con EID y 10 sin EID**, sin advertencias por los EID (RF-1, RF-2, RF-3, RF-8).
+- [x] La vista previa y el resultado dicen "con EID / sin EID" con esos números; en un archivo sin columna `EID` no aparece esa línea ni cambia nada (RF-7, RF-8).
+- [x] Un EID con espacios, un EID numérico de un `.xls`, un valor con letras, uno de 14 o 16 dígitos y dos filas con el mismo EID dan lo definido en RF-2, RF-4 y RF-5, y el animal siempre se importa (RF-6).
+- [x] Un EID repetido solo con una fila excluida por `ID` no genera advertencia de repetido (RF-6).
+- [x] Todas las columnas del archivo (incluidas `EID`, `SCDAT` y `SCTIM`) quedan en los datos originales; `SCDAT` y `SCTIM` no generan advertencias (RF-9).
+- [x] Importar el mismo archivo dos veces (confirmando) o dos rodeos con los mismos EID no choca, y el primer rodeo no cambia (RF-10, RF-11).
+- [x] Con el rodeo importado, leer un animal por su EID (con y sin espacios) marca la pasada y abre la ficha igual que por número; con CVET 0 suena la chicharra y no abre ficha; ya procesada da el aviso; en espera abre su ficha; con una ficha abierta aparece el aviso de la 009 (RF-13, RF-14).
+- [x] Un código que coincide con el número corto de un animal y el EID de otro abre el del número corto (RF-15).
+- [x] Un animal sin EID se encuentra por número y a mano; un código desconocido da "Caravana no encontrada" (RF-16).
+- [x] La ficha de un animal con EID muestra **una** fila `EID`; sin EID no muestra ninguna (RF-17).
+- [x] Exportar un rodeo cuyo original trae `EID` conserva esa columna y agrega las nuevas a la derecha, y el archivo generado pasa la validación (RF-18).
+- [x] Sin migración nueva: `dotnet ef migrations has-pending-model-changes` sin cambios (alcance).
+- [x] Importar 20.000 filas con EID cumple los tiempos de la spec 002 (RF-20).
 - [ ] **A verificar en la tablet** (no con tests): importar el CSV real, ver el resumen con EID y leer una vaca con el simulador o la búsqueda por EID (ver `tasks.md`, T3) (RF-8, RF-13, RF-14, RF-17).
-- [ ] `dotnet build` y `dotnet test` en verde.
+- [x] `dotnet build` y `dotnet test` en verde.
 
 ## Decisiones
 **Del responsable (2026-11-24):**

@@ -69,6 +69,7 @@
                     <!-- Resumen -->
                     <Label Text="{Binding FilasLeidas, StringFormat='Filas leídas: {0}'}" Style="{StaticResource Texto}" />
                     <Label Text="{Binding FilasAImportar, StringFormat='Animales a importar: {0}'}" Style="{StaticResource Titulo}" />
+                    <Label Text="{Binding ResumenEidTexto}" Style="{StaticResource Texto}" IsVisible="{Binding HayResumenEid}" />
                     <Label Text="{Binding FilasExcluidas, StringFormat='Filas excluidas: {0}'}" Style="{StaticResource Texto}" />
 
                     <!-- Archivo ya importado (RF-16) -->
@@ -183,6 +184,7 @@
                 <Label Text="{Binding Resultado.NombreRodeo, StringFormat='Rodeo creado: {0}'}" Style="{StaticResource Titulo}" />
                 <Label Text="{Binding Resultado.FilasLeidas, StringFormat='Filas leídas: {0}'}" Style="{StaticResource Texto}" />
                 <Label Text="{Binding Resultado.AnimalesImportados, StringFormat='Animales importados: {0}'}" Style="{StaticResource Texto}" />
+                <Label Text="{Binding ResumenEidTexto}" Style="{StaticResource Texto}" IsVisible="{Binding HayResumenEid}" />
                 <Label Text="{Binding Resultado.FilasExcluidas, StringFormat='Filas excluidas: {0}'}" Style="{StaticResource Texto}" />
                 <Label Text="{Binding Resultado.Advertencias.Count, StringFormat='Advertencias: {0}'}" Style="{StaticResource Texto}" />
                 <Button Text="Importar otro archivo" Style="{StaticResource BotonGrande}"
