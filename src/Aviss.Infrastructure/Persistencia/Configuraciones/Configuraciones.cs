@@ -332,3 +332,27 @@ internal sealed class RechazoConfig : IEntityTypeConfiguration<Rechazo>
         b.HasCheckConstraint("CK_Rechazo_DiasConEvento", "DiasAborto IS NULL OR EventoId IS NOT NULL");
     }
 }
+
+// ---------------------------------------------------------------------------------------------------------------
+// Spec 007: la constancia de exportación. Los triggers (solo se agrega) van a mano en la migración "Exportaciones".
+// ---------------------------------------------------------------------------------------------------------------
+
+internal sealed class ExportacionConfig : IEntityTypeConfiguration<Exportacion>
+{
+    public void Configure(EntityTypeBuilder<Exportacion> b)
+    {
+        Comun.ConfigurarId(b, "Exportacion");
+        b.Property(e => e.ArchivoNombre).IsRequired();
+        b.Property(e => e.Hash).IsRequired();
+        b.Property(e => e.Formato).HasConversion<string>().IsRequired();
+
+        b.HasOne<Rodeo>().WithMany().HasForeignKey(e => e.RodeoId).OnDelete(DeleteBehavior.Restrict);
+        // Para encontrar rápido "la última exportación del rodeo".
+        b.HasIndex(e => new { e.RodeoId, e.FechaUtc }).HasDatabaseName("IX_Exportacion_RodeoId_FechaUtc");
+
+        b.HasCheckConstraint("CK_Exportacion_Formato", "Formato IN ('Csv','Xls')");
+        b.HasCheckConstraint("CK_Exportacion_Hash", "length(Hash) = 64");
+        b.HasCheckConstraint("CK_Exportacion_Nombre", "length(trim(ArchivoNombre)) > 0");
+        b.HasCheckConstraint("CK_Exportacion_Cantidades", "CantidadFilas >= 0 AND CantidadVacasConEvento >= 0 AND CantidadVacasConEvento <= CantidadFilas");
+    }
+}

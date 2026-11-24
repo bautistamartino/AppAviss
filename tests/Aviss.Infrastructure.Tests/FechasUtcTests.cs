@@ -65,7 +65,7 @@ public sealed class FechasUtcTests : IDisposable
     [Fact]
     public void Todas_las_tablas_tienen_CreadoEnUtc_y_las_editables_ActualizadoEnUtc()
     {
-        var sinActualizado = new HashSet<string> { "Historial", "Manga" }; // solo agregar: ni siquiera se anulan
+        var sinActualizado = new HashSet<string> { "Historial", "Manga", "Exportacion" }; // solo agregar: ni siquiera se anulan
         var tablas = new List<string>();
         using (var cmd = _db.Cruda.CreateCommand())
         {
@@ -74,7 +74,7 @@ public sealed class FechasUtcTests : IDisposable
             while (r.Read()) tablas.Add(r.GetString(0));
         }
 
-        Assert.Equal(11, tablas.Count); // spec 004 suma Espera y Rechazo; la spec 006 quita Usuario
+        Assert.Equal(12, tablas.Count); // spec 004 suma Espera y Rechazo; la spec 006 quita Usuario; la spec 007 suma Exportacion
         foreach (var tabla in tablas)
         {
             Assert.Equal(1, _db.Contar($"SELECT COUNT(*) FROM pragma_table_info('{tabla}') WHERE name = 'CreadoEnUtc'"));

@@ -426,7 +426,8 @@ public sealed class MigracionQuitarVeterinarioTests : IDisposable
         }
 
         // Los triggers no los crea EnsureCreated: se comparan contra la lista explícita.
-        Assert.Equal(TriggersEsperados.Concat(new[] { "TR_Rechazo_SoloEvento", "TR_Tacto_EstadoNoSoloEvento", "TR_Tacto_EventoValido" }).OrderBy(t => t, StringComparer.Ordinal),
+        // La spec 007 suma los dos triggers de Exportacion (solo se agrega).
+        Assert.Equal(TriggersEsperados.Concat(new[] { "TR_Rechazo_SoloEvento", "TR_Tacto_EstadoNoSoloEvento", "TR_Tacto_EventoValido", "TR_Exportacion_NoBorrar", "TR_Exportacion_NoModificar" }).OrderBy(t => t, StringComparer.Ordinal),
             DescripcionEsquema.Triggers(_db.Cruda));
     }
 

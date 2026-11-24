@@ -45,6 +45,14 @@ public sealed class EscenarioConServicios : IDisposable
         }
     }
 
+    /// <summary>Un scope nuevo (con su propio DbContext) para pedir varios servicios que deben compartirlo.</summary>
+    public IServiceScope NuevoScope()
+    {
+        var scope = _proveedor.CreateScope();
+        _scopes.Add(scope);
+        return scope;
+    }
+
     /// <summary>Un servicio con un scope (y DbContext) nuevo.</summary>
     public T Servicio<T>() where T : notnull
     {

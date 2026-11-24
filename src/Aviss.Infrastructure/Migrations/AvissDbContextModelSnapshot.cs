@@ -315,6 +315,57 @@ namespace Aviss.Infrastructure.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Aviss.Domain.Entidades.Exportacion", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ArchivoNombre")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("CantidadFilas")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("CantidadVacasConEvento")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("CreadoEnUtc")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("FechaUtc")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Formato")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Hash")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("RodeoId")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RodeoId", "FechaUtc")
+                        .HasDatabaseName("IX_Exportacion_RodeoId_FechaUtc");
+
+                    b.ToTable("Exportacion", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Exportacion_Cantidades", "CantidadFilas >= 0 AND CantidadVacasConEvento >= 0 AND CantidadVacasConEvento <= CantidadFilas");
+
+                            t.HasCheckConstraint("CK_Exportacion_Formato", "Formato IN ('Csv','Xls')");
+
+                            t.HasCheckConstraint("CK_Exportacion_Hash", "length(Hash) = 64");
+
+                            t.HasCheckConstraint("CK_Exportacion_Nombre", "length(trim(ArchivoNombre)) > 0");
+                        });
+                });
+
             modelBuilder.Entity("Aviss.Domain.Entidades.Historial", b =>
                 {
                     b.Property<Guid>("Id")
@@ -690,6 +741,15 @@ namespace Aviss.Infrastructure.Migrations
                         .WithMany()
                         .HasForeignKey("EstadoDestinoId")
                         .OnDelete(DeleteBehavior.Restrict);
+                });
+
+            modelBuilder.Entity("Aviss.Domain.Entidades.Exportacion", b =>
+                {
+                    b.HasOne("Aviss.Domain.Entidades.Rodeo", null)
+                        .WithMany()
+                        .HasForeignKey("RodeoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Aviss.Domain.Entidades.Manga", b =>

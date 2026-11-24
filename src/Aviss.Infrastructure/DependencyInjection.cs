@@ -1,3 +1,4 @@
+using Aviss.Application.Exportacion;
 using Aviss.Application.Puertos;
 using Aviss.Application.Servicios;
 using Aviss.Infrastructure.Arranque;
@@ -39,6 +40,9 @@ public static class DependencyInjection
         servicios.AddScoped<IRegistroCampoRepository, RegistroCampoRepository>();
         servicios.AddScoped<IEsperaRepository, EsperaRepository>();
         servicios.AddScoped<IRechazoRepository, RechazoRepository>();
+        // Exportación (spec 007): las constancias solo se agregan; la consulta arma los valores de las columnas nuevas desde SQLite.
+        servicios.AddScoped<IExportacionRepository, ExportacionRepository>();
+        servicios.AddScoped<IConsultaExportacion, ConsultaExportacion>();
 
         servicios.AddScoped<IEstablecimientoService, EstablecimientoService>();
         servicios.AddScoped<IRodeoService, RodeoService>();
