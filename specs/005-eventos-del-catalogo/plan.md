@@ -1,126 +1,151 @@
-# Plan — 005 Eventos del catálogo
+# Plan — 005 Eventos del catálogo (segunda vuelta)
 
 Spec: [spec.md](spec.md) (aprobada el 2026-11-23). Tareas: [tasks.md](tasks.md). Rama: `spec/005-eventos-del-catalogo`.
 
-## Orden de implementación: DESPUÉS de la spec 004
+> **Aviso para el implementador:** al escribir este plan el árbol de trabajo estaba en la rama `spec/006-sin-veterinario` y **no contenía el código de T1 a T5** (no hay `ClaveEstandar`, ni la migración `EventosDelCatalogo`, ni `ArmadorListaEventos`; tampoco en `C:\Users\PC\Projects\AppAviss`). Los nombres de abajo salen del plan anterior y de la spec. **Antes de tocar nada, releer el código real** (nombres de triggers, comandos, DTOs, `MovimientoDto`, cómo se arma el texto del historial) y ajustar. Si T1 a T5 no están en la rama, frenar y avisar.
 
-Se implementa **después** de la 004 (En Espera y Rechazo) y sobre ella. Motivos:
-- La 004 crea la tabla `Rechazo` (registro de campo que no cambia el estado, entra en el orden compartido, se anula, se edita) y el `EventoRechazo` fijo. Un "solo evento" (OK, Aborto, Revisar Nuevamente) es **exactamente eso** con un nombre distinto: esta spec lo reutiliza en vez de duplicarlo.
-- Los dos tocan los mismos archivos: `TrabajoViewModel.Ficha.cs`, `EstadosTrabajo.cs`, `MovimientosViewModel.cs`, `TrabajoPage.xaml`, `MovimientosPage.xaml`, `DtosCampo.cs`, `ComandosCampo.cs`, `TrabajoCampoService.cs`, `ConsultaCampoService.cs`, `Configuraciones.cs`, el snapshot de migraciones. Hacer la 005 primero obligaría a rehacer la 004 (que ya tiene plan y tareas) sobre una lista de eventos distinta.
-- La 004 agrega el ítem fijo "Rechazo" al final de la lista plana (`Estados`); la 005 lo reemplaza por la lista de dos niveles. Es un reemplazo limpio si la 004 ya está, y un conflicto si no.
+## Parte 1 — Primera vuelta (T1 a T5, hecha)
 
-**Precondición de T1: cumplida.** La 004 ya está mergeada en `main` (existen `Rechazo`, `EventoRechazo` como `static readonly EstadoActivoDto` en `TrabajoViewModel.Espera.cs` con Id `EventosCampo.Rechazo`, `CorregirRegistroAsync` y la migración `EsperaYRechazo`). La migración de esta spec se llama `EventosDelCatalogo` y va **después** de `EsperaYRechazo`. **Coordinación con la spec 006 (sin veterinario, otra sesión):** esta spec no toca nada relativo a `UsuarioId`; conserva el de los comandos (`RegistrarSoloEventoCommand(AnimalId, EventoId, Observaciones, UsuarioId)`) y los conflictos al mergear se resuelven quitándolo. Nombres reales de la 004: la ficha usa `Eventos` (catálogo + Rechazo, en `.Espera.cs`) y `Estados` (`.Ficha.cs`); Editar usa `EstadosParaEditar`; el rechazo se guarda en `TrabajoCampoService.RegistrarRechazoNucleoAsync`.
+Implementada con los requisitos anteriores; se conserva en el historial de Git. Lo que sigue vigente y esta vuelta usa:
+- **"Solo evento" = fila del catálogo con `Tipo = SoloEvento`**, guardada en la tabla `Rechazo` (spec 004), que tiene `EventoId` (nulo = Rechazo fijo). No toca el estado ni el último tacto. OK y Revisar Nuevamente siguen así.
+- **Identidad estable:** columna `EstadoReproductivo.ClaveEstandar` (índice único parcial). El `Codigo` interno no cambia nunca.
+- **Principal / orden:** columnas `EsPrincipal` y `Orden`; los de "Otro evento" se ordenan por nombre en C# (`OrdenAlfabetico`, Ñ entre N y O).
+- **Lista de dos niveles:** `ArmadorListaEventos` (pura) + `SelectorEventosViewModel` + `SelectorEventosView`, usados por la ficha y por Editar de "Últimos movimientos". La lista secundaria es una vista dentro de la capa `Eventos` (no un `CuadroTrabajo` nuevo: RF-15).
+- **Migraciones sin reconstruir tablas:** `Up` escrito a mano con `ALTER TABLE ... ADD COLUMN` (como `Mangas`); el Designer y el snapshot quedan como los generó EF.
+- **Sembrador con adopción (RF-20)** en un solo `SaveChanges`, idempotente.
+- **Rechazo fijo en la aplicación** (`EventoRechazo`), no en el catálogo.
+- Tests, archivos y decisiones completas de esa vuelta: ver el historial de este archivo (`git log -- specs/005-eventos-del-catalogo/plan.md`).
 
-## Resumen del diseño
-- **"Solo evento" = una fila del catálogo con `Tipo = SoloEvento`**, y cada vez que se guarda se escribe en la **tabla `Rechazo` de la 004**, que gana una columna `EventoId` (nulo = el Rechazo fijo; con valor = el evento del catálogo). No toca el estado de la vaca ni su último tacto, por construcción. Se reutilizan orden compartido, anulación, edición, historial, aviso de repetido, movimientos.
-- **Identidad estable** de los 9 estándar: columna nueva `ClaveEstandar` en `EstadoReproductivo` (nula en los creados a mano). El `Codigo` interno no se toca (sigue sin cambiar nunca).
-- **Principal / orden:** columnas `EsPrincipal` y `Orden` en el catálogo. Los de "Otro evento" no usan `Orden`: se ordenan por nombre en código.
-- **Lista de dos niveles** armada por una función pura (`ArmadorListaEventos`) y mostrada por **un solo componente** (`SelectorEventosView` + `SelectorEventosViewModel`) que usan la ficha y la edición de movimientos.
-- **Migración sin reconstruir tablas:** `ALTER TABLE ... ADD COLUMN` a mano, para no perder los triggers (EF reconstruiría la tabla).
+Lo que **cambia** en la segunda vuelta: Aborto deja de ser solo evento; entran Preñada fecha correcta / fecha previa; aparecen los pasos posteriores; 7 principales + "Otro evento" (8 botones); "+ Nuevo evento" pasa a "+ Agregar evento".
 
-## Base de datos (migración `EventosDelCatalogo`)
+## Parte 2 — Segunda vuelta (T6 a T10)
 
-`EstadoReproductivo` (agregar columnas; todas con valor por defecto, así las filas viejas quedan válidas):
-| Columna | Definición | Para qué |
+### Resumen del diseño
+- **Un evento del catálogo declara qué pasos pide** (`Pasos`): Preñada fecha previa → `DiasPreniez`; Aborto → `DiasAborto,ResultadoAborto`. Los recorre un único mecanismo en `SelectorEventosViewModel` (RF-27).
+- **Preñada fecha previa** es una fila propia (`PRENADA_FECHA_PREVIA`, código provisorio `PREÑADA FECHA PREVIA`) con `EstadoDestinoId` apuntando a PREÑADA. Al guardar, el `Tacto` lleva `EstadoNuevoId` = PREÑADA, `EventoId` = la fila de fecha previa y `DiasPreniezInformados`. La vaca queda PREÑADA como siempre.
+- **Aborto** pasa a `Tipo = Estado` con pasos. Resultado Vacía OK / Inseminada / Seca / Fresca: es un `Tacto` normal con `EstadoNuevoId` = VACIA / INSEMIN / SECA / FRESCA, `EventoId` = Aborto y `DiasAborto`. Resultado Rechazo: **un único registro en `Rechazo`** con `EventoId` = Aborto y `DiasAborto` (no cambia estado ni último tacto). No se guarda una columna de "resultado": se **deriva** (estado del tacto → etiqueta; registro en `Rechazo` con `DiasAborto` → "Rechazo"). "Vacía OK" es solo la etiqueta que se muestra para VACIA dentro de un Aborto.
+- **Identidad sin cambios:** `PRENADA` (la clave que ya existe) pasa a ser "Preñada fecha correcta"; la nueva es `PRENADA_FECHA_PREVIA`. Un tacto viejo de PREÑADA (`EventoId` nulo) se ve como fecha correcta.
+- **`Tacto.EventoId` nulo = el evento es el propio `EstadoNuevoId`** (todo lo viejo). Con valor = el evento elegido, distinto del estado resultante.
+
+### Base de datos (migración `EventosConPasos`)
+Va **después** de `EventosDelCatalogo`. `dotnet ef migrations add EventosConPasos -p src/Aviss.Infrastructure -s src/Aviss.Infrastructure`, y después **reemplazar el `Up` por SQL a mano** (`migrationBuilder.Sql`), sin reconstruir tablas. `Down` vacío. Al final, `dotnet ef migrations has-pending-model-changes` sin cambios (la configuración de EF debe declarar los mismos CHECK y FK que el SQL).
+
+| Tabla | Cambio (todas las columnas nuevas admiten nulo, así las filas viejas quedan válidas) | RF |
 |---|---|---|
-| `Tipo` | `TEXT NOT NULL DEFAULT 'Estado' CHECK (Tipo IN ('Estado','SoloEvento'))` | RF-1, RF-16, RF-17 |
-| `EsPrincipal` | `INTEGER NOT NULL DEFAULT 0 CHECK (EsPrincipal IN (0,1))` | RF-2, RF-3 |
-| `Orden` | `INTEGER NOT NULL DEFAULT 0 CHECK (Orden >= 0)` | RF-2 (solo importa entre principales) |
-| `ClaveEstandar` | `TEXT NULL CHECK (ClaveEstandar IS NULL OR (length(ClaveEstandar) > 0 AND ClaveEstandar NOT GLOB '*[^A-Z0-9_]*'))` | RF-5, RF-20 |
+| `EstadoReproductivo` | `Pasos TEXT NULL CHECK (Pasos IS NULL OR (length(Pasos) > 0 AND Pasos NOT GLOB '*[^A-Za-z,]*'))` (lista separada por comas; el CHECK no fija los valores, así un tercer evento con pasos no pide migración) | RF-27 |
+| `EstadoReproductivo` | `EstadoDestinoId TEXT NULL REFERENCES EstadoReproductivo(Id)` + índice | RF-26 |
+| `Tacto` | `EventoId TEXT NULL REFERENCES EstadoReproductivo(Id)` + índice `IX_Tacto_EventoId` | RF-24, RF-29 |
+| `Tacto` | `DiasPreniezInformados INTEGER NULL CHECK (DiasPreniezInformados IS NULL OR DiasPreniezInformados BETWEEN 1 AND 400)` | RF-23, RF-24 |
+| `Tacto` | `DiasAborto INTEGER NULL CHECK (DiasAborto IS NULL OR DiasAborto BETWEEN 0 AND 400)` | RF-28, RF-29 |
+| `Tacto` | `CHECK (DiasPreniezInformados IS NULL OR DiasAborto IS NULL)` y, para anulaciones, `Tipo <> 'Normal' → EventoId, DiasPreniezInformados y DiasAborto nulos` (una anulación no copia datos del original, que los conserva) | RF-25, RF-30 |
+| `Rechazo` | `DiasAborto INTEGER NULL CHECK (DiasAborto IS NULL OR DiasAborto BETWEEN 0 AND 400)` | RF-30 |
 
-- Índice único parcial `IX_EstadoReproductivo_ClaveEstandar` sobre `ClaveEstandar WHERE ClaveEstandar IS NOT NULL`: un estándar no se puede duplicar.
-- **Relleno (en la misma migración, SQL a mano):** `UPDATE EstadoReproductivo SET ClaveEstandar = Codigo WHERE Codigo IN ('PRENADA','INSEMIN','SECA','VACIA','FRESCA','NOINSEM')`, y marca de principal con su orden: VACIA=3, PRENADA=4, NOINSEM=6. No toca `Nombre`, `CodigoDairyComp` ni `Activo` (un inicial desactivado a mano sigue desactivado, RF-19). Los creados a mano quedan con los valores por defecto (no principal, tipo `Estado`).
-- `Rechazo` (de la 004): `ALTER TABLE Rechazo ADD COLUMN EventoId TEXT NULL REFERENCES EstadoReproductivo(Id)` (SQLite lo permite con valor por defecto nulo) + índice `IX_Rechazo_EventoId`.
-- **Triggers nuevos** (la regla también en la base, constitución §7):
-  - `BEFORE INSERT ON Rechazo` rechaza si `EventoId` no es nulo y el evento no es `Tipo = 'SoloEvento'`.
-  - `BEFORE INSERT ON Tacto` rechaza un tacto `Normal` cuyo `EstadoNuevoId` sea de `Tipo = 'SoloEvento'`. Los tactos viejos que quedaron apuntando a un evento adoptado (RF-20) no se tocan: solo se bloquean inserciones nuevas.
-  - **Trigger de inmutabilidad de `Rechazo` (004):** si enumera columnas, hay que **recrearlo incluyendo `EventoId`** (DROP + CREATE a mano). Verificarlo con un test: no se puede cambiar `EventoId` de un registro existente.
-- **Cómo escribir la migración:** `dotnet ef migrations add EventosDelCatalogo -p src/Aviss.Infrastructure -s src/Aviss.Infrastructure`, y después **reemplazar el `Up` generado por SQL a mano** con `migrationBuilder.Sql` (como `Mangas`). El `Designer` y el snapshot se dejan como los generó EF. Al final, `dotnet ef migrations has-pending-model-changes` debe decir que no hay cambios. `Down` vacío o equivalente (el proyecto no baja versiones).
-- No cambia el CHECK de `Accion` de `Historial`: se reutilizan `RechazoCreado` y `RechazoAnulado` (el valor guardado lleva el nombre del evento). Así no hace falta `ReconstruirHistorial`.
-- **Atomicidad (RF-19):** el arranque ya hace backup previo y restaura si la migración falla (`ArranqueService`). Lo que falta (los 3 eventos nuevos / adoptados) lo agrega el sembrador **en un solo `SaveChanges`** (una transacción): o están todos o ninguno; si la app se corta entre la migración y la siembra, el próximo arranque termina la siembra (es idempotente).
+Los rangos 1–400 y 0–400 son provisorios (P9): quedan en **una constante** (`RangosDias`) y repetidos en los CHECK; cambiarlos es una migración chica de CHECK, no un cambio de lógica. Alternativa descartada: no poner CHECK de rango en la base (la constitución §7 pide garantizar las reglas críticas también en la base, y los rangos lo son).
 
-### Modelo (Domain)
-- `Enums`: `TipoEvento { Estado, SoloEvento }` (texto en la base).
-- `EstadoReproductivo` gana `Tipo`, `EsPrincipal`, `Orden`, `ClaveEstandar` (solo lectura desde afuera). `Crear(...)` (el de "+ Nuevo evento") deja `Tipo = Estado`, no principal, sin clave: cumple RF-4. Métodos nuevos: `CrearEstandar(inicial, ahora)` y `AdoptarComoEstandar(inicial, ahora)` (solo pone clave, tipo, principal y orden; **no cambia nombre, código ni `Activo`**, RF-20). `Modificar` sigue cambiando nombre y código de Dairy Comp sin tocar la identidad (RF-1, RF-5).
-- `Catalogo/EstadosIniciales`: `EstadoInicial` pasa a `(Codigo, Nombre, CodigoDairyComp, Tipo = Estado, EsPrincipal = false, Orden = 0)`; `Codigo` es la `ClaveEstandar`. Los 9:
+- **Datos (SQL a mano, misma migración):** `UPDATE EstadoReproductivo SET Tipo = 'Estado', Pasos = 'DiasAborto,ResultadoAborto', EsPrincipal = 1, Orden = 6 WHERE ClaveEstandar = 'ABORTO'` y `Orden = 7` para `NOINSEM`. Esto es lo único que se decide con SQL; lo demás (fila nueva, renombre, adopción) lo hace el sembrador (necesita C#). Los registros viejos de Aborto en `Rechazo` quedan con `DiasAborto` nulo y se ven como "Aborto" a secas (RF-31); no se les inventa nada.
+- **Triggers a recrear (DROP + CREATE a mano; leer los nombres y el cuerpo reales primero):**
+  1. Inmutabilidad de `Tacto` (`TR_Tacto_NoModificar`): si enumera columnas, sumar `EventoId`, `DiasPreniezInformados`, `DiasAborto`.
+  2. Inmutabilidad de `Rechazo` (`TR_Rechazo_NoModificar`): sumar `DiasAborto`.
+  3. El de inserción de `Rechazo` de T1 ("solo con evento `SoloEvento`"): ahora acepta `EventoId` nulo, un `SoloEvento` (con `DiasAborto` nulo) o el evento con `ClaveEstandar = 'ABORTO'` (con `DiasAborto` obligatorio en inserciones nuevas).
+  4. El de inserción de `Tacto` de T1 ("Normal no puede apuntar a un `SoloEvento`"): se conserva y se amplía en un trigger de validez del evento: con `EventoId` no nulo, el evento no puede ser `SoloEvento`; si tiene `EstadoDestinoId`, `EstadoNuevoId` debe ser ese destino; los días solo se aceptan si el evento declara el paso (`Pasos LIKE '%DiasPreniez%'` / `'%DiasAborto%'`) y, en un tacto Normal con `EventoId` de un evento con pasos de días, los días son obligatorios; en un Aborto, `EstadoNuevoId` debe ser un estado con `ClaveEstandar` VACIA, INSEMIN, SECA o FRESCA.
+  5. Los triggers de `Historial` y los demás **no** cambian (y ninguna columna de `Historial` se toca: no hace falta `ReconstruirHistorial`).
+- **Atomicidad (RF-19):** el arranque ya hace backup previo y restaura si la migración falla (`ArranqueService`). El sembrador agrega la fila nueva y reconcilia **en un solo `SaveChanges`**; si la app se corta entre migración y siembra, el próximo arranque termina (idempotente).
 
-| Clave | Nombre | Código Dairy Comp | Tipo | Principal / orden |
-|---|---|---|---|---|
-| `REVISAR_NUEVAMENTE` | Revisar Nuevamente | `REVISAR NUEVAMENTE` (provisorio) | SoloEvento | sí / 1 |
-| `OK` | OK | `OK` (provisorio) | SoloEvento | sí / 2 |
-| `VACIA` | VACIA | `VACIA` | Estado | sí / 3 |
-| `PRENADA` | PREÑADA | `PREÑADA` | Estado | sí / 4 |
-| `ABORTO` | Aborto | `ABORTO` (provisorio) | SoloEvento | sí / 5 |
-| `NOINSEM` | NOINSEM | `NOINSEM` | Estado | sí / 6 |
-| `INSEMIN`, `SECA`, `FRESCA` | igual que hoy | igual que hoy | Estado | no |
+### Dominio
+- `Enums`: `PasoEvento { DiasPreniez, DiasAborto, ResultadoAborto }`, `ResultadoAborto { VaciaOk, Inseminada, Seca, Fresca, Rechazo }`.
+- `Reglas/RangosDias`: `Preniez = 1..400`, `Aborto = 0..400` (única fuente) y `Reglas/ValidadorDias.Validar(texto, rango)` (pura): solo dígitos (rechaza vacío, `-`, decimales, `1e2`, espacios internos, texto largo), rango; devuelve valor o mensaje. La usan el ViewModel (RF-23, RF-28) y los servicios (nunca confiar en la pantalla).
+- `Catalogo/ReglasResultadoAborto`: mapa `ResultadoAborto` → clave estándar (`VACIA`, `INSEMIN`, `SECA`, `FRESCA`; Rechazo sin clave) y etiqueta ("Vacía OK", "Inseminada", "Seca", "Fresca", "Rechazo").
+- `EstadoReproductivo` gana `Pasos` (texto; método `ListarPasos()` devuelve `IReadOnlyList<PasoEvento>`) y `EstadoDestinoId`. `CrearEstandar` / `AdoptarComoEstandar` reciben pasos y destino; **no cambian** nombre, código ni `Activo` al adoptar. `Modificar` sigue sin tocar identidad ni pasos.
+- `Tacto` gana `EventoId`, `DiasPreniezInformados`, `DiasAborto` (en el método de alta; la anulación no los copia). `Rechazo` gana `DiasAborto`.
+- `EstadosIniciales` pasa a **10** (clave → nombre → código → tipo → principal/orden → pasos → destino):
 
-- `Reglas/OrdenAlfabetico.cs` (pura): `Clave(nombre)` = mayúsculas, sin tildes ni diéresis, y la Ñ queda **entre la N y la O** (se arma `N` + un carácter mayor que cualquier letra, p. ej. `Ñ` → `N{`, y se compara en orden ordinal). Es una clave **distinta** de `Caravana.CalcularClave` (esa conserva las tildes porque sirve para detectar repetidos).
+| Clave | Nombre | Código Dairy Comp | Tipo | Principal / orden | Pasos | Destino |
+|---|---|---|---|---|---|---|
+| `REVISAR_NUEVAMENTE` | Revisar Nuevamente | `REVISAR NUEVAMENTE` (provisorio) | SoloEvento | sí / 1 | — | — |
+| `OK` | OK | `OK` (provisorio) | SoloEvento | sí / 2 | — | — |
+| `VACIA` | VACIA | `VACIA` | Estado | sí / 3 | — | — |
+| `PRENADA` | Preñada fecha correcta | `PREÑADA` | Estado | sí / 4 | — | — |
+| `PRENADA_FECHA_PREVIA` | Preñada fecha previa | `PREÑADA FECHA PREVIA` (provisorio) | Estado | sí / 5 | `DiasPreniez` | `PRENADA` |
+| `ABORTO` | Aborto | `ABORTO` (provisorio) | Estado | sí / 6 | `DiasAborto,ResultadoAborto` | — |
+| `NOINSEM` | NOINSEM | `NOINSEM` | Estado | sí / 7 | — | — |
+| `INSEMIN`, `SECA`, `FRESCA` | igual que hoy | igual que hoy | Estado | no | — | — |
 
-## Capas y servicios
-| Capa | Qué se agrega o cambia | RF |
+### Sembrador (`SembradorInicial`, todo en un `SaveChanges`, idempotente, sin fallar)
+1. **Reconciliación de los estándar ya presentes** (por `ClaveEstandar`): `Tipo`, `EsPrincipal`, `Orden`, `Pasos` y `EstadoDestinoId` se igualan a la tabla de arriba. **No** toca `Nombre`, `CodigoDairyComp` ni `Activo` (salvo el renombre del punto 3). Hoy sirve para Aborto y NOINSEM (ya los dejó la migración) y asegura bases donde el estándar se adoptó o creó después.
+2. **Fila "Preñada fecha previa":** si no existe, se crea (o se adopta uno creado a mano con ese nombre o con el código `PREÑADA FECHA PREVIA`, RF-20) con `EstadoDestinoId` = Id de PREÑADA (se resuelve por clave `PRENADA`). Si crear chocara con una unicidad, se omite ese estándar sin fallar.
+3. **Renombre de PREÑADA a "Preñada fecha correcta":** aunque el nombre se hubiera cambiado a mano (P13). **Se omite sin fallar** si otro evento (activo o no) ya usa ese nombre (comparación de repetidos de la spec 003, sin distinguir mayúsculas). **Supuesto del plan (pregunta Q1):** se aplica **una sola vez por instalación**, en la misma operación que crea la fila de fecha previa; si no, un nombre que el veterinario cambie después se pisaría en cada arranque.
+4. Orden de arranque: primero el punto 3 (libera/ocupa el nombre), después el 2.
+
+### Importación (`ValidadorImportacion.IndexarEstadosActivos`)
+Ignora los eventos que no son estado inicial: `Tipo = SoloEvento`, los que tienen `EstadoDestinoId` (fecha previa) y los que tienen `Pasos` (cubre Aborto, que ahora es `Estado` pero no es un estado inicial: sin esto un `RPRO = ABORTO` quedaría como estado). Un `RPRO` igual al código de OK, Aborto, Revisar Nuevamente, fecha previa o a "Rechazo" entra **sin estado y con advertencia** (como un código desconocido); `RPRO` vacío, sin advertencia; INSEMIN, SECA y FRESCA se reconocen igual que hoy.
+
+### Servicios de campo (T7)
+| Pieza | Cambio | RF |
 |---|---|---|
-| Domain | `TipoEvento`, columnas y métodos de `EstadoReproductivo`, `EstadosIniciales` ampliado, `OrdenAlfabetico` | RF-1, RF-2, RF-3, RF-5, RF-7 |
-| Application | `ArmadorListaEventos` (pura): recibe los estados del catálogo y devuelve `ListaEventosDto(Principales, Otros)`: principales activos por `Orden` (desempata por creación); "Otros" = `EventoRechazo` primero y después los activos no principales por `OrdenAlfabetico.Clave` (desempata por creación) | RF-6, RF-7, RF-11, RF-13 |
-| Application | `EventoCampoDto(Id, Nombre, CambiaEstado, EsPrincipal)` reemplaza a `EstadoActivoDto`; `ICampoService.ListarEventosAsync()` reemplaza a `ListarEstadosActivosAsync()` | RF-6, RF-12 |
-| Application | `RegistrarRechazoCommand` (004) pasa a **`RegistrarSoloEventoCommand(AnimalId, EventoId, Observaciones)`** y `RegistrarRechazoAsync` a `RegistrarSoloEventoAsync`; `EventoId = EventoRechazo` es el Rechazo fijo. `MovimientoDto` suma `EventoId` (Guid?) para resaltar el evento del registro sin comparar nombres | RF-12, RF-16, RF-17, RF-18 |
-| Application | Importación: `ValidadorImportacion.IndexarEstadosActivos` ignora los `SoloEvento` (un `RPRO` igual a su código entra sin estado y con advertencia, como un código desconocido; `RPRO` vacío sigue sin advertencia) | caso límite RPRO |
-| Infrastructure | `SembradorInicial.SembrarEstadosAsync` con adopción (ver decisiones); el servicio de tacto rechaza un `SoloEvento` como estado; el servicio de solo-evento valida que el evento exista, esté activo y sea `SoloEvento` (o sea `EventoRechazo`), guarda `Rechazo.EventoId` (nulo para el Rechazo fijo) y la fecha y hora exactas del reloj, y historiza con el nombre; `CorregirRegistroAsync` resuelve el tipo del evento elegido en la base (estado → tacto, solo evento → rechazo con `EventoId`) | RF-16 a RF-18, RF-22 |
-| Infrastructure | `ConsultaCampoService`: lista de eventos con `ArmadorListaEventos`; movimientos con `EventoId`; los nombres del historial y de los movimientos salen de **todo** el catálogo (activo o no) | RF-13, RF-17 |
-| Infrastructure | `CatalogoEstadosService.CrearAsync` ("+ Nuevo evento") sin cambios de reglas: crea `Estado`, no principal | RF-4, RF-8 |
+| `EventoCampoDto` | suma `Pasos` (lista de `PasoEvento`), `EstadoDestinoId` y `ClaveEstandar`; `CambiaEstado` es verdadero para fecha previa y Aborto (en Aborto se refina con el resultado, ver `EleccionEvento`) | RF-6, RF-27 |
+| `ListaEventosDto` | suma `ResultadosAborto` (los de VACIA, INSEMIN, SECA y FRESCA **activos**, más Rechazo siempre; lo calcula `ArmadorListaEventos` sobre todo el catálogo, también si el estado es de "Otro evento") | RF-28, RF-13 |
+| `EleccionEvento(EventoId, DiasPreniez?, DiasAborto?, ResultadoAborto?)` (Application) | lo que queda "en el casillero" tras completar los pasos; `RegistraComoRechazo` (SoloEvento, Rechazo fijo o Aborto con resultado Rechazo) | RF-27, RF-29, RF-30 |
+| `RegistrarTactoCommand` / `RegistrarSoloEventoCommand` / `CorregirRegistroCommand` | llevan la `EleccionEvento` (o `EventoId` + datos). La pantalla decide cuál usa por `RegistraComoRechazo`, el servicio **revalida todo** (evento activo, pasos exigidos, días en rango con `ValidadorDias`, resultado permitido y activo, que no sobren datos) | RF-16, RF-24, RF-29, RF-30 |
+| `TrabajoCampoService` | **Tacto con evento:** resuelve el estado final (fecha previa → destino PREÑADA; Aborto → estado del resultado por clave) y guarda `Tacto` con `EventoId`, días y `EstadoNuevoId` en la misma transacción que animal e historial. **Aborto con Rechazo:** `RegistrarRechazoNucleoAsync` con `EventoId` Aborto y `DiasAborto`, sin tocar el animal. Fecha y hora exactas del reloj siempre | RF-22, RF-24, RF-29, RF-30 |
+| Deshacer / editar (`CorregirRegistroAsync`) | resuelve el evento elegido y escribe en `Tacto` o en `Rechazo` según `RegistraComoRechazo`, en ambas direcciones y atómico; el anulado conserva días y resultado; deshacer un Aborto con cambio de estado restaura el estado anterior como cualquier tacto | RF-25, RF-30 |
+| `MovimientoDto` | suma `EventoId` efectivo (= `Tacto.EventoId ?? EstadoNuevoId`; `Rechazo.EventoId` para registros de rechazo), `DiasPreniez`, `DiasAborto`, `ResultadoAborto` (derivado) y la descripción armada | RF-12, RF-25, RF-30 |
+| `DescripcionEvento` (Application, pura) | arma "Aborto, 45 días, Vacía OK", "Aborto, 45 días, Rechazo", "Preñada fecha previa, 130 días" ("1 día" en singular; un Aborto viejo sin datos: "Aborto") | RF-25, RF-30, RF-31 |
+| `ConsultaCampoService` | historial de la ficha, movimientos y aviso de repetido usan `DescripcionEvento`; el nombre del evento sale de todo el catálogo (activo o no) | RF-13, RF-25, RF-30 |
 
-## Pantallas
-- **`SelectorEventosViewModel`** (App, clase común, sin dependencias de página): `Principales`, `Otros`, `MostrandoOtros`, `Resaltado` (Guid?), `OtroEventoResaltado`, `PermiteNuevo`, comandos `VerOtros`, `Volver`, `Elegir(evento)`; se abre siempre en los principales. `OtroEventoResaltado` es verdadero solo si el evento resaltado está en `Otros` **activos** (un principal desactivado no resalta nada).
-- **`SelectorEventosView`** (`Controles/SelectorEventosView.xaml`, `ContentView`): principales como botones de 60 dp en un `ScrollView` con barra siempre visible (`MaximumHeightRequest` 480: los 6 principales + "Otro evento" miden 7 × 60 + 6 × 8 = 468 y entran sin desplazar); "Otro evento"; vista secundaria con `ScrollView` de la lista (Rechazo primero), y **"+ Nuevo evento" y "Volver" fuera del scroll** (siempre visibles). Resaltado con el convertidor `EstadoActual` existente (o uno equivalente) contra `Resaltado`.
-- **`TrabajoViewModel` / `TrabajoPage`:** la capa `CuadroTrabajo.Eventos` pasa a mostrar el selector (no se agrega ningún cuadro nuevo: la lista secundaria es una vista dentro de la misma capa, así la regla de las lecturas con cuadro abierto, spec 003 RF-19, se cumple sin cambios, RF-15). `Estados` / `HayEstadosActivos` / `CargarEstadosAsync` pasan a `Selector`. `ElegirEventoAsync` recibe un `EventoCampoDto`. **`EntrarAsync` ramifica por `CambiaEstado`:** verdadero → `RegistrarTactoAsync`; falso → `RegistrarSoloEventoAsync` (incluye `EventoRechazo`). Resaltado inicial = estado actual de la vaca; después, el elegido. El formulario "+ Nuevo evento" se abre desde la vista secundaria; al crear, queda en la vista secundaria sin elegir nada.
-- **`MovimientosViewModel` / `MovimientosPage`:** `EstadosParaEditar` se reemplaza por el mismo selector (`PermiteNuevo = false`), resaltando `item.Dto.EventoId`. Un registro de solo evento (OK, Aborto, Revisar Nuevamente o Rechazo) se puede editar y deshacer igual que un tacto.
-- Texto y alto contraste según constitución §9; nada de escritura para elegir un evento.
+### Pantallas y ViewModels (T8, T9)
+- **`SelectorEventosViewModel` (mecanismo común, RF-27):** estado `PasoActual` (`PasoEvento?`), `EventoEnPasos`, `TextoDias` (cadena escrita), `MensajeError`, `ResultadoElegido`, `EleccionActual` (la ya completa, con su resumen para el casillero), `ResultadosDisponibles`. Comandos: `Elegir(evento)` (sin pasos → completa directo; con pasos → abre el primer paso con los valores actuales si ya estaba elegido, RF-27.6), `ConfirmarDias` (valida con `ValidadorDias`; si falla deja el paso abierto con mensaje; si es el último paso, completa), `ElegirResultado(r)` (completa), `VolverDePaso` (de resultado a días conservando el número; en el primer paso no existe), `Cancelar` (cierra los pasos y deja el casillero como estaba). Nada de esto guarda. El comando `Volver` existente (de "Otro evento" a principales) no se renombra para no romper T3. Se abre siempre en los principales.
+- **Toques (RF-14):** el último paso de Aborto es el botón de resultado, que completa sin un "confirmar" extra. Preñada fecha previa: casillero + principal + escribir + Confirmar. Aborto: casillero + principal + escribir + Siguiente + resultado.
+- **`TrabajoViewModel`:** `EntrarAsync` guarda con la `EleccionEvento`; el casillero muestra el resumen; con un paso abierto no se puede entrar. Los pasos viven dentro de la capa `Eventos` (RF-15: las lecturas siguen quedando en cola). Resaltado inicial: estado actual de la vaca; si es PREÑADA, **Preñada fecha correcta**. Los textos de "+ Nuevo evento" pasan a "+ Agregar evento" (spec 003 RF-39 conserva sus reglas).
+- **`MovimientosViewModel`:** Editar usa el mismo selector con `PermiteNuevo = false`, resalta `item.Dto.EventoId` y **precarga** días y resultado (RF-25, RF-27.5). Un registro con días anulado no se edita (como hoy).
+- **`SelectorEventosView`:** lista principal con **8 botones de 60 dp** (8 × 60 + 7 × 8 = 536) y `MaximumHeightRequest` ≈ **560** (hay lugar en 1340; si en la tablet no entra se baja a botones de 56, 504), `ScrollView` con barra visible por si hay más; lista secundaria con "Volver" y "+ Agregar evento" fuera del scroll; **panel de días** (título del evento, `Entry` con teclado numérico, mensaje de error, "Cancelar" y "Confirmar"/"Siguiente", "Volver" desde el paso 2); **panel de resultado** con 5 botones de 60 dp (5 × 60 + 4 × 8 = 332), más "Volver" y "Cancelar". Alto contraste y botones grandes (constitución §9).
 
-## Archivos
-- Crear: `src/Aviss.Domain/Enums/TipoEvento.cs` (o dentro de `Enums.cs`), `src/Aviss.Domain/Reglas/OrdenAlfabetico.cs`, `src/Aviss.Application/Campo/ArmadorListaEventos.cs`, `src/Aviss.Infrastructure/Migrations/*_EventosDelCatalogo.cs` (+ Designer), `src/Aviss.App/ViewModels/SelectorEventosViewModel.cs`, `src/Aviss.App/Controles/SelectorEventosView.xaml(.cs)`; tests: `Domain.Tests › OrdenAlfabeticoTests`, `EstadoReproductivoEventosTests`; `Application.Tests › ArmadorListaEventosTests`, `SelectorEventosViewModelTests`, `TrabajoViewModelEventosTests`; `Infrastructure.Tests › EsquemaEventosTests`, `SembradorEventosTests`, `MigracionEventosTests`, `SoloEventoTests`.
-- Modificar: `Domain/Entidades/EstadoReproductivo.cs`, `Domain/Catalogo/EstadosIniciales.cs`, `Infrastructure/Persistencia/Configuraciones/Configuraciones.cs` (catálogo y `Rechazo`), `Migrations/AvissDbContextModelSnapshot.cs`, `Arranque/SembradorInicial.cs`, `Servicios/{TrabajoCampoService,ConsultaCampoService,CampoService,EstructuraServices}.cs`, `Application/Campo/{DtosCampo,ComandosCampo}.cs`, `Application/Servicios/Servicios.cs`, `Application/Importacion/ValidadorImportacion.cs`, `App/ViewModels/{TrabajoViewModel.Ficha,EstadosTrabajo,MovimientosViewModel}.cs`, `App/Paginas/{TrabajoPage,MovimientosPage}.xaml`, fakes y tests de la 004 que usaban `RegistrarRechazoAsync`, `ListarEstadosActivosAsync` o `EstadoActivoDto`, `tests/Aviss.Infrastructure.Tests/Soporte/BaseDeDatosDePrueba.cs`.
-- Documentación (la hace el implementador en T5): `docs/plan.md`, `MEMORY.md`, `docs/arquitectura.md`, spec 004 (mención de numeración), esta spec (casillas).
+### Archivos
+- Crear: `src/Aviss.Infrastructure/Migrations/*_EventosConPasos.cs` (+ Designer), `src/Aviss.Domain/Reglas/{RangosDias,ValidadorDias}.cs`, `src/Aviss.Domain/Catalogo/ReglasResultadoAborto.cs`, `src/Aviss.Application/Campo/{EleccionEvento,DescripcionEvento}.cs`; tests nuevos: `Domain.Tests › ValidadorDiasTests, EstadoReproductivoPasosTests`; `Application.Tests › DescripcionEventoTests, SelectorEventosPasosTests, TrabajoViewModelPasosTests`; `Infrastructure.Tests › EsquemaPasosTests, MigracionEventosConPasosTests, SembradorPasosTests, EventosConPasosServiceTests`.
+- Modificar: `Domain/Enums/Enums.cs`, `Domain/Entidades/{EstadoReproductivo,Tacto,Rechazo}.cs`, `Domain/Catalogo/EstadosIniciales.cs`, `Infrastructure/Persistencia/Configuraciones/Configuraciones.cs`, `Migrations/AvissDbContextModelSnapshot.cs`, `Arranque/SembradorInicial.cs`, `Servicios/{TrabajoCampoService,ConsultaCampoService,CampoService}.cs`, `Application/Campo/{DtosCampo,ComandosCampo,ArmadorListaEventos}.cs`, `Application/Importacion/ValidadorImportacion.cs`, `App/ViewModels/{SelectorEventosViewModel,TrabajoViewModel.Ficha,EstadosTrabajo,MovimientosViewModel}.cs`, `App/Controles/SelectorEventosView.xaml(.cs)`, `App/Paginas/{TrabajoPage,MovimientosPage}.xaml`, fakes y tests existentes que usan los DTOs o comandos, `tests/Aviss.Infrastructure.Tests/Soporte/BaseDeDatosDePrueba.cs`.
+- Documentación (T10): `MEMORY.md`, `docs/arquitectura.md`, `docs/plan.md`, esta spec (casillas).
 
-## Decisiones
-- **"Solo evento" se guarda en la tabla `Rechazo` (con `EventoId`) y se declara en el catálogo con `Tipo`.** Elegida porque la 004 ya resuelve todo lo difícil (orden compartido, anulación, edición, no tocar el estado, historial) y porque la columna nueva es nula para el Rechazo, así que lo existente no cambia. Alternativas descartadas: (a) **un `Tacto` que no cambia el estado** (nuevo `Tipo` en `Tacto`): obliga a revisar cada consulta de "último tacto vigente", la anulación que restaura el estado anterior y los CHECK de `Tacto`, y mezcla dos significados en una tabla que hoy significa "cambió el estado"; (b) **una tabla nueva** `EventoRegistrado`: duplica entidad, triggers, índices, servicios y pruebas que la 004 ya tiene. Costo asumido: el nombre `Rechazo` queda algo pobre para guardar "OK" (se documenta con comentarios; renombrar tabla y clase tocaría triggers e índices y se deja para una limpieza futura).
-- **Identidad estable con una columna `ClaveEstandar`**, no con el `Codigo` interno ni con el nombre. Elegida porque RF-20 obliga a que un evento creado a mano (con otro `Codigo`) pase a ser el estándar sin cambiar su nombre ni su código, y el `Codigo` interno no puede cambiar nunca. Alternativas descartadas: reescribir `Codigo` al adoptar (rompe la regla "no cambia nunca" y su CHECK); identificar por nombre (renombrar rompería el principal, RF-5).
-- **Principal y orden como columnas del catálogo**, no constantes en la pantalla (RF-2, constitución §4). `Orden` solo vale entre principales; el resto se ordena por nombre en código. Alternativa descartada: un `Orden` para todos con renumeración al crear eventos: obliga a reescribir filas cada vez que el veterinario crea uno y no aporta nada porque el orden de "Otro evento" es alfabético por regla.
-- **Orden alfabético en C#, no en SQL.** `Caravana.CalcularClave` y la columna `NombreClave` conservan las tildes (sirven para detectar repetidos) y SQLite no ordena la Ñ ni las tildes como pide RF-7. Con ~25 eventos ordenar en memoria no cuesta nada y se prueba sin base. Alternativa descartada: una columna generada de orden: otra columna que mantener por una lista de decenas de filas.
-- **Rechazo sigue fijo en la aplicación (`EventoRechazo`), no en el catálogo** (decisión de la spec 004; en esta spec es la definición de "Rechazo"): el `ArmadorListaEventos` lo pone primero en "Otros". Alternativa descartada: sembrarlo como un `SoloEvento` más del catálogo: se podría desactivar o mover, contra la regla de la 004.
-- **Un solo componente para las dos pantallas** (`SelectorEventosView` + ViewModel). Elegido porque RF-12 pide "la misma lista" en la ficha y en Editar y hoy el XAML está duplicado. Alternativa descartada: copiar el XAML en `TrabajoPage` y `MovimientosPage` (ya pasó y es lo que hay que evitar).
-- **La lista secundaria es una vista dentro de la capa `Eventos`**, no un `CuadroTrabajo` nuevo. Así no cambia la regla de lecturas con cuadros abiertos (RF-15) ni las condiciones de `PuedeEntrar`. Alternativa descartada: un cuadro `OtrosEventos`: obligaría a revisar cada `switch` de `CuadroTrabajo` y la cola de lecturas.
-- **Un solo comando de guardado de solo-evento (`RegistrarSoloEventoCommand`) con `EventoId`**, y el ViewModel decide por `CambiaEstado`. Elegido porque OK y Rechazo se comportan igual (RF-17, RF-18). Alternativa descartada: dejar `RegistrarRechazoCommand` y agregar otro comando para los del catálogo: dos caminos casi idénticos para mantener y probar.
-- **Corrección del código provisorio (RF-1):** cuando llegue el código real se corrige con una **migración de datos** (`UPDATE ... WHERE ClaveEstandar = 'OK' AND CodigoDairyComp = 'OK'`, o sea solo si todavía vale el provisorio) en la spec o el cambio que lo traiga. Es seguro porque los tactos apuntan al `Id` y la identidad es `ClaveEstandar`; esa migración deberá resolver a mano si un evento creado a mano ya usa el código real (el índice único de código entre activos). Esta spec solo deja un test que prueba que `Modificar` conserva `Id`, clave y registros. Alternativa descartada: una columna `EsProvisorio` o pantalla de catálogo (la spec lo excluye).
-- **Adopción (RF-20) en el sembrador, no en la migración.** La migración solo rellena lo que se puede decidir con SQL (clave de los 6 iniciales, principal y orden). La adopción compara nombre y código sin mayúsculas y necesita lógica de C# (`Caravana.CalcularClave`). Orden de búsqueda por cada estándar que falta: ya tiene su `ClaveEstandar` → listo; si no, un estado **sin clave** con el mismo `Codigo`, y si no, con el mismo nombre (clave de nombre), y si no, con el mismo código de Dairy Comp (activos o no; sin distinguir mayúsculas). Si hay varios candidatos se toma el más antiguo. Un mismo estado no se adopta para dos estándares. Si no hay candidato se crea; si crear chocara con una unicidad (nombre o código activo tomado por un estado ya adoptado por otro estándar), **se omite ese estándar** como hace hoy el sembrador, sin fallar. Todo en un `SaveChanges`.
-- **Consecuencia aceptada de adoptar:** si el "Aborto" creado a mano ya fue usado como estado, las vacas que quedaron con ese estado y los tactos viejos siguen apuntando a él aunque ahora sea `SoloEvento` (se muestran bien; no se pueden crear tactos nuevos con él). La spec lo pide (RF-20) y es raro; queda en los riesgos.
+## Decisiones (segunda vuelta)
+- **Aborto con resultado Rechazo se guarda en `Rechazo` (con `EventoId` y `DiasAborto`), no en `Tacto`.** Elegida porque Rechazo no cambia el estado y la tabla ya resuelve eso (RF-30: un único registro). Descartada: un `Tacto` que "no cambia el estado" (obligaría a revisar "último tacto vigente", la restauración al anular y los CHECK de `Tacto`) o dos registros (prohibido por RF-30).
+- **El resultado del Aborto no tiene columna propia: se deriva** del estado del tacto o de que sea un registro de `Rechazo`. Elegida porque un dato duplicado puede quedar inconsistente con `EstadoNuevoId`. Descartada: columna `ResultadoAborto` (más CHECK y triggers para mantenerla alineada). Costo: "Vacía OK" es una etiqueta de pantalla que depende de la clave VACIA.
+- **Fecha previa y Aborto declaran sus pasos en el catálogo (`Pasos`)**, no en un `if` por nombre en la pantalla (RF-27, constitución §4). Descartada: dos pantallas hechas aparte.
+- **`Tacto.EventoId` aparte de `EstadoNuevoId`.** Elegida porque el estado que queda (PREÑADA, VACIA…) y el evento elegido (fecha previa, Aborto) son cosas distintas, y los tactos viejos (`EventoId` nulo) no cambian. Descartada: crear estados "PREÑADA FECHA PREVIA" distintos para el animal (cada consulta de estado actual, la importación y la exportación tendrían que tratarlos como PREÑADA).
+- **Claves estándar:** se conserva `PRENADA` para "fecha correcta" (la spec dice "clave `PRENADA`" en RF-26 y `PRENADA_FECHA_CORRECTA` como nombre tentativo); la nueva es `PRENADA_FECHA_PREVIA`. Cambiar la clave existente obligaría a un UPDATE de identidad sin ganancia.
+- **La reconciliación de tipo/orden/pasos la hace el sembrador** (y la migración solo lo que se decide con SQL para Aborto y NOINSEM). Consecuencia: el catálogo estándar es del código hasta que haya pantalla de administración; un ajuste manual de principal/orden en la base se pisa en el próximo arranque. Descartada: dejarlo solo en SQL (no cubre las filas que el sembrador crea o adopta después).
+- **Último paso de Aborto = tocar un resultado (sin "confirmar" extra)**, para ahorrar un toque (RF-14). Descartada: pedir confirmar después de elegir (un toque más sin ganar seguridad: el casillero igual muestra el resumen y Entrar es lo que guarda).
+- **Rangos como constante única más CHECK en la base** (ver arriba).
+- **Importación: se ignoran los eventos con `Pasos` o `EstadoDestinoId` además de los `SoloEvento`.** Necesario porque Aborto ya es `Estado`.
 
-## Estrategia de tests
+## Estrategia de tests (segunda vuelta)
 | RF | Test (proyecto › clase › caso) |
 |---|---|
-| RF-1 | `Infrastructure.Tests › SembradorEventosTests` (base nueva: 9 estándar, códigos provisorios, tipos); `Domain.Tests › EstadoReproductivoEventosTests` (`Modificar` conserva `Id` y `ClaveEstandar`); `Infrastructure.Tests › SoloEventoTests` (cambiar el código no pierde registros) |
-| RF-2, RF-3 | `SembradorEventosTests` (principal y orden de los 6 y de los 3 de "Otro evento"); `EsquemaEventosTests` (CHECK y valores por defecto) |
-| RF-4 | `Application.Tests › TrabajoViewModelEventosTests` (crear un evento: queda de tipo estado, no principal, en la lista secundaria, sin tacto guardado); `Infrastructure.Tests › CatalogoEstadosServiceTests` (valores por defecto) |
-| RF-5 | `ArmadorListaEventosTests` (renombrar no mueve; desactivar acorta la lista sin reemplazo) |
-| RF-6 | `ArmadorListaEventosTests` (principales activos por orden); `TrabajoViewModelEventosTests` (elegir un principal no guarda y habilita Entrar) |
-| RF-7 | `Domain.Tests › OrdenAlfabeticoTests` (ANESTRO, ENDOM1, FRESCA, INSEMIN, PROSTAG, SECA; tildes y mayúsculas indistintas; Ñ entre N y O; empate por creación); `ArmadorListaEventosTests` (Rechazo primero) |
-| RF-8 | `TrabajoViewModelEventosTests` (nuevo evento solo desde la vista secundaria; nombre y código repetidos se rechazan); `SelectorEventosViewModelTests` (`PermiteNuevo`) |
-| RF-9, RF-12 | `SelectorEventosViewModelTests` (resaltado de un principal, de uno de "Otro evento", de Rechazo, y que un desactivado no resalta "Otro evento"); `MovimientosViewModelTests` (edición resalta `EventoId` del registro) |
-| RF-10 | A verificar en la tablet (T4/T5); `ArmadorListaEventosTests` cubre la cuenta de 7 botones |
-| RF-11 | `ArmadorListaEventosTests` (con todos los principales desactivados: lista vacía y "Otros" con Rechazo) |
-| RF-13 | `ArmadorListaEventosTests` (un desactivado no aparece); `ConsultasCampoTests` (nombre en historial, movimientos y ficha de un evento desactivado) |
-| RF-14 | `SelectorEventosViewModelTests` (cuenta de toques: principal = 2, de "Otro evento" = 3) |
-| RF-15 | `TrabajoViewModelEventosTests` (lectura con la lista abierta, principal o secundaria, queda en cola y se procesa al cerrar) |
-| RF-16 | `SoloEventoTests` (OK, Aborto y Revisar Nuevamente: no cambian estado ni último tacto; con observación y reloj; atomicidad si falla a mitad; rechazo si el evento está inactivo o es un `Estado`); `EsquemaEventosTests` (triggers de inserción) |
-| RF-17 | `SoloEventoTests` (deshacer, editar entre estado ↔ solo evento ↔ Rechazo, orden compartido, aviso de repetido, historial con nombre); `TrabajoViewModelEventosTests` (Entrar ramifica por `CambiaEstado`) |
-| RF-18 | las pruebas de Rechazo de la 004 siguen en verde (`RechazoTests`) con el comando renombrado |
-| RF-19 | `Infrastructure.Tests › MigracionEventosTests` (base con `EsperaYRechazo` + eventos a mano + inicial desactivado + tactos: se actualiza con backup previo, nada se pierde ni se reactiva; falla simulada → base como antes); `SembradorEventosTests` (idempotencia: dos arranques no duplican) |
-| RF-20 | `SembradorEventosTests` ("Aborto" a mano se adopta sin cambiar nombre ni código ni `Activo`; adopción por código de Dairy Comp; adopción de uno inactivo no lo reactiva; un estado no se adopta dos veces; el arranque no falla) |
-| RF-21 | `Infrastructure.Tests` (los errores del sembrador y de los servicios no llevan caravanas ni nombres); revisión de código (sin red) |
-| RF-22 | `SoloEventoTests` (fecha y hora exactas del reloj en el registro, en el nuevo de una edición y conservadas al anular) |
-| Caso límite RPRO | `Application.Tests › ValidadorImportacionTests` (`RPRO` = código de un solo evento: entra sin estado y con advertencia; vacío: sin advertencia) |
+| RF-1, RF-2, RF-3, RF-26 | `SembradorPasosTests` (base nueva: 10 estándar activos, provisorios, 7 principales en el orden de RF-3, INSEMIN/SECA/FRESCA no principales y activos; fecha previa con código propio y destino PREÑADA); `EstadoReproductivoPasosTests` (`Modificar` conserva `Id`, clave, pasos) |
+| RF-4, RF-8 | `TrabajoViewModelPasosTests` ("+ Agregar evento" solo en la secundaria; el creado queda de tipo estado, no principal, sin pasos) |
+| RF-5, RF-11, RF-13 | `ArmadorListaEventosTests` (renombrar no mueve, desactivar no reemplaza, `ResultadosAborto` sin los estados desactivados, Rechazo siempre); `ConsultasCampoTests` (nombre de evento desactivado en lo guardado) |
+| RF-6, RF-7, RF-9, RF-10 | `SelectorEventosPasosTests` (8 botones en orden; "Otro evento" con Rechazo, INSEMIN, SECA, FRESCA; resalta "Otro evento" si la vaca está en INSEMIN/SECA/FRESCA; PREÑADA → fecha correcta; fecha previa por `EventoId`); RF-10 en la tablet |
+| RF-12 | `MovimientosViewModelTests` (Editar resalta `EventoId` y precarga días y resultado) |
+| RF-14 | `SelectorEventosPasosTests` (cuenta de toques: sin pasos 2 o 3; fecha previa y Aborto con sus pasos) |
+| RF-15 | `TrabajoViewModelPasosTests` (lectura con un paso abierto queda en cola) |
+| RF-16, RF-17 | `EventosConPasosServiceTests` y `SoloEventoTests` (OK y Revisar Nuevamente: sin cambio de estado ni último tacto; Aborto ya no está acá) |
+| RF-18 | las pruebas de Rechazo de la 004 siguen en verde |
+| RF-19 | `MigracionEventosConPasosTests` (base con `EventosDelCatalogo` + eventos a mano + inicial desactivado + Abortos guardados + tactos: backup previo; nada se pierde ni se reactiva; falla simulada → base como antes; Abortos viejos sin días); `SembradorPasosTests` (dos arranques no duplican) |
+| RF-20 | `SembradorPasosTests` ("Preñada fecha previa" y "Aborto" a mano se adoptan sin cambiar nombre, código ni `Activo`; no se adopta dos veces; el arranque no falla) |
+| RF-21 | `Infrastructure.Tests` (errores sin caravanas ni nombres); revisión de código (sin red) |
+| RF-22 | `EventosConPasosServiceTests` (fecha y hora exactas del reloj en el registro, en el de una edición y conservadas al anular) |
+| RF-23 | `ValidadorDiasTests` (1 a 400; rechaza vacío, 0, negativo, decimal, 401, texto); `SelectorEventosPasosTests` (campo abierto se mantiene con mensaje; cancelar deja el casillero como estaba) |
+| RF-24 | `EventosConPasosServiceTests` (Entrar con fecha previa: un tacto PREÑADA con `EventoId` y días, atómico; fecha correcta sin días); `EsquemaPasosTests` (CHECK y triggers) |
+| RF-25 | `EventosConPasosServiceTests` (editar/anular fecha previa; el anulado conserva días; el nuevo guarda los suyos o ninguno); `DescripcionEventoTests` |
+| RF-26 | `SembradorPasosTests` (renombre aunque ya estuviera cambiado a mano; omitido sin fallar si el nombre está tomado; una sola vez); `ValidadorImportacionTests` (fecha previa no es estado inicial) |
+| RF-27 | `SelectorEventosPasosTests` (mismo mecanismo para los dos: nada se guarda con un paso abierto, Cancelar, Volver conserva lo escrito, validación, resumen del casillero, reabrir con valores actuales, evento de "Otro evento" con pasos) |
+| RF-28 | `SelectorEventosPasosTests` (días 0 a 400, 0 válido; 5 resultados; un estado desactivado no se ofrece; Volver conserva el número) |
+| RF-29 | `EventosConPasosServiceTests` (Abortos con Vacía OK, Inseminada, Seca y Fresca: un tacto con `EventoId` Aborto, días y el estado final, fecha de último tacto actualizada, atómico; Vacía OK sobre una vaca ya VACIA; servicio rechaza días fuera de rango y resultado desactivado) |
+| RF-30 | `EventosConPasosServiceTests` (Rechazo: **un único** registro en `Rechazo` con días, sin cambiar estado ni último tacto; deshacer restaura el estado anterior; editar de Aborto a otro evento y al revés; historial, movimientos y repetido con la descripción completa) |
+| RF-31 | `MigracionEventosConPasosTests` (Abortos viejos se ven "Aborto" a secas, sin estado cambiado ni datos inventados) |
+| Caso límite RPRO | `ValidadorImportacionTests` (RPRO = OK, Aborto, Revisar Nuevamente, Rechazo o fecha previa: sin estado y con advertencia; vacío: sin advertencia; INSEMIN/SECA/FRESCA como hoy) |
 
 ## Riesgos
-- **Migración sobre tablas con triggers:** EF reconstruiría `EstadoReproductivo` o `Rechazo` si se usa `AddColumn` con constraints; por eso el `Up` va a mano. Se prueba con una base real de la versión anterior y con el trigger de inmutabilidad de `Rechazo` recreado (ver "Migración `Mangas`" en `MEMORY.md`).
-- **Dependencia de la 004:** si cambia su plan (nombres de comandos, `CorregirRegistroCommand`, el trigger de `Rechazo`), esta spec se ajusta al implementarla. Releer los archivos reales antes de empezar.
-- **Códigos provisorios (`OK`, `ABORTO`, `REVISAR NUEVAMENTE`):** si el archivo de vuelta los escribe y Dairy Comp no los entiende, se importaría mal. Esta spec no escribe nada en el Excel; queda anotado en `MEMORY.md` como "pendiente de validar" (constitución §4) y lo resuelve la spec 007.
-- **Adopción que cambia el tipo de un estado ya usado** (ver decisiones): raro, aceptado, cubierto por test.
-- **Pantalla:** la altura de los 7 botones y la lista de ~25 eventos solo se confirman en la tablet (800x1340 vertical).
+- **Código de T1 a T5 no visible al planificar** (ver aviso): los nombres de triggers, comandos y DTOs se confirman leyendo el código.
+- **Migración sobre tablas con triggers:** `Tacto` y `Rechazo` tienen triggers de inmutabilidad; si se olvida sumar las columnas nuevas, un UPDATE las modificaría sin que la base lo impida. Test explícito por columna en `EsquemaPasosTests`.
+- **Códigos provisorios** (`OK`, `ABORTO`, `REVISAR NUEVAMENTE`, `PREÑADA FECHA PREVIA`) y **exportación del Aborto** (P6, P8): a `MEMORY.md` como "pendiente de validar" (T10).
+- **Rangos de días provisorios (P9):** cambiar uno toca la constante y los CHECK (migración chica).
+- **Pantalla:** los 8 botones sin desplazar, el teclado numérico y los 5 botones de resultado solo se confirman en la tablet (800x1340 vertical); ~25 eventos en "Otro evento".
+- **Descripción del historial:** si `Historial` guarda un texto fijo (no lo deriva), hay que armar la descripción completa al guardar; el implementador lo confirma leyendo cómo se arma hoy.
