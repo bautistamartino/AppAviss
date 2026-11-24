@@ -65,31 +65,38 @@
             </VerticalStackLayout>
         </ScrollView>
 
-        <!-- Nivel 2: "Otro evento" (Rechazo primero, el resto alfabético). Lista desplazable con la barra siempre visible (RF-10). -->
-        <ScrollView MaximumHeightRequest="560" VerticalScrollBarVisibility="Always" IsVisible="{Binding MostrandoOtros}">
-            <VerticalStackLayout BindableLayout.ItemsSource="{Binding Otros}" Spacing="8">
-                <BindableLayout.ItemTemplate>
-                    <DataTemplate x:DataType="dto:EventoCampoDto">
-                        <Button Text="{Binding Nombre}" Style="{StaticResource BotonCampo}" HeightRequest="60" FontSize="22"
-                                Command="{Binding Source={RelativeSource AncestorType={x:Type vm:SelectorEventosViewModel}}, Path=ElegirCommand, x:DataType=vm:SelectorEventosViewModel}"
-                                CommandParameter="{Binding .}">
-                            <Button.BackgroundColor>
-                                <MultiBinding Converter="{StaticResource EstadoActual}" ConverterParameter="fondo">
-                                    <Binding Path="Id" />
-                                    <Binding Source="{RelativeSource AncestorType={x:Type vm:SelectorEventosViewModel}}" Path="Resaltado" x:DataType="vm:SelectorEventosViewModel" />
-                                </MultiBinding>
-                            </Button.BackgroundColor>
-                            <Button.TextColor>
-                                <MultiBinding Converter="{StaticResource EstadoActual}" ConverterParameter="texto">
-                                    <Binding Path="Id" />
-                                    <Binding Source="{RelativeSource AncestorType={x:Type vm:SelectorEventosViewModel}}" Path="Resaltado" x:DataType="vm:SelectorEventosViewModel" />
-                                </MultiBinding>
-                            </Button.TextColor>
-                        </Button>
-                    </DataTemplate>
-                </BindableLayout.ItemTemplate>
-            </VerticalStackLayout>
-        </ScrollView>
+        <!-- Nivel 2: "Otro evento" (Rechazo primero, el resto alfabético) en DOS columnas (Span=2): se lee de izquierda a derecha y de
+             arriba hacia abajo; si la cantidad es impar, el último queda en la primera columna. El ancho de cada columna lo reparte
+             la grilla (sin números fijos). La CollectionView se desplaza sola, con la barra siempre visible (RF-10); "Volver" y
+             "+ Agregar evento" quedan fuera, siempre a la vista. Los botones no fijan el alto (HeightRequest=-1 anula el 72 del estilo):
+             tienen mínimo 64 dp y crecen si el nombre ocupa 2 líneas (p. ej. "REVISIÓN DE PATA ÑANDÚ"). -->
+        <CollectionView ItemsSource="{Binding Otros}" SelectionMode="None" MaximumHeightRequest="560"
+                        VerticalScrollBarVisibility="Always" IsVisible="{Binding MostrandoOtros}">
+            <CollectionView.ItemsLayout>
+                <GridItemsLayout Orientation="Vertical" Span="2" HorizontalItemSpacing="8" VerticalItemSpacing="8" />
+            </CollectionView.ItemsLayout>
+            <CollectionView.ItemTemplate>
+                <DataTemplate x:DataType="dto:EventoCampoDto">
+                    <Button Text="{Binding Nombre}" Style="{StaticResource BotonCampo}" HeightRequest="-1" MinimumHeightRequest="64"
+                            MinimumWidthRequest="0" Padding="10,8" FontSize="20" LineBreakMode="WordWrap"
+                            Command="{Binding Source={RelativeSource AncestorType={x:Type vm:SelectorEventosViewModel}}, Path=ElegirCommand, x:DataType=vm:SelectorEventosViewModel}"
+                            CommandParameter="{Binding .}">
+                        <Button.BackgroundColor>
+                            <MultiBinding Converter="{StaticResource EstadoActual}" ConverterParameter="fondo">
+                                <Binding Path="Id" />
+                                <Binding Source="{RelativeSource AncestorType={x:Type vm:SelectorEventosViewModel}}" Path="Resaltado" x:DataType="vm:SelectorEventosViewModel" />
+                            </MultiBinding>
+                        </Button.BackgroundColor>
+                        <Button.TextColor>
+                            <MultiBinding Converter="{StaticResource EstadoActual}" ConverterParameter="texto">
+                                <Binding Path="Id" />
+                                <Binding Source="{RelativeSource AncestorType={x:Type vm:SelectorEventosViewModel}}" Path="Resaltado" x:DataType="vm:SelectorEventosViewModel" />
+                            </MultiBinding>
+                        </Button.TextColor>
+                    </Button>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
 
         <!-- Fuera del scroll: siempre visibles aunque la lista sea larga (RF-8, RF-10). -->
         <Button Text="+ Agregar evento" Style="{StaticResource BotonCampoAlerta}" HeightRequest="56" FontSize="20"
