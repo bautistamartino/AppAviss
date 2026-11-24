@@ -65,6 +65,11 @@ public static class DependencyInjection
         // Importación: singleton (guarda la vista previa en memoria) que abre un scope por operación. Necesita un IExcelProfile (AddAvissExcel).
         servicios.AddSingleton<IImportacionService, ImportacionService>();
 
+        // Exportación (spec 007): singleton como la importación (un scope por paso). Necesita un IExportadorArchivo (AddAvissExcel) y una
+        // IEntregaArchivo: la real es la de Android; este es el respaldo que avisa que no puede guardar (TryAdd: la plataforma gana).
+        servicios.TryAddSingleton<IEntregaArchivo, EntregaArchivoNoDisponible>();
+        servicios.AddSingleton<IExportacionService, ExportacionService>();
+
         // Arranque y copias de seguridad: no usan el DbContext del contenedor (trabajan sobre rutas de archivo), así que son singleton.
         // TryAdd: si la plataforma (Android, con StatFs) ya registró su propio proveedor antes, ese gana; este es el de respaldo.
         servicios.TryAddSingleton<IEspacioLibreProvider, EspacioLibreProvider>();

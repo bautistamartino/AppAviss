@@ -68,7 +68,12 @@ public enum CodigoError
     EsperaNoPendiente,
     VacaEnEspera,
     RechazoYaAnulado,
-    RechazoNoEsElUltimo
+    RechazoNoEsElUltimo,
+
+    // Exportación (spec 007); los mensajes fijos están en MensajesExportacion
+    ExportacionNoValida,
+    ColumnaDuplicada,
+    ArchivoNoGuardado
 }
 
 /// <summary>Resultado de una operación sin valor de retorno. El mensaje está en español y nunca lleva datos de animales ni de tambos.</summary>
