@@ -74,7 +74,7 @@ public class TrabajoViewModelEsperaTests
     }
 
     [Fact]
-    public async Task Con_CVET_0_no_hay_boton_ni_se_puede_poner_en_espera()
+    public async Task Con_CVET_0_la_ficha_abierta_con_Ver_ficha_tambien_se_puede_poner_en_espera()
     {
         var b = new Banco();
         var animal = Guid.NewGuid();
@@ -85,9 +85,10 @@ public class TrabajoViewModelEsperaTests
         await b.Vm.VerFichaSinTactoCommand.ExecuteAsync(null);
 
         Assert.True(b.Vm.HayFicha);
-        Assert.False(b.Vm.PuedePonerEnEspera);
+        Assert.True(b.Vm.PuedePonerEnEspera);   // spec 009, RF-15: se la puede decidir tactar igual, entonces también dejarla en espera
         await b.Vm.PonerEnEsperaCommand.ExecuteAsync(null);
-        Assert.Empty(b.Campo.EsperasPuestas);
+        Assert.Equal(animal, Assert.Single(b.Campo.EsperasPuestas).AnimalId);
+        Assert.False(b.Vm.HayFicha);
     }
 
     [Fact]

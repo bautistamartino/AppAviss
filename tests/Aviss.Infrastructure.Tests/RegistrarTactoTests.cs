@@ -20,6 +20,21 @@ public sealed class RegistrarTactoTests : IDisposable
         => _e.Servicio<ITrabajoCampoService>().RegistrarTactoAsync(
             new RegistrarTactoCommand(animal, estado, dias, obs, esperado));
 
+    // ---------- Spec 009, RF-15: una vaca de CVET 0 se puede tactar igual ----------
+
+    [Fact]
+    public async Task Una_vaca_con_CVET_0_se_tacta_como_cualquier_otra_sin_marcarla_ni_sumar_al_conteo()
+    {
+        var animal = _e.AnimalImportado("1019", _e.EstadoSeca, json: """{"ID":"1019","CVET":"0","RPRO":"SECA"}""");
+
+        var r = await Registrar(animal, _e.EstadoPrenada, obs: "se tacta igual");
+
+        Assert.True(r.EsCorrecto, r.Mensaje);
+        Assert.Equal(T(_e.EstadoPrenada), _e.Col("Animal", animal, "EstadoReproductivoId"));
+        Assert.Equal(1, _e.Cuenta("Tacto"));
+        Assert.Equal(0, _e.Cuenta("MarcaPasada"));   // el tacto no marca: la marca ya la hizo la lectura
+    }
+
     // ---------- Camino feliz ----------
 
     [Fact]

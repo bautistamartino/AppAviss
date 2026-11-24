@@ -44,7 +44,9 @@ public enum CuadroTrabajo
     /// <summary>"¿Terminar el tacto?" (RF-7).</summary>
     SegundaConfirmacion,
     /// <summary>"Vacas en espera": la lista completa, con el botón "+N" (spec 004, RF-2). Frena las lecturas como los demás cuadros.</summary>
-    ListaEspera
+    ListaEspera,
+    /// <summary>"Leyó otra vaca" (spec 009): con una ficha abierta, el bastón leyó otra vaca que entra en tacto; pregunta qué hacer (poner en espera la actual, cancelar o saltarla). Frena las lecturas (se guarda la última).</summary>
+    ConfirmarReemplazo
 }
 
 /// <summary>Con qué botón se llegó a la verificación de cierre.</summary>

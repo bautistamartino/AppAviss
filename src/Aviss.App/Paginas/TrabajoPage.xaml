@@ -155,10 +155,10 @@
                         <Label Text="{Binding UltimoGuardado, StringFormat='Último: {0}'}" Style="{StaticResource TextoCampo}" FontSize="28"
                                FontAttributes="Bold" HorizontalTextAlignment="Center" />
                     </Border>
-                    <!-- Tras una vaca con CVET 0 (que no entra en tacto): un botón para mirar su ficha, por si se quiere saber algo de ella. -->
+                    <!-- Tras una vaca con CVET 0 (que no entra en tacto): un botón para abrir su ficha completa, por si se la quiere tactar igual. -->
                     <Button Text="{Binding TextoVerFichaSinTacto}" Style="{StaticResource BotonCampoSecundario}" FontSize="20" HeightRequest="56"
                             IsVisible="{Binding HayVerFichaSinTacto}" Command="{Binding VerFichaSinTactoCommand}"
-                            SemanticProperties.Hint="Abre la ficha de la última vaca que no entró en tacto, solo para mirar" />
+                            SemanticProperties.Hint="Abre la ficha de la última vaca que no entró en tacto" />
                 </VerticalStackLayout>
 
                 <!-- Ficha de la vaca, como en el Daily: título con el ID y el CVET, Evento y Observación lado a lado, pestañas
@@ -166,10 +166,10 @@
                 <Grid RowDefinitions="Auto,Auto,*,Auto" IsVisible="{Binding HayFicha}">
 
                     <!-- El ID y el CVET (el motivo del tacto) están en la barra de arriba de la pantalla, que se ve siempre. Una vaca con
-                         CVET 0 abierta con "Ver ficha" lo avisa en rojo. -->
+                         CVET 0 abierta con "Ver ficha" lo avisa con un cartel informativo (spec 009, RF-15). -->
                     <VerticalStackLayout Grid.Row="0">
-                        <Border IsVisible="{Binding NoEntraEnTacto}" BackgroundColor="{StaticResource CampoPeligro}" StrokeThickness="0" Padding="14,6">
-                            <Label Text="No entra en tacto (CVET 0)" TextColor="White" FontSize="20" FontAttributes="Bold" />
+                        <Border IsVisible="{Binding MostrarCartelCvetCero}" BackgroundColor="{StaticResource CampoSecundario}" StrokeThickness="0" Padding="14,6">
+                            <Label Text="{Binding TextoCartelCvetCero}" TextColor="White" FontSize="20" FontAttributes="Bold" />
                         </Border>
                         <!-- Cartel de la vaca que viene de la espera (RF-3): acá "Saltar" la saca de la espera sin guardar nada. -->
                         <Border IsVisible="{Binding EsEsperaAbierta}" BackgroundColor="{StaticResource CampoAlerta}" StrokeThickness="0" Padding="14,6">
@@ -183,7 +183,7 @@
                     </VerticalStackLayout>
 
                     <!-- Evento y Observación: tocar cada casillero abre su lista o su texto. Nada se guarda hasta "Entrar". -->
-                    <VerticalStackLayout Grid.Row="1" Spacing="4" Padding="10,8,10,4" IsVisible="{Binding PuedeAgregarEventos}">
+                    <VerticalStackLayout Grid.Row="1" Spacing="4" Padding="10,8,10,4">
                         <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
                             <Label Grid.Column="0" Text="Evento" Style="{StaticResource TextoCampo}" FontSize="16" FontAttributes="Bold" TextColor="{StaticResource Gray600}" />
                             <Label Grid.Column="1" Text="Observación" Style="{StaticResource TextoCampo}" FontSize="16" FontAttributes="Bold" TextColor="{StaticResource Gray600}" />
@@ -272,7 +272,7 @@
                                 Padding="4,0" IsVisible="{Binding PuedePonerEnEspera}" Command="{Binding PonerEnEsperaCommand}"
                                 SemanticProperties.Hint="Dejar esta vaca en espera para atenderla después" />
                         <Button Grid.Column="2" Text="Entrar" Style="{StaticResource BotonCampo}" BackgroundColor="{StaticResource CampoExito}" FontSize="22"
-                                HeightRequest="56" IsVisible="{Binding PuedeAgregarEventos}" Command="{Binding EntrarCommand}"
+                                HeightRequest="56" Command="{Binding EntrarCommand}"
                                 SemanticProperties.Hint="Guardar el evento elegido para esta vaca" />
                     </Grid>
                 </Grid>

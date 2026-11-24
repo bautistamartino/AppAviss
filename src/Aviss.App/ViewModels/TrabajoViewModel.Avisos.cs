@@ -64,12 +64,15 @@ public sealed partial class TrabajoViewModel
         catch (Exception) { MensajeError = MensajeFalla; }
     }
 
-    /// <summary>"Seguir": cierra el aviso y espera la siguiente lectura.</summary>
+    /// <summary>
+    /// "Seguir": cierra el aviso y espera la siguiente lectura. Si había una ficha abierta, la deja como estaba (spec 009, RF-8.4):
+    /// cerrarla en silencio perdería el evento y la observación que se venían cargando.
+    /// </summary>
     [RelayCommand]
     private async Task SeguirAsync()
     {
         if (Cuadro != CuadroTrabajo.Aviso) return;
-        CerrarFichaInterno();
+        if (Etapa != EtapaTrabajo.Ficha) CerrarFichaInterno();
         await CambiarCuadroAsync(CuadroTrabajo.Ninguno);
     }
 

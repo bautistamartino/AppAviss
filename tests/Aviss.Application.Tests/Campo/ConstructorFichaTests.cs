@@ -152,7 +152,8 @@ public class ConstructorFichaTests
     {
         var f = Armar("""{"ID":"1014","CVET":"PRE","RPRO":"INSEMIN","LACT":"3","DDUC":"34","DEL":"95","DCC":"0","VACIA":"","LECHE":"24","UTORO":"FUNKI"}""");
 
-        Assert.Equal([("DDUC", "34"), ("DCC", "0"), ("LECHE", "24")], f.Extras!.Select(c => (c.Nombre, c.Valor)));
+        // RPRO y FCELO también se muestran (spec 009, RF-15): son datos del Excel con valor.
+        Assert.Equal([("RPRO", "INSEMIN"), ("DDUC", "34"), ("DCC", "0"), ("LECHE", "24")], f.Extras!.Select(c => (c.Nombre, c.Valor)));
     }
 
     // ---- Rechazos (spec 004, RF-11) ----
@@ -213,5 +214,32 @@ public class ConstructorFichaTests
 
     [Fact]
     public void Sin_columnas_extra_la_lista_queda_vacia()
-        => Assert.Empty(Armar("""{"ID":"1","CVET":"0","RPRO":"SECA","LACT":"1"}""").Extras!);
+        => Assert.Empty(Armar("""{"ID":"1","CVET":"0","LACT":"1"}""").Extras!);
+
+    // ---- Spec 009, RF-15: la ficha de una vaca con CVET 0 trae TODOS sus datos (caso de referencia: la vaca 1019 del rodeo BAUTI1)
+
+    /// <summary>Los datos originales de la vaca 1019 (CVET 0) tal como los guardó la importación.</summary>
+    public const string Json1019 = """{"ID":"1019","CVET":"0","LACT":"2","DEL":"211","FPART":"23/04/26","FCELO":"10/07/26","UTORO":"WINDSTAR  ","DDUC":"133","DCC":"133","RPRO":"PREÑADA ","FAPAR":"18/04/27","LECHE":"0"}""";
+
+    [Fact]
+    public void La_ficha_de_la_vaca_1019_con_CVET_0_trae_todos_los_datos_del_excel_que_tienen_valor()
+    {
+        var f = Armar(Json1019);
+
+        // Todo lo que el Excel trae con valor tiene que poder mostrarse en la pestaña Datos (columnas fijas + toro + extras).
+        var mostrados = f.Campos.Concat(f.Extras!).Where(c => c.Valor.Length > 0).ToDictionary(c => c.Nombre, c => c.Valor);
+        mostrados["UTORO"] = f.UltimoToro;
+
+        Assert.Equal("2", mostrados["LACT"]);
+        Assert.Equal("211", mostrados["DEL"]);
+        Assert.Equal("23/04/26", mostrados["FPART"]);
+        Assert.Equal("10/07/26", mostrados["FCELO"]);
+        Assert.Equal("WINDSTAR", mostrados["UTORO"]);
+        Assert.Equal("133", mostrados["DDUC"]);
+        Assert.Equal("133", mostrados["DCC"]);
+        Assert.Equal("PREÑADA", mostrados["RPRO"]);
+        Assert.Equal("18/04/27", mostrados["FAPAR"]);
+        Assert.Equal("0", mostrados["LECHE"]);
+        Assert.Equal("0", f.Cvet);
+    }
 }

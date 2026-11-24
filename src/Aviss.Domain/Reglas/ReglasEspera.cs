@@ -4,10 +4,10 @@ namespace Aviss.Domain.Reglas;
 public static class ReglasEspera
 {
     /// <summary>
-    /// RF-1: se puede poner en espera una vaca que entra en tacto (CVET distinto de 0; ver <see cref="ReglasCvet"/>) y
-    /// que todavía no está en espera.
+    /// RF-1: se puede poner en espera una vaca que todavía no está en espera. Desde la spec 009 (RF-15) ya no importa el CVET: una vaca
+    /// de CVET 0 abierta con "Ver ficha" también puede quedar en espera, porque en el campo se la puede decidir tactar igual.
     /// </summary>
-    public static bool PuedePonerseEnEspera(bool entraEnTacto, bool yaEnEspera) => entraEnTacto && !yaEnEspera;
+    public static bool PuedePonerseEnEspera(bool yaEnEspera) => !yaEnEspera;
 
     /// <summary>
     /// RF-9: la marca de pasada de una vaca en espera no se puede deshacer; la espera solo se sale resolviéndola o salteándola.
