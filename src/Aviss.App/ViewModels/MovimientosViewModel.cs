@@ -9,7 +9,7 @@ namespace Aviss.App.ViewModels;
 
 /// <summary>
 /// Una fila de "Últimos movimientos" lista para mostrar (RF-28): la hora, la caravana con su CVET y qué evento se agregó. No muestra la manga
-/// ni el veterinario (solo los cierres hablan de su manga, porque son movimientos de manga).
+/// ni quién lo hizo (solo los cierres hablan de su manga, porque son movimientos de manga).
 /// </summary>
 public sealed class MovimientoItem
 {
@@ -19,6 +19,9 @@ public sealed class MovimientoItem
 
     public bool EsCierre => Dto.Tipo == TipoMovimiento.Cierre;
     public bool EsRechazo => Dto.Tipo == TipoMovimiento.Rechazo;
+
+    /// <summary>El nombre del solo evento (OK, Aborto, Rechazo...); el Detalle del movimiento ya lo trae.</summary>
+    private string NombreEvento => string.IsNullOrWhiteSpace(Dto.Detalle) ? "Rechazo" : Dto.Detalle;
     public bool Anulado => Dto.Anulado;
     public bool PuedeDeshacer => Dto.PuedeDeshacer;
 
@@ -71,7 +74,7 @@ public sealed class MovimientoItem
 
     /// <summary>El segundo renglón de la fila, junto: "Tacto · PREÑADA", "Marca" o "Cierre de manga · Manual".</summary>
     public string TextoTipoDetalle => EsRechazo
-        ? (string.IsNullOrWhiteSpace(Dto.Observaciones) ? "Rechazo" : $"Rechazo · {Dto.Observaciones.Trim()}")
+        ? (string.IsNullOrWhiteSpace(Dto.Observaciones) ? NombreEvento : $"{NombreEvento} · {Dto.Observaciones.Trim()}")
         : Detalle.Length > 0 ? $"{Tipo} · {Detalle}" : Tipo;
 }
 
@@ -83,7 +86,19 @@ public sealed partial class MovimientosViewModel : ObservableObject
     private readonly ICampoService _campo;
     private readonly SesionTrabajo _sesion;
 
-    public MovimientosViewModel(ICampoService campo, SesionTrabajo sesion) => (_campo, _sesion) = (campo, sesion);
+    public MovimientosViewModel(ICampoService campo, SesionTrabajo sesion)
+    {
+        (_campo, _sesion) = (campo, sesion);
+        // Editar usa el mismo selector que la ficha, pero sin "+ Nuevo evento" (RF-12); elegir solo anota el evento, guardar es aparte.
+        Selector = new SelectorEventosViewModel(permiteNuevo: false)
+        {
+            AlElegir = evento =>
+            {
+                ElegirEventoEditado(evento);
+                return Task.CompletedTask;
+            }
+        };
+    }
 
     public ObservableCollection<MovimientoItem> Movimientos { get; } = [];
 
@@ -128,7 +143,7 @@ public sealed partial class MovimientosViewModel : ObservableObject
     [RelayCommand]
     private async Task DeshacerAsync(MovimientoItem? item)
     {
-        if (item is null || !item.PuedeDeshacer || EstaOcupado || _sesion.Veterinario is not { } vet) return;
+        if (item is null || !item.PuedeDeshacer || EstaOcupado) return;
 
         EstaOcupado = true;
         MensajeError = null;
@@ -142,7 +157,7 @@ public sealed partial class MovimientosViewModel : ObservableObject
                 TipoMovimiento.Rechazo => TipoDeshacer.Rechazo,
                 _ => TipoDeshacer.Cierre
             };
-            var resultado = await _campo.DeshacerAsync(new DeshacerCommand(tipo, item.Dto.RegistroId, vet.Id));
+            var resultado = await _campo.DeshacerAsync(new DeshacerCommand(tipo, item.Dto.RegistroId));
             if (!resultado.EsCorrecto)
             {
                 MensajeError = resultado.Mensaje;
@@ -166,8 +181,11 @@ public sealed partial class MovimientosViewModel : ObservableObject
     // Los registros solo se agregan: editar es anular el tacto o el rechazo y registrar uno nuevo con el evento y la observación elegidos, todo junto
     // (si el nuevo se rechaza, el original sigue como estaba).
 
-    /// <summary>Los eventos entre los que se puede elegir al editar: los estados activos y "Rechazo" al final (se puede pasar de tacto a rechazo y al revés).</summary>
-    public ObservableCollection<EstadoActivoDto> EstadosParaEditar { get; } = [];
+    /// <summary>
+    /// Los eventos entre los que se puede elegir al editar: el mismo selector de dos niveles de la ficha. Sirve para cualquier registro
+    /// (tacto, solo evento o Rechazo): se puede pasar de uno a otro.
+    /// </summary>
+    public SelectorEventosViewModel Selector { get; }
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HayEdicion), nameof(TituloEdicion))]
@@ -177,7 +195,12 @@ public sealed partial class MovimientosViewModel : ObservableObject
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(TextoEventoEditado))]
     [NotifyCanExecuteChangedFor(nameof(GuardarEdicionCommand))]
-    private EstadoActivoDto? _eventoEditado;
+    private EventoCampoDto? _eventoEditado;
+
+    /// <summary>Los datos del evento editado (días y resultado si tiene pasos); viajan en la corrección (spec 005, RF-27, RF-30).</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(TextoEventoEditado))]
+    private EleccionEvento? _eleccionEditada;
 
     [ObservableProperty]
     private string _observacionEditada = "";
@@ -189,8 +212,13 @@ public sealed partial class MovimientosViewModel : ObservableObject
 
     public bool HayEdicion => Editando is not null;
     public bool HayMensajeEdicion => !string.IsNullOrEmpty(MensajeEdicion);
-    public string TituloEdicion => Editando is { } e ? $"Editar el {(e.EsRechazo ? "rechazo" : "tacto")} de {e.Titulo}" : "";
-    public string TextoEventoEditado => EventoEditado?.Nombre ?? "Elegí un evento";
+    public string TituloEdicion => Editando is { } e ? $"Editar el {QueEs(e)} de {e.Titulo}" : "";
+
+    // "tacto", "rechazo" o "evento" (OK, Aborto, Revisar Nuevamente...: un solo evento del catálogo que no cambia el estado).
+    private static string QueEs(MovimientoItem e) =>
+        !e.EsRechazo ? "tacto"
+        : e.Dto.EventoId is null || e.Dto.EventoId == Aviss.Application.Campo.EventosCampo.Rechazo ? "rechazo" : "evento";
+    public string TextoEventoEditado => EventoEditado is { } e ? SelectorEventosViewModel.Resumen(e, EleccionEditada) : "Elegí un evento";
 
     /// <summary>Abre la edición con el evento y la observación actuales ya cargados.</summary>
     [RelayCommand]
@@ -202,14 +230,17 @@ public sealed partial class MovimientosViewModel : ObservableObject
             MensajeError = null;
             MensajeInfo = null;
             MensajeEdicion = null;
-            var estados = await _campo.ListarEstadosActivosAsync();
-            EstadosParaEditar.Clear();
-            foreach (var e in estados) EstadosParaEditar.Add(e);
-            EstadosParaEditar.Add(TrabajoViewModel.EventoRechazo);
-
-            EventoEditado = item.EsRechazo
-                ? TrabajoViewModel.EventoRechazo
-                : estados.FirstOrDefault(e => string.Equals(e.Nombre, item.Dto.Detalle, StringComparison.OrdinalIgnoreCase));
+            // El registro se reconoce por su EventoId, no por el nombre. Si su evento ya no está activo no se elige ninguno (y no se resalta).
+            Selector.Actualizar(await _campo.ListarEventosAsync());
+            // Se precargan los días y el resultado del registro: si se vuelve a tocar el mismo evento, sus pasos abren con esos valores.
+            var dto = item.Dto;
+            var eleccion = dto.EventoId is { } id ? new EleccionEvento(id, dto.DiasPreniez, dto.DiasAborto, dto.ResultadoAborto) : null;
+            Selector.Abrir(dto.EventoId, eleccion);
+            var evento = Selector.Buscar(dto.EventoId);
+            // Un Aborto viejo (sin días ni resultado) no está completo: no se deja elegido, hay que volver a elegirlo con sus pasos.
+            var completo = evento is not null && (!evento.TienePasos || SelectorEventosViewModel.EstaCompleta(evento, eleccion));
+            EventoEditado = completo ? evento : null;
+            EleccionEditada = completo ? eleccion : null;
             ObservacionEditada = item.Dto.Observaciones ?? "";
             Editando = item;
         }
@@ -220,9 +251,13 @@ public sealed partial class MovimientosViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private void ElegirEventoEditado(EstadoActivoDto? estado)
+    private void ElegirEventoEditado(EventoCampoDto? estado)
     {
         if (estado is null) return;
+        // Los datos de los pasos los armó el selector; un evento con pasos incompletos no se elige.
+        var eleccion = Selector.EleccionActual is { } e && e.EventoId == estado.Id ? e : new EleccionEvento(estado.Id);
+        if (estado.TienePasos && !SelectorEventosViewModel.EstaCompleta(estado, eleccion)) return;
+        EleccionEditada = eleccion;
         EventoEditado = estado;
         MensajeEdicion = null;
     }
@@ -232,6 +267,8 @@ public sealed partial class MovimientosViewModel : ObservableObject
     {
         Editando = null;
         EventoEditado = null;
+        EleccionEditada = null;
+        Selector.LimpiarEleccion();   // un paso abierto no queda para la próxima edición
         ObservacionEditada = "";
         MensajeEdicion = null;
     }
@@ -242,14 +279,15 @@ public sealed partial class MovimientosViewModel : ObservableObject
     [RelayCommand(CanExecute = nameof(PuedeGuardarEdicion))]
     private async Task GuardarEdicionAsync()
     {
-        if (Editando is not { } item || EventoEditado is not { } evento || EstaOcupado || _sesion.Veterinario is not { } vet) return;
+        if (Editando is not { } item || EventoEditado is not { } evento || EstaOcupado) return;
 
         EstaOcupado = true;
         MensajeEdicion = null;
         try
         {
             var observacion = string.IsNullOrWhiteSpace(ObservacionEditada) ? null : ObservacionEditada.Trim();
-            var resultado = await _campo.CorregirRegistroAsync(new CorregirRegistroCommand(item.Dto.RegistroId, evento.Id, observacion, vet.Id));
+            var resultado = await _campo.CorregirRegistroAsync(new CorregirRegistroCommand(
+                item.Dto.RegistroId, evento.Id, observacion, evento.TienePasos ? EleccionEditada : null));
             if (!resultado.EsCorrecto)
             {
                 MensajeEdicion = resultado.Mensaje;

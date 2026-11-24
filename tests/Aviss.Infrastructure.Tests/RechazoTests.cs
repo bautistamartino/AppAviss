@@ -17,7 +17,7 @@ public sealed class RechazoTests : IDisposable
     private static string T(Guid? id) => EscenarioConServicios.Texto(id);
 
     private Task<Resultado<Guid>> RechazarAsync(Guid animal, string? motivo = "pata") =>
-        _e.Campo.RegistrarRechazoAsync(new RegistrarRechazoCommand(animal, motivo, _e.UsuarioId));
+        _e.Campo.RegistrarSoloEventoAsync(new RegistrarSoloEventoCommand(animal, EventosCampo.Rechazo, motivo));
 
     private async Task<Guid> RechazarOkAsync(Guid animal, string? motivo = "pata")
     {
@@ -27,7 +27,7 @@ public sealed class RechazoTests : IDisposable
     }
 
     [Fact]
-    public async Task Guardar_un_rechazo_registra_el_motivo_el_veterinario_la_hora_y_el_historial()
+    public async Task Guardar_un_rechazo_registra_el_motivo_la_hora_y_el_historial()
     {
         var (animal, _) = await _e.VacaMarcadaAsync("100", _e.EstadoSeca);
         _e.Reloj.Avanzar(TimeSpan.FromSeconds(5));
@@ -36,7 +36,6 @@ public sealed class RechazoTests : IDisposable
 
         Assert.Equal("ubre dura", _e.Col("Rechazo", id, "Observaciones"));
         Assert.Equal(T(animal), _e.Col("Rechazo", id, "AnimalId"));
-        Assert.Equal(T(_e.UsuarioId), _e.Col("Rechazo", id, "UsuarioId"));
         Assert.Equal(BaseDeDatosDePrueba.Fecha(_e.Reloj.UtcAhora), _e.Col("Rechazo", id, "FechaHoraUtc"));
         Assert.Equal("0", _e.Col("Rechazo", id, "Anulado"));
         Assert.Equal(1, _e.Cuenta("Historial", $"Accion = 'RechazoCreado' AND EntidadId = '{T(id)}'"));
@@ -92,8 +91,8 @@ public sealed class RechazoTests : IDisposable
     public async Task El_rechazo_valida_el_reloj_como_los_demas_registros_y_no_guarda_nada()
     {
         var animal = _e.AnimalImportado("100", _e.EstadoSeca);
-        var manga = _e.Base.Manga(_e.RodeoId, 9, _e.UsuarioId);
-        _e.Base.MarcaPasada(animal, manga, _e.UsuarioId, fechaHora: _e.Reloj.UtcAhora.AddHours(2));
+        var manga = _e.Base.Manga(_e.RodeoId, 9);
+        _e.Base.MarcaPasada(animal, manga, fechaHora: _e.Reloj.UtcAhora.AddHours(2));
 
         var r = await RechazarAsync(animal);
 
@@ -104,17 +103,12 @@ public sealed class RechazoTests : IDisposable
     }
 
     [Fact]
-    public async Task No_se_puede_rechazar_un_animal_anulado_ni_inexistente_ni_con_un_veterinario_de_baja()
+    public async Task No_se_puede_rechazar_un_animal_anulado_ni_inexistente()
     {
         var anulado = _e.Base.Animal(_e.RodeoId, "100", "AltaEnCampo", anulado: true);
         Assert.Equal(CodigoError.AnimalAnulado, (await RechazarAsync(anulado)).Codigo);
 
         Assert.Equal(CodigoError.NoEncontrado, (await RechazarAsync(Guid.NewGuid())).Codigo);
-
-        var deBaja = _e.Base.Usuario("Vet Baja", activo: false);
-        var vivo = _e.AnimalImportado("200");
-        var r = await _e.Campo.RegistrarRechazoAsync(new RegistrarRechazoCommand(vivo, "x", deBaja));
-        Assert.Equal(CodigoError.UsuarioDeBaja, r.Codigo);
         Assert.Equal(0, _e.Cuenta("Rechazo"));
     }
 
@@ -155,7 +149,6 @@ public sealed class RechazoTests : IDisposable
         Assert.True(r.EsCorrecto, r.Mensaje);
         Assert.Equal(animal, r.Valor.AnimalId);
         Assert.Equal("1", _e.Col("Rechazo", id, "Anulado"));
-        Assert.Equal(T(_e.UsuarioId), _e.Col("Rechazo", id, "AnuladoPorUsuarioId"));
         Assert.Equal(BaseDeDatosDePrueba.Fecha(_e.Reloj.UtcAhora), _e.Col("Rechazo", id, "AnuladoEnUtc"));
         Assert.Equal(1, _e.Cuenta("Historial", $"Accion = 'RechazoAnulado' AND EntidadId = '{T(id)}'"));
         Assert.Equal(tactosAntes, _e.Cuenta("Tacto"));

@@ -92,7 +92,7 @@ public class ReglasTactoTests
 
     private static Tacto Normal(Guid animal, DateTime fecha, long orden, bool anulado = false)
     {
-        var t = Tacto.Registrar(animal, fecha, orden, null, Guid.NewGuid(), null, null, Guid.NewGuid(), Guid.NewGuid(), Ahora);
+        var t = Tacto.Registrar(animal, fecha, orden, null, Guid.NewGuid(), null, null, Ahora);
         if (anulado) t.MarcarAnulado(Ahora);
         return t;
     }
@@ -128,7 +128,7 @@ public class ReglasTactoTests
         var anulado = Normal(animal, Ahora.AddDays(-2), 2, anulado: true);
         // la anulación se crea sobre un tacto aún no marcado; acá solo importa que su Tipo sea Anulacion
         var otro = Normal(animal, Ahora.AddDays(-2), 3);
-        var anulacion = Tacto.CrearAnulacion(otro, Estado, Ahora, 4, Guid.NewGuid(), Guid.NewGuid(), Ahora);
+        var anulacion = Tacto.CrearAnulacion(otro, Estado, Ahora, 4, Ahora);
         Assert.Same(vigente, ReglasTacto.UltimoVigente(new[] { vigente, anulado, anulacion }));
     }
 
@@ -151,11 +151,9 @@ public class ReglasTactoTests
         var animal = Guid.NewGuid();
         var anterior = Guid.NewGuid();
         var nuevo = Guid.NewGuid();
-        var original = Tacto.Registrar(animal, Ahora.AddDays(-1), 1, anterior, nuevo, 120, "obs", Guid.NewGuid(), Guid.NewGuid(), Ahora);
-        var usuario = Guid.NewGuid();
-        var dispositivo = Guid.NewGuid();
+        var original = Tacto.Registrar(animal, Ahora.AddDays(-1), 1, anterior, nuevo, 120, "obs", Ahora);
 
-        var anulacion = Tacto.CrearAnulacion(original, nuevo, Ahora, 2, usuario, dispositivo, Ahora);
+        var anulacion = Tacto.CrearAnulacion(original, nuevo, Ahora, 2, Ahora);
 
         Assert.Equal(TipoTacto.Anulacion, anulacion.Tipo);
         Assert.Equal(original.Id, anulacion.TactoAnuladoId);
@@ -163,16 +161,14 @@ public class ReglasTactoTests
         Assert.Equal(nuevo, anulacion.EstadoAnteriorId);   // estado actual del animal
         Assert.Equal(anterior, anulacion.EstadoNuevoId);   // estado anterior del tacto anulado
         Assert.Null(anulacion.DiasPrenez);
-        Assert.Equal(usuario, anulacion.UsuarioId);
-        Assert.Equal(dispositivo, anulacion.DispositivoId);
         Assert.False(anulacion.Anulado);
     }
 
     [Fact]
     public void Tacto_de_anulacion_puede_volver_a_animal_sin_estado()
     {
-        var original = Tacto.Registrar(Guid.NewGuid(), Ahora, 1, null, Estado, null, null, Guid.NewGuid(), Guid.NewGuid(), Ahora);
-        var anulacion = Tacto.CrearAnulacion(original, Estado, Ahora, 2, Guid.NewGuid(), Guid.NewGuid(), Ahora);
+        var original = Tacto.Registrar(Guid.NewGuid(), Ahora, 1, null, Estado, null, null, Ahora);
+        var anulacion = Tacto.CrearAnulacion(original, Estado, Ahora, 2, Ahora);
         Assert.Null(anulacion.EstadoNuevoId);
     }
 
@@ -180,9 +176,9 @@ public class ReglasTactoTests
     public void Un_tacto_de_anulacion_no_se_marca_anulado_ni_se_anula()
     {
         var original = Normal(Guid.NewGuid(), Ahora, 1);
-        var anulacion = Tacto.CrearAnulacion(original, Estado, Ahora, 2, Guid.NewGuid(), Guid.NewGuid(), Ahora);
+        var anulacion = Tacto.CrearAnulacion(original, Estado, Ahora, 2, Ahora);
         Assert.Throws<DominioException>(() => anulacion.MarcarAnulado(Ahora));
-        Assert.Throws<DominioException>(() => Tacto.CrearAnulacion(anulacion, Estado, Ahora, 3, Guid.NewGuid(), Guid.NewGuid(), Ahora));
+        Assert.Throws<DominioException>(() => Tacto.CrearAnulacion(anulacion, Estado, Ahora, 3, Ahora));
     }
 
     [Fact]
@@ -190,15 +186,15 @@ public class ReglasTactoTests
     {
         var t = Normal(Guid.NewGuid(), Ahora, 1, anulado: true);
         Assert.Throws<DominioException>(() => t.MarcarAnulado(Ahora));
-        Assert.Throws<DominioException>(() => Tacto.CrearAnulacion(t, Estado, Ahora, 2, Guid.NewGuid(), Guid.NewGuid(), Ahora));
+        Assert.Throws<DominioException>(() => Tacto.CrearAnulacion(t, Estado, Ahora, 2, Ahora));
     }
 
     [Fact]
     public void Tacto_normal_exige_estado_nuevo_y_dias_en_rango()
     {
         Assert.Throws<DominioException>(() =>
-            Tacto.Registrar(Guid.NewGuid(), Ahora, 1, null, Guid.Empty, null, null, Guid.NewGuid(), Guid.NewGuid(), Ahora));
+            Tacto.Registrar(Guid.NewGuid(), Ahora, 1, null, Guid.Empty, null, null, Ahora));
         Assert.Throws<DominioException>(() =>
-            Tacto.Registrar(Guid.NewGuid(), Ahora, 1, null, Estado, 301, null, Guid.NewGuid(), Guid.NewGuid(), Ahora));
+            Tacto.Registrar(Guid.NewGuid(), Ahora, 1, null, Estado, 301, null, Ahora));
     }
 }

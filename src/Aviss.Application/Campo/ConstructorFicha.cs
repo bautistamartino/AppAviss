@@ -8,7 +8,10 @@ namespace Aviss.Application.Campo;
 public sealed record TactoParaFicha(DateTime FechaHoraUtc, string? EstadoNombre, bool Anulado);
 
 /// <summary>Un rechazo de la vaca tal como lo necesita la ficha (spec 004, RF-11).</summary>
-public sealed record RechazoParaFicha(Guid Id, DateTime FechaHoraUtc, long OrdenInsercion, string? Observaciones, bool Anulado);
+/// <param name="EventoId">Spec 005: el solo evento del catálogo (OK, Aborto...); nulo = el Rechazo fijo.</param>
+/// <param name="NombreEvento">El nombre de ese evento (aunque esté desactivado); nulo para el Rechazo fijo.</param>
+public sealed record RechazoParaFicha(
+    Guid Id, DateTime FechaHoraUtc, long OrdenInsercion, string? Observaciones, bool Anulado, Guid? EventoId = null, string? NombreEvento = null);
 
 /// <summary>Lo que arma <see cref="ConstructorFicha"/>: los campos del Excel, el dato de inseminaciones, el historial, el CVET y el rechazo vigente.</summary>
 public sealed record FichaArmada(
@@ -78,12 +81,14 @@ public static class ConstructorFicha
         foreach (var r in listaRechazos)
         {
             var local = TimeZoneInfo.ConvertTimeFromUtc(r.FechaHoraUtc, zona);
-            var titulo = string.IsNullOrWhiteSpace(r.Observaciones) ? "Rechazo" : $"Rechazo: {r.Observaciones}";
+            var nombre = r.NombreEvento ?? "Rechazo";
+            var titulo = string.IsNullOrWhiteSpace(r.Observaciones) ? nombre : $"{nombre}: {r.Observaciones}";
             datados.Add(new EventoFichaDto(OrigenEvento.Aviss, titulo, local, null, (hoyLocal - local.Date).Days, r.Anulado));
         }
 
         // El rechazo vigente es el no anulado más reciente (fecha y, con empate, el guardado después).
-        var vigente = listaRechazos.Where(r => !r.Anulado)
+        // Solo el Rechazo fijo (sin evento) es la "marca de rechazo": un OK o un Aborto no pintan la franja de rechazo.
+        var vigente = listaRechazos.Where(r => !r.Anulado && r.EventoId is null)
             .OrderByDescending(r => r.FechaHoraUtc).ThenByDescending(r => r.OrdenInsercion).FirstOrDefault();
         var rechazoVigente = vigente is null ? null : new RechazoVigenteDto(vigente.Id, vigente.Observaciones, vigente.FechaHoraUtc);
 

@@ -2,6 +2,7 @@
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:vm="clr-namespace:Aviss.App.ViewModels"
+             xmlns:ctl="clr-namespace:Aviss.App.Controles"
              xmlns:dto="clr-namespace:Aviss.Application.Campo;assembly=Aviss.Application"
              x:Class="Aviss.App.Paginas.MovimientosPage"
              x:DataType="vm:MovimientosViewModel"
@@ -36,7 +37,7 @@
                     <DataTemplate x:DataType="vm:MovimientoItem">
                         <!-- Una fila compacta y alineada: la hora en una columna fija; en el medio la caravana con su CVET y debajo
                              "Tacto · evento" (y la observación si hay); a la derecha los botones apilados, todos del mismo ancho.
-                             Sin manga ni veterinario. -->
+                             Sin manga ni nombre de quien lo hizo. -->
                         <Grid ColumnDefinitions="62,*,Auto" ColumnSpacing="8" Padding="10,6" Margin="0,0,0,6" BackgroundColor="{StaticResource CampoClaro}">
                             <Label Grid.Column="0" Text="{Binding Hora}" Style="{StaticResource TextoCampo}" FontSize="20" FontAttributes="Bold"
                                    VerticalOptions="Center" />
@@ -84,35 +85,30 @@
         <Grid IsVisible="{Binding HayEdicion}" BackgroundColor="{StaticResource CampoVelo}" Padding="14">
             <Grid.GestureRecognizers><TapGestureRecognizer /></Grid.GestureRecognizers>
             <Border BackgroundColor="White" StrokeThickness="0" Padding="18,16" HorizontalOptions="Fill" VerticalOptions="Center">
-                <VerticalStackLayout Spacing="12">
-                    <Label Text="{Binding TituloEdicion}" Style="{StaticResource TituloCuadro}" FontSize="24" />
-                    <Label Text="{Binding TextoEventoEditado, StringFormat='Evento: {0}'}" Style="{StaticResource TextoCampo}" FontSize="20" FontAttributes="Bold"
+                <!-- Título y botones fijos; solo el selector y la observación se desplazan, así Guardar y Cancelar siempre se ven. -->
+                <Grid RowDefinitions="Auto,Auto,*,Auto,Auto" RowSpacing="12">
+                    <Label Grid.Row="0" Text="{Binding TituloEdicion}" Style="{StaticResource TituloCuadro}" FontSize="24" />
+                    <Label Grid.Row="1" Text="{Binding TextoEventoEditado, StringFormat='Evento: {0}'}" Style="{StaticResource TextoCampo}" FontSize="20" FontAttributes="Bold"
                            TextColor="{StaticResource CampoExito}" />
 
-                    <ScrollView MaximumHeightRequest="260">
-                        <VerticalStackLayout BindableLayout.ItemsSource="{Binding EstadosParaEditar}" Spacing="8">
-                            <BindableLayout.ItemTemplate>
-                                <DataTemplate x:DataType="dto:EstadoActivoDto">
-                                    <Button Text="{Binding Nombre}" Style="{StaticResource BotonCampoSecundario}" HeightRequest="52" FontSize="20"
-                                            Command="{Binding Source={RelativeSource AncestorType={x:Type vm:MovimientosViewModel}}, Path=ElegirEventoEditadoCommand, x:DataType=vm:MovimientosViewModel}"
-                                            CommandParameter="{Binding .}" />
-                                </DataTemplate>
-                            </BindableLayout.ItemTemplate>
+                    <ScrollView Grid.Row="2">
+                        <VerticalStackLayout Spacing="12">
+                            <ctl:SelectorEventosView Selector="{Binding Selector}" />
+
+                            <Editor Text="{Binding ObservacionEditada}" Placeholder="Observación (opcional)" MaxLength="300" HeightRequest="90" FontSize="18"
+                                    TextColor="Black" BackgroundColor="{StaticResource CampoClaro}" AutoSize="Disabled" />
+
+                            <Border IsVisible="{Binding HayMensajeEdicion}" BackgroundColor="{StaticResource CampoPeligro}" StrokeThickness="0" Padding="12,8">
+                                <Label Text="{Binding MensajeEdicion}" TextColor="White" FontSize="18" FontAttributes="Bold" />
+                            </Border>
                         </VerticalStackLayout>
                     </ScrollView>
 
-                    <Editor Text="{Binding ObservacionEditada}" Placeholder="Observación (opcional)" MaxLength="300" HeightRequest="90" FontSize="18"
-                            TextColor="Black" BackgroundColor="{StaticResource CampoClaro}" AutoSize="Disabled" />
-
-                    <Border IsVisible="{Binding HayMensajeEdicion}" BackgroundColor="{StaticResource CampoPeligro}" StrokeThickness="0" Padding="12,8">
-                        <Label Text="{Binding MensajeEdicion}" TextColor="White" FontSize="18" FontAttributes="Bold" />
-                    </Border>
-
-                    <Button Text="Guardar" Style="{StaticResource BotonCampo}" HeightRequest="56" FontSize="22" BackgroundColor="{StaticResource CampoExito}"
+                    <Button Grid.Row="3" Text="Guardar" Style="{StaticResource BotonCampo}" HeightRequest="56" FontSize="22" BackgroundColor="{StaticResource CampoExito}"
                             Command="{Binding GuardarEdicionCommand}" />
-                    <Button Text="Cancelar" Style="{StaticResource BotonCampoSecundario}" HeightRequest="52" FontSize="20"
+                    <Button Grid.Row="4" Text="Cancelar" Style="{StaticResource BotonCampoSecundario}" HeightRequest="52" FontSize="20"
                             Command="{Binding CancelarEdicionCommand}" />
-                </VerticalStackLayout>
+                </Grid>
             </Border>
         </Grid>
     </Grid>

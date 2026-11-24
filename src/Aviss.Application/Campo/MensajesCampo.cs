@@ -4,8 +4,8 @@ using Aviss.Domain.Enums;
 namespace Aviss.Application.Campo;
 
 /// <summary>
-/// Mensajes fijos en español del flujo de campo (spec 003, RF-33): nunca llevan caravanas, nombres de tambos ni de
-/// veterinarios. Cada código nuevo y cada motivo de rechazo tiene uno; un test comprueba que ninguno falte.
+/// Mensajes fijos en español del flujo de campo (spec 003, RF-33): nunca llevan caravanas ni nombres de tambos.
+/// Cada código nuevo y cada motivo de rechazo tiene uno; un test comprueba que ninguno falte.
 /// </summary>
 public static class MensajesCampo
 {

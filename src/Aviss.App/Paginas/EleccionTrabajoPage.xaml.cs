@@ -2,7 +2,7 @@ using Aviss.App.ViewModels;
 
 namespace Aviss.App.Paginas;
 
-/// <summary>Elegir veterinario, establecimiento y rodeo (spec 003). Sin lógica: todo está en el ViewModel.</summary>
+/// <summary>Elegir establecimiento y rodeo (spec 003; sin veterinario desde la 006). Sin lógica: todo está en el ViewModel.</summary>
 public partial class EleccionTrabajoPage : ContentPage
 {
 	private readonly EleccionTrabajoViewModel _vm;
@@ -18,7 +18,7 @@ public partial class EleccionTrabajoPage : ContentPage
 		base.OnAppearing();
 		try
 		{
-			// Vuelve a leer veterinarios y rodeos cada vez que se muestra (el avance cambia mientras se trabaja).
+			// Vuelve a leer los rodeos cada vez que se muestra (el avance cambia mientras se trabaja).
 			await _vm.CargarAsync();
 		}
 		catch (Exception)

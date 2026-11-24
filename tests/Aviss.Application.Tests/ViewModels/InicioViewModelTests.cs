@@ -6,7 +6,7 @@ namespace Aviss.Application.Tests.ViewModels;
 public class InicioViewModelTests
 {
     [Fact]
-    public async Task Trabajar_va_a_la_eleccion_de_veterinario_y_rodeo()
+    public async Task Trabajar_va_a_la_eleccion_de_establecimiento_y_rodeo()
     {
         var nav = new FakeNavegacion();
         var vm = new InicioViewModel(nav);

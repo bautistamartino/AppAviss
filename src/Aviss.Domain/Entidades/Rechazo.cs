@@ -6,7 +6,7 @@ namespace Aviss.Domain.Entidades;
 /// La marca de rechazo (spec 004, RF-6): el veterinario dejó constancia de que esta vaca se rechaza, con un motivo libre
 /// en <see cref="Observaciones"/>. Es un registro de campo como <see cref="MarcaPasada"/>: entra en el orden de guardado
 /// compartido y en el "último registro vigente", pero NO cambia el estado de la vaca ni su fecha de último tacto.
-/// Es inmutable salvo pasar <see cref="Anulado"/> de "no" a "sí" (deshacer), con quién y cuándo.
+/// Es inmutable salvo pasar <see cref="Anulado"/> de "no" a "sí" (deshacer), con la fecha de anulación.
 /// </summary>
 public sealed class Rechazo : EntidadEditable
 {
@@ -19,40 +19,52 @@ public sealed class Rechazo : EntidadEditable
     /// <summary>Orden de guardado compartido con tactos y marcas (desempata registros con igual fecha y hora).</summary>
     public long OrdenInsercion { get; private set; }
 
+    /// <summary>
+    /// Spec 005: el evento del catálogo (de tipo SoloEvento: OK, Revisar Nuevamente; o un Aborto cuyo resultado fue Rechazo) que guarda este registro.
+    /// Nulo = el Rechazo fijo de la aplicación. Nunca cambia una vez guardado.
+    /// </summary>
+    public Guid? EventoId { get; private set; }
+
+    /// <summary>
+    /// Spec 005 (segunda vuelta): los días de aborto (0 a 400) cuando este registro es un Aborto cuyo resultado fue Rechazo
+    /// (RF-30). Solo con evento; en un solo evento común o en el Rechazo fijo es nulo.
+    /// </summary>
+    public int? DiasAborto { get; private set; }
+
     public string? Observaciones { get; private set; }
-    public Guid UsuarioId { get; private set; }
-    public Guid DispositivoId { get; private set; }
     public bool Anulado { get; private set; }
     public DateTime? AnuladoEnUtc { get; private set; }
-    public Guid? AnuladoPorUsuarioId { get; private set; }
 
     private Rechazo() { }
     private Rechazo(DateTime ahoraUtc) : base(ahoraUtc) { }
 
     public static Rechazo Registrar(
         Guid animalId, DateTime fechaHoraUtc, long ordenInsercion, string? observaciones,
-        Guid usuarioId, Guid dispositivoId, DateTime ahoraUtc)
+        DateTime ahoraUtc, Guid? eventoId = null, int? diasAborto = null)
     {
         var obs = Validar.TextoOpcional(observaciones);
         if (obs is not null && obs.Length > MaximoObservaciones)
             throw new DominioException($"La observación no puede superar los {MaximoObservaciones} caracteres.");
+        if (diasAborto is int da && !RangosDias.Aborto.Contiene(da))
+            throw new DominioException($"Los días de aborto deben estar entre {RangosDias.Aborto.Minimo} y {RangosDias.Aborto.Maximo}.");
+        if (diasAborto is not null && eventoId is null)
+            throw new DominioException("Los días de aborto necesitan el evento Aborto.");
         return new(ahoraUtc)
         {
             AnimalId = Validar.IdObligatorio(animalId, "El animal"),
             FechaHoraUtc = Validar.Utc(fechaHoraUtc, nameof(fechaHoraUtc)),
             OrdenInsercion = ordenInsercion,
+            EventoId = eventoId,
+            DiasAborto = diasAborto,
             Observaciones = obs,
-            UsuarioId = Validar.IdObligatorio(usuarioId, "El usuario"),
-            DispositivoId = Validar.IdObligatorio(dispositivoId, "El dispositivo")
         };
     }
 
     /// <summary>Deshace el rechazo. Es el único cambio permitido sobre un rechazo guardado.</summary>
-    public void MarcarAnulado(Guid usuarioId, DateTime ahoraUtc)
+    public void MarcarAnulado(DateTime ahoraUtc)
     {
         if (Anulado)
             throw new DominioException("El rechazo ya está anulado.");
-        AnuladoPorUsuarioId = Validar.IdObligatorio(usuarioId, "El usuario");
         AnuladoEnUtc = Validar.Utc(ahoraUtc, nameof(ahoraUtc));
         Anulado = true;
         Tocar(ahoraUtc);

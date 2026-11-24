@@ -42,10 +42,10 @@ public sealed class RendimientoCampoTests : IDisposable
         for (var k = 0; k < 3; k++)
         {
             var fechaManga = ahora.AddDays(-100 + k);
-            mangasViejas[k] = _e.Base.Manga(_e.RodeoId, k + 1, _e.UsuarioId, creadaEn: fechaManga);
-            _e.Base.CierreManga(mangasViejas[k], _e.UsuarioId, aviss: 10_000, fechaHora: fechaManga.AddHours(5));
+            mangasViejas[k] = _e.Base.Manga(_e.RodeoId, k + 1, creadaEn: fechaManga);
+            _e.Base.CierreManga(mangasViejas[k], aviss: 10_000, fechaHora: fechaManga.AddHours(5));
         }
-        _mangaAbierta = _e.Base.Manga(_e.RodeoId, 4, _e.UsuarioId, creadaEn: ahora.AddHours(-6));
+        _mangaAbierta = _e.Base.Manga(_e.RodeoId, 4, creadaEn: ahora.AddHours(-6));
 
         using var tx = c.BeginTransaction();
 
@@ -73,15 +73,13 @@ public sealed class RendimientoCampoTests : IDisposable
 
         using var tacto = c.CreateCommand();
         tacto.Transaction = tx;
-        tacto.CommandText = @"INSERT INTO Tacto (Id, AnimalId, FechaHoraUtc, OrdenInsercion, EstadoNuevoId, UsuarioId, DispositivoId, Tipo, Anulado, CreadoEnUtc, ActualizadoEnUtc)
-                              VALUES ($id, $a, $fh, $o, $e, $u, $d, 'Normal', 0, $fh, $fh)";
+        tacto.CommandText = @"INSERT INTO Tacto (Id, AnimalId, FechaHoraUtc, OrdenInsercion, EstadoNuevoId, Tipo, Anulado, CreadoEnUtc, ActualizadoEnUtc)
+                              VALUES ($id, $a, $fh, $o, $e, 'Normal', 0, $fh, $fh)";
         var tId = tacto.Parameters.Add("$id", SqliteType.Text);
         var tA = tacto.Parameters.Add("$a", SqliteType.Text);
         var tFh = tacto.Parameters.Add("$fh", SqliteType.Text);
         var tO = tacto.Parameters.Add("$o", SqliteType.Integer);
         tacto.Parameters.AddWithValue("$e", _e.EstadoSeca);
-        tacto.Parameters.AddWithValue("$u", _e.UsuarioId);
-        tacto.Parameters.AddWithValue("$d", Guid.NewGuid());
         tacto.Prepare();
         void InsertarTacto(int animalIdx, DateTime fecha)
         {
@@ -94,15 +92,13 @@ public sealed class RendimientoCampoTests : IDisposable
 
         using var marca = c.CreateCommand();
         marca.Transaction = tx;
-        marca.CommandText = @"INSERT INTO MarcaPasada (Id, AnimalId, MangaId, FechaHoraUtc, OrdenInsercion, UsuarioId, DispositivoId, Anulado, CreadoEnUtc, ActualizadoEnUtc)
-                              VALUES ($id, $a, $m, $fh, $o, $u, $d, 0, $fh, $fh)";
+        marca.CommandText = @"INSERT INTO MarcaPasada (Id, AnimalId, MangaId, FechaHoraUtc, OrdenInsercion, Anulado, CreadoEnUtc, ActualizadoEnUtc)
+                              VALUES ($id, $a, $m, $fh, $o, 0, $fh, $fh)";
         var mId = marca.Parameters.Add("$id", SqliteType.Text);
         var mA = marca.Parameters.Add("$a", SqliteType.Text);
         var mM = marca.Parameters.Add("$m", SqliteType.Text);
         var mFh = marca.Parameters.Add("$fh", SqliteType.Text);
         var mO = marca.Parameters.Add("$o", SqliteType.Integer);
-        marca.Parameters.AddWithValue("$u", _e.UsuarioId);
-        marca.Parameters.AddWithValue("$d", Guid.NewGuid());
         marca.Prepare();
         void InsertarMarca(int animalIdx, Guid manga, DateTime fecha)
         {
@@ -150,7 +146,7 @@ public sealed class RendimientoCampoTests : IDisposable
         // Vacas 12.000 en adelante: tienen tactos viejos pero no marca ni tacto de hoy.
         var ms = await MejorDeTresAsync(async i =>
         {
-            var r = await _e.Campo.ProcesarLecturaAsync(new ProcesarLecturaCommand(_e.RodeoId, (112_000 + i).ToString(), _e.UsuarioId));
+            var r = await _e.Campo.ProcesarLecturaAsync(new ProcesarLecturaCommand(_e.RodeoId, (112_000 + i).ToString()));
             Assert.True(r.EsCorrecto, r.Mensaje);
             Assert.Equal(TipoResultadoLectura.Marcada, r.Valor.Tipo);
             Assert.NotEmpty(r.Valor.Ficha!.Historial);
@@ -175,7 +171,7 @@ public sealed class RendimientoCampoTests : IDisposable
         var ms = await MejorDeTresAsync(async i =>
         {
             var r = await _e.Campo.RegistrarTactoAsync(
-                new RegistrarTactoCommand(_ids[16_000 + i], _e.EstadoPrenada, null, null, _e.UsuarioId));
+                new RegistrarTactoCommand(_ids[16_000 + i], _e.EstadoPrenada, null, null));
             Assert.True(r.EsCorrecto, r.Mensaje);
         });
         Assert.True(ms < 300, $"Registrar el tacto tardó {ms} ms");
@@ -208,7 +204,7 @@ public sealed class RendimientoCampoTests : IDisposable
     {
         var ms = await MejorDeTresAsync(async i =>
         {
-            var r = await _e.Campo.PonerEnEsperaAsync(new PonerEnEsperaCommand(_ids[17_000 + i], _e.UsuarioId));
+            var r = await _e.Campo.PonerEnEsperaAsync(new PonerEnEsperaCommand(_ids[17_000 + i]));
             Assert.True(r.EsCorrecto, r.Mensaje);
         });
         Assert.True(ms < 300, $"Poner en espera tardó {ms} ms");
@@ -218,7 +214,7 @@ public sealed class RendimientoCampoTests : IDisposable
     public async Task Listar_las_esperas_con_el_volumen_completo_tarda_menos_de_300_ms()
     {
         for (var i = 0; i < 4; i++)
-            Assert.True((await _e.Campo.PonerEnEsperaAsync(new PonerEnEsperaCommand(_ids[17_500 + i], _e.UsuarioId))).EsCorrecto);
+            Assert.True((await _e.Campo.PonerEnEsperaAsync(new PonerEnEsperaCommand(_ids[17_500 + i]))).EsCorrecto);
 
         var ms = await MejorDeTresAsync(async _ =>
         {
@@ -232,12 +228,12 @@ public sealed class RendimientoCampoTests : IDisposable
     public async Task Resolver_una_espera_guardando_un_tacto_tarda_menos_de_300_ms()
     {
         for (var i = 0; i <= 3; i++)
-            Assert.True((await _e.Campo.PonerEnEsperaAsync(new PonerEnEsperaCommand(_ids[18_000 + i], _e.UsuarioId))).EsCorrecto);
+            Assert.True((await _e.Campo.PonerEnEsperaAsync(new PonerEnEsperaCommand(_ids[18_000 + i]))).EsCorrecto);
 
         var ms = await MejorDeTresAsync(async i =>
         {
             var r = await _e.Campo.RegistrarTactoAsync(
-                new RegistrarTactoCommand(_ids[18_000 + i], _e.EstadoPrenada, null, null, _e.UsuarioId));
+                new RegistrarTactoCommand(_ids[18_000 + i], _e.EstadoPrenada, null, null));
             Assert.True(r.EsCorrecto, r.Mensaje);
         });
         Assert.True(ms < 300, $"Resolver la espera con un tacto tardó {ms} ms");
@@ -249,7 +245,7 @@ public sealed class RendimientoCampoTests : IDisposable
     {
         var ms = await MejorDeTresAsync(async i =>
         {
-            var r = await _e.Campo.RegistrarRechazoAsync(new RegistrarRechazoCommand(_ids[19_000 + i], "pata", _e.UsuarioId));
+            var r = await _e.Campo.RegistrarSoloEventoAsync(new RegistrarSoloEventoCommand(_ids[19_000 + i], EventosCampo.Rechazo, "pata"));
             Assert.True(r.EsCorrecto, r.Mensaje);
         });
         Assert.True(ms < 300, $"Guardar el rechazo tardó {ms} ms");

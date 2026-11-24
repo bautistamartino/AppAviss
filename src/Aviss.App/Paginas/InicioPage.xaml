@@ -19,7 +19,7 @@
                     FontSize="24" FontAttributes="Bold"
                     HeightRequest="72"
                     Command="{Binding TrabajarCommand}"
-                    SemanticProperties.Hint="Elegir veterinario y rodeo y empezar el tacto" />
+                    SemanticProperties.Hint="Elegir establecimiento y rodeo y empezar el tacto" />
             <Button Text="Importar rodeo"
                     FontSize="24" FontAttributes="Bold"
                     HeightRequest="72"

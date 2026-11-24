@@ -8,8 +8,8 @@ namespace Aviss.Application.Tests.ViewModels;
 // Prueban la pantalla de trabajo sin MAUI: la fachada de campo, el lector, el tiempo y la plataforma son falsos.
 public class TrabajoViewModelTests
 {
-    private static readonly EstadoActivoDto Prenada = new(Guid.Parse("33333333-0000-0000-0000-000000000001"), "PREÑADA");
-    private static readonly EstadoActivoDto Vacia = new(Guid.Parse("33333333-0000-0000-0000-000000000002"), "VACIA");
+    private static readonly EventoCampoDto Prenada = new(Guid.Parse("33333333-0000-0000-0000-000000000001"), "PREÑADA", true, true);
+    private static readonly EventoCampoDto Vacia = new(Guid.Parse("33333333-0000-0000-0000-000000000002"), "VACIA", true, true);
 
     /// <summary>Todo lo que necesita el ViewModel, armado con falsos y con la sesión ya elegida.</summary>
     private sealed class Banco
@@ -26,7 +26,7 @@ public class TrabajoViewModelTests
 
         public Banco(bool conSimulador = true, bool conSesion = true)
         {
-            if (conSesion) Sesion.Empezar(Datos.Vet, Datos.Rodeo());
+            if (conSesion) Sesion.Empezar(Datos.Rodeo());
             Campo.Estados = [Prenada, Vacia];
             Preferencias.ControlPorMangaPorDefecto = true;   // las pruebas existentes trabajan con el control por manga prendido
             Vm = new TrabajoViewModel(Campo, Lector, Preferencias, Avisos, Pantalla, Temporizador, Navegacion, Sesion,
@@ -45,7 +45,7 @@ public class TrabajoViewModelTests
         public Task LeerAsync(string codigo) => Vm.EncolarLecturaAsync(codigo);
 
         /// <summary>Elegir el evento y tocar "Entrar": el tacto se guarda recién con "Entrar".</summary>
-        public async Task ElegirYEntrarAsync(EstadoActivoDto estado)
+        public async Task ElegirYEntrarAsync(EventoCampoDto estado)
         {
             await Vm.ElegirEventoCommand.ExecuteAsync(estado);
             await Vm.EntrarCommand.ExecuteAsync(null);
@@ -62,20 +62,19 @@ public class TrabajoViewModelTests
 
         await b.Vm.IniciarAsync();
 
-        Assert.Equal([(Datos.RodeoId, Datos.Vet.Id)], b.Campo.IniciosDeTrabajo);
+        Assert.Equal([Datos.RodeoId], b.Campo.IniciosDeTrabajo);
         Assert.Equal("Manga 2 · 7", b.Vm.TextoManga);
         Assert.True(b.Vm.MangaAbierta);
         Assert.Equal(30, b.Vm.Avance!.Procesadas);
-        Assert.Equal(2, b.Vm.Estados.Count);
-        Assert.True(b.Vm.HayEstadosActivos);
+        Assert.Equal([Prenada, Vacia], b.Vm.Selector.Principales);
+        Assert.True(b.Vm.Selector.HayPrincipales);
         Assert.True(b.Pantalla.Encendida);
         await Esperas.HastaAsync(() => b.Lector.Conexiones == 1);
         Assert.Equal("Tambo Norte", b.Vm.NombreEstablecimiento);
-        Assert.Equal("Dra. Ana", b.Vm.NombreVeterinario);
     }
 
     [Fact]
-    public async Task Sin_veterinario_y_rodeo_elegidos_vuelve_a_la_eleccion_y_no_empieza_nada()
+    public async Task Sin_rodeo_elegido_vuelve_a_la_eleccion_y_no_empieza_nada()
     {
         var b = new Banco(conSesion: false);
 
@@ -143,7 +142,6 @@ public class TrabajoViewModelTests
         // Marcar no muestra el aviso de deshacer (se puede deshacer desde "Movimientos").
         Assert.Null(b.Vm.AvisoDeshacer);
         Assert.Single(b.Campo.LecturasProcesadas);
-        Assert.Equal(Datos.Vet.Id, b.Campo.LecturasProcesadas[0].UsuarioId);
     }
 
     [Fact]
@@ -437,7 +435,7 @@ public class TrabajoViewModelTests
         await b.Vm.EntrarCommand.ExecuteAsync(null);
 
         var cmd = Assert.Single(b.Campo.Tactos);
-        Assert.Equal((animal, Prenada.Id, "Cojera", Datos.Vet.Id), (cmd.AnimalId, cmd.EstadoNuevoId, cmd.Observaciones, cmd.UsuarioId));
+        Assert.Equal((animal, Prenada.Id, "Cojera"), (cmd.AnimalId, cmd.EstadoNuevoId, cmd.Observaciones));
         Assert.Null(b.Vm.Ficha);
         Assert.Null(b.Vm.EventoElegido);
         Assert.Equal("Opcional", b.Vm.TextoCasilleroObservacion);
@@ -596,7 +594,6 @@ public class TrabajoViewModelTests
         var cmd = Assert.Single(b.Campo.Tactos);
         Assert.Equal(animal, cmd.AnimalId);
         Assert.Equal(Prenada.Id, cmd.EstadoNuevoId);
-        Assert.Equal(Datos.Vet.Id, cmd.UsuarioId);
         Assert.Null(b.Vm.Ficha);
         Assert.Equal(EtapaTrabajo.Esperando, b.Vm.Etapa);
         Assert.Equal("1001: PREÑADA", b.Vm.UltimoGuardado);
@@ -661,6 +658,7 @@ public class TrabajoViewModelTests
         await b.Vm.IniciarAsync();   // carga los estados
         await b.LeerAsync("1001");
         await b.Vm.AbrirEventosCommand.ExecuteAsync(null);
+        b.Vm.Selector.VerOtrosCommand.Execute(null);
         b.Vm.AbrirNuevoEventoCommand.Execute(null);
         Assert.True(b.Vm.HayFormularioEvento);
         b.Vm.NuevoEventoNombre = "  Aborto ";
@@ -668,7 +666,7 @@ public class TrabajoViewModelTests
         await b.Vm.CrearEventoCommand.ExecuteAsync(null);
 
         Assert.Equal([("Aborto", "ABORTO")], b.Campo.EstadosCreados);   // sin código de Dairy Comp: nombre en mayúsculas
-        Assert.Contains(b.Vm.Estados, e => e.Nombre == "ABORTO");
+        Assert.Contains(b.Vm.Selector.Otros, e => e.Nombre == "ABORTO");   // queda en "Otro evento", sin elegirse
         Assert.False(b.Vm.HayFormularioEvento);
         Assert.Equal(CuadroTrabajo.Eventos, b.Vm.Cuadro);   // sigue la lista abierta para elegirlo
         Assert.Empty(b.Campo.Tactos);
@@ -681,6 +679,7 @@ public class TrabajoViewModelTests
         b.Vaca("1001");
         await b.LeerAsync("1001");
         await b.Vm.AbrirEventosCommand.ExecuteAsync(null);
+        b.Vm.Selector.VerOtrosCommand.Execute(null);
         b.Vm.AbrirNuevoEventoCommand.Execute(null);
         b.Vm.NuevoEventoNombre = "Aborto";
         b.Vm.NuevoEventoCodigoDc = " ABORT ";
@@ -697,6 +696,7 @@ public class TrabajoViewModelTests
         b.Vaca("1001");
         await b.LeerAsync("1001");
         await b.Vm.AbrirEventosCommand.ExecuteAsync(null);
+        b.Vm.Selector.VerOtrosCommand.Execute(null);
         b.Vm.AbrirNuevoEventoCommand.Execute(null);
         b.Vm.NuevoEventoNombre = "   ";
 
@@ -715,6 +715,7 @@ public class TrabajoViewModelTests
         b.Campo.OnCrearEstado = _ => Resultado.Error<Guid>(CodigoError.Duplicado, "Ya existe un estado con ese nombre.");
         await b.LeerAsync("1001");
         await b.Vm.AbrirEventosCommand.ExecuteAsync(null);
+        b.Vm.Selector.VerOtrosCommand.Execute(null);
         b.Vm.AbrirNuevoEventoCommand.Execute(null);
         b.Vm.NuevoEventoNombre = "Vacia";
 
@@ -731,11 +732,13 @@ public class TrabajoViewModelTests
         b.Vaca("1001");
         await b.LeerAsync("1001");
         await b.Vm.AbrirEventosCommand.ExecuteAsync(null);
+        b.Vm.Selector.VerOtrosCommand.Execute(null);
         b.Vm.AbrirNuevoEventoCommand.Execute(null);
 
         b.Vm.CancelarNuevoEventoCommand.Execute(null);
         Assert.False(b.Vm.HayFormularioEvento);
 
+        b.Vm.Selector.VerOtrosCommand.Execute(null);
         b.Vm.AbrirNuevoEventoCommand.Execute(null);
         await b.Vm.CerrarCuadroAgregarCommand.ExecuteAsync(null);
         await b.Vm.AbrirEventosCommand.ExecuteAsync(null);
@@ -884,7 +887,8 @@ public class TrabajoViewModelTests
 
         await b.LeerAsync("1001");
 
-        Assert.False(b.Vm.HayEstadosActivos);
+        Assert.False(b.Vm.Selector.HayPrincipales);
+        Assert.Equal([EventosCampo.Rechazo], b.Vm.Selector.Otros.Select(e => e.Id));
         Assert.NotNull(b.Vm.Ficha);   // se marcó y se ve la ficha
     }
 
@@ -917,6 +921,63 @@ public class TrabajoViewModelTests
 
         Assert.Equal("Ya pasó en la manga 1", b.Vm.AvisoTitulo);
         Assert.Equal(1, b.Avisos.Repetidos);
+    }
+
+    // ---- Spec 006, RF-5: el aviso dice "<evento> · <hora>", sin nombre y sin separador sobrante ----
+
+    private static string HoraLocal(UltimoRegistroDto u) => u.FechaHoraUtc.ToLocalTime().ToString("HH:mm");
+
+    [Fact]
+    public async Task El_aviso_de_un_tacto_dice_evento_estado_y_hora_sin_nombre()
+    {
+        var b = new Banco();
+        var ultimo = Datos.Ultimo(TipoRegistroCampo.Tacto, "PREÑADA");
+        b.Campo.Lecturas["1001"] = Datos.Repetido(Guid.NewGuid(), "1001", ultimo, puedeCorregir: true);
+        await b.LeerAsync("1001");
+
+        Assert.Equal($"Tacto PREÑADA · {HoraLocal(ultimo)}", b.Vm.AvisoDetalle);
+    }
+
+    [Fact]
+    public async Task El_aviso_de_un_rechazo_dice_el_motivo_y_la_hora_sin_nombre()
+    {
+        var b = new Banco();
+        var ultimo = Datos.Ultimo(TipoRegistroCampo.Rechazo) with { Observaciones = "sucia" };
+        b.Campo.Lecturas["1001"] = Datos.Repetido(Guid.NewGuid(), "1001", ultimo, puedeCorregir: true);
+        await b.LeerAsync("1001");
+
+        Assert.Equal($"Rechazo · sucia · {HoraLocal(ultimo)}", b.Vm.AvisoDetalle);
+    }
+
+    [Fact]
+    public async Task El_aviso_de_una_marca_dice_marca_de_pasada_y_la_hora_sin_separador_sobrante()
+    {
+        var b = new Banco();
+        var ultimo = Datos.Ultimo(TipoRegistroCampo.Marca);
+        b.Campo.Lecturas["1001"] = Datos.YaPaso(Guid.NewGuid(), "1001", ultimo);
+        await b.LeerAsync("1001");
+
+        Assert.Equal($"Marca de pasada · {HoraLocal(ultimo)}", b.Vm.AvisoDetalle);
+        Assert.EndsWith(HoraLocal(ultimo), b.Vm.AvisoDetalle);   // termina en la hora: no queda un " · " al final
+    }
+
+    // RF-4 y RF-20: el ViewModel de trabajo ya no tiene nada del veterinario.
+    [Fact]
+    public void El_ViewModel_de_trabajo_no_tiene_miembros_publicos_con_Veterinario()
+    {
+        var nombres = typeof(TrabajoViewModel).GetMembers().Select(m => m.Name);
+        Assert.DoesNotContain(nombres, n => n.Contains("Veterinario", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public async Task Los_registros_nuevos_se_hacen_sin_haber_elegido_ninguna_persona()
+    {
+        var b = new Banco();
+        b.Vaca("1001");
+
+        await b.LeerAsync("1001");
+
+        Assert.Single(b.Campo.LecturasProcesadas);   // tactar, marcar, etc. funcionan con solo el rodeo en la sesión
     }
 
     [Fact]
@@ -1604,8 +1665,6 @@ public class TrabajoViewModelTests
 
     // ------------------------------------------------------------------ control por manga: se prende o se apaga (por establecimiento)
 
-    private static readonly VeterinarioDto OtroVet = new(Guid.Parse("33333333-0000-0000-0000-000000000009"), "Dr. Luis", null);
-
     private static Guid Establecimiento(Banco b) => b.Sesion.Rodeo!.EstablecimientoId;
 
     [Fact]
@@ -1617,7 +1676,7 @@ public class TrabajoViewModelTests
         await b.Vm.IniciarAsync();
 
         Assert.False(b.Vm.UsaMangas);
-        Assert.Equal(Aviss.Application.Puertos.IPreferenciasDispositivo.ControlPorMangaPorDefecto, b.Vm.UsaMangas);
+        Assert.Equal(Aviss.Application.Puertos.IPreferenciasMangas.ControlPorMangaPorDefecto, b.Vm.UsaMangas);
     }
 
     [Fact]
@@ -1665,24 +1724,12 @@ public class TrabajoViewModelTests
         await b.Vm.IniciarAsync();
         Assert.True(b.Vm.UsaMangas);
 
-        b.Sesion.Empezar(Datos.Vet, Datos.Rodeo(establecimientoId: otroEstablecimiento));
+        b.Sesion.Empezar(Datos.Rodeo(establecimientoId: otroEstablecimiento));
         await b.Vm.IniciarAsync();
 
         Assert.False(b.Vm.UsaMangas);
     }
 
-    [Fact]
-    public async Task Cambiar_de_veterinario_no_cambia_la_preferencia_porque_es_del_establecimiento()
-    {
-        var b = new Banco();
-        b.Preferencias.ControlPorManga[Establecimiento(b)] = true;
-        await b.Vm.IniciarAsync();
-
-        b.Vm.CambiarVeterinarioCommand.Execute(OtroVet);
-
-        Assert.True(b.Vm.UsaMangas);
-        Assert.Empty(b.Preferencias.ControlGuardado);   // cambiar de veterinario no escribe preferencias de mangas
-    }
 
     [Fact]
     public async Task Apagado_se_ocultan_el_conteo_la_cantidad_y_la_comparacion_aunque_hubiera_una_cantidad_puesta()
@@ -2056,34 +2103,8 @@ public class TrabajoViewModelTests
         Assert.Equal(0, b.Temporizador.Pendientes(TrabajoViewModel.IntervaloRefresco));
     }
 
-    // ------------------------------------------------------------------ veterinario, simulador, navegación
+    // ------------------------------------------------------------------ simulador, navegación
 
-    [Fact]
-    public void Cambiar_de_veterinario_cambia_quien_firma_y_lo_recuerda_sin_cerrar_la_manga()
-    {
-        var b = new Banco();
-        var otro = new Aviss.Application.Campo.VeterinarioDto(Guid.NewGuid(), "Dr. Luis", null);
-
-        b.Vm.CambiarVeterinarioCommand.Execute(otro);
-
-        Assert.Equal("Dr. Luis", b.Vm.NombreVeterinario);
-        Assert.Equal(otro.Id, b.Sesion.Veterinario!.Id);
-        Assert.Equal(otro.Id, b.Preferencias.Recordado);
-        Assert.Empty(b.Campo.Finalizados);
-    }
-
-    [Fact]
-    public async Task Los_registros_nuevos_llevan_el_veterinario_activo_del_momento()
-    {
-        var b = new Banco();
-        b.Vaca("1001");
-        var otro = new Aviss.Application.Campo.VeterinarioDto(Guid.NewGuid(), "Dr. Luis", null);
-        b.Vm.CambiarVeterinarioCommand.Execute(otro);
-
-        await b.LeerAsync("1001");
-
-        Assert.Equal(otro.Id, b.Campo.LecturasProcesadas.Single().UsuarioId);
-    }
 
     [Fact]
     public void Sin_simulador_el_panel_no_existe_y_los_comandos_no_hacen_nada()

@@ -26,7 +26,7 @@ public class ReglasEsperaTests
 
     // ---- Entidad Espera ----
 
-    private static Espera Nueva() => Espera.Crear(Guid.NewGuid(), Ahora, Guid.NewGuid(), Guid.NewGuid(), Ahora);
+    private static Espera Nueva() => Espera.Crear(Guid.NewGuid(), Ahora, Ahora);
 
     [Fact]
     public void Una_espera_nueva_esta_pendiente()
@@ -38,15 +38,13 @@ public class ReglasEsperaTests
     }
 
     [Fact]
-    public void Resolver_guarda_quien_cuando_y_el_registro()
+    public void Resolver_guarda_cuando_y_el_registro()
     {
         var e = Nueva();
         var registro = Guid.NewGuid();
-        var vet = Guid.NewGuid();
-        e.Resolver(registro, vet, Ahora.AddMinutes(5));
+        e.Resolver(registro, Ahora.AddMinutes(5));
         Assert.Equal(EstadoEspera.Resuelta, e.Estado);
         Assert.Equal(registro, e.RegistroResolucionId);
-        Assert.Equal(vet, e.ResueltaPorUsuarioId);
         Assert.Equal(Ahora.AddMinutes(5), e.ResueltaEnUtc);
     }
 
@@ -54,7 +52,7 @@ public class ReglasEsperaTests
     public void Saltear_no_guarda_registro()
     {
         var e = Nueva();
-        e.Saltear(Guid.NewGuid(), Ahora.AddMinutes(1));
+        e.Saltear(Ahora.AddMinutes(1));
         Assert.Equal(EstadoEspera.Salteada, e.Estado);
         Assert.Null(e.RegistroResolucionId);
         Assert.NotNull(e.ResueltaEnUtc);
@@ -64,16 +62,16 @@ public class ReglasEsperaTests
     public void Una_espera_cerrada_no_se_vuelve_a_cerrar()
     {
         var e = Nueva();
-        e.Saltear(Guid.NewGuid(), Ahora);
-        Assert.Throws<DominioException>(() => e.Saltear(Guid.NewGuid(), Ahora));
-        Assert.Throws<DominioException>(() => e.Resolver(Guid.NewGuid(), Guid.NewGuid(), Ahora));
+        e.Saltear(Ahora);
+        Assert.Throws<DominioException>(() => e.Saltear(Ahora));
+        Assert.Throws<DominioException>(() => e.Resolver(Guid.NewGuid(), Ahora));
     }
 
     [Fact]
     public void Crear_valida_ids_y_fecha_utc()
     {
-        Assert.Throws<DominioException>(() => Espera.Crear(Guid.Empty, Ahora, Guid.NewGuid(), Guid.NewGuid(), Ahora));
-        Assert.Throws<DominioException>(() => Espera.Crear(Guid.NewGuid(), DateTime.Now, Guid.NewGuid(), Guid.NewGuid(), Ahora));
+        Assert.Throws<DominioException>(() => Espera.Crear(Guid.Empty, Ahora, Ahora));
+        Assert.Throws<DominioException>(() => Espera.Crear(Guid.NewGuid(), DateTime.Now, Ahora));
     }
 
     // ---- Entidad Rechazo ----
@@ -81,21 +79,19 @@ public class ReglasEsperaTests
     [Fact]
     public void Rechazo_recorta_la_observacion_y_limita_el_largo()
     {
-        var r = Rechazo.Registrar(Guid.NewGuid(), Ahora, 1, "  cojera  ", Guid.NewGuid(), Guid.NewGuid(), Ahora);
+        var r = Rechazo.Registrar(Guid.NewGuid(), Ahora, 1, "  cojera  ", Ahora);
         Assert.Equal("cojera", r.Observaciones);
-        Assert.Null(Rechazo.Registrar(Guid.NewGuid(), Ahora, 2, "  ", Guid.NewGuid(), Guid.NewGuid(), Ahora).Observaciones);
+        Assert.Null(Rechazo.Registrar(Guid.NewGuid(), Ahora, 2, "  ", Ahora).Observaciones);
         Assert.Throws<DominioException>(() =>
-            Rechazo.Registrar(Guid.NewGuid(), Ahora, 3, new string('x', 301), Guid.NewGuid(), Guid.NewGuid(), Ahora));
+            Rechazo.Registrar(Guid.NewGuid(), Ahora, 3, new string('x', 301), Ahora));
     }
 
     [Fact]
     public void Rechazo_se_anula_una_sola_vez()
     {
-        var r = Rechazo.Registrar(Guid.NewGuid(), Ahora, 1, null, Guid.NewGuid(), Guid.NewGuid(), Ahora);
-        var vet = Guid.NewGuid();
-        r.MarcarAnulado(vet, Ahora.AddMinutes(1));
+        var r = Rechazo.Registrar(Guid.NewGuid(), Ahora, 1, null, Ahora);
+        r.MarcarAnulado(Ahora.AddMinutes(1));
         Assert.True(r.Anulado);
-        Assert.Equal(vet, r.AnuladoPorUsuarioId);
-        Assert.Throws<DominioException>(() => r.MarcarAnulado(vet, Ahora));
+        Assert.Throws<DominioException>(() => r.MarcarAnulado(Ahora));
     }
 }

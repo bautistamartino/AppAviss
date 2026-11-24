@@ -4,7 +4,7 @@ using Aviss.Domain.Reglas;
 namespace Aviss.Domain.Entidades;
 
 /// <summary>
-/// Registro de auditoría: qué cambió, de qué valor a cuál, quién y cuándo (RF-10). Solo se agrega:
+/// Registro de auditoría: qué cambió, de qué valor a cuál y cuándo (RF-10). Solo se agrega:
 /// un trigger de la base rechaza modificarlo o borrarlo (RF-11). Los estados se guardan por Id, no por nombre.
 /// </summary>
 public sealed class Historial : Entidad
@@ -15,7 +15,6 @@ public sealed class Historial : Entidad
     public string? ValorAnterior { get; private set; }
     public string? ValorNuevo { get; private set; }
     public DateTime FechaHoraUtc { get; private set; }
-    public Guid UsuarioId { get; private set; }
     public AccionHistorial Accion { get; private set; }
 
     private Historial() { }
@@ -23,7 +22,7 @@ public sealed class Historial : Entidad
 
     public static Historial Crear(
         string entidad, Guid entidadId, string campo, string? valorAnterior, string? valorNuevo,
-        DateTime fechaHoraUtc, Guid usuarioId, AccionHistorial accion)
+        DateTime fechaHoraUtc, AccionHistorial accion)
         // CreadoEnUtc = FechaHoraUtc: se pasa la misma fecha a la base (uniformidad con la constitución).
         => new(fechaHoraUtc)
         {
@@ -33,7 +32,6 @@ public sealed class Historial : Entidad
             ValorAnterior = valorAnterior,
             ValorNuevo = valorNuevo,
             FechaHoraUtc = fechaHoraUtc,
-            UsuarioId = Validar.IdObligatorio(usuarioId, "El usuario"),
             Accion = accion
         };
 }

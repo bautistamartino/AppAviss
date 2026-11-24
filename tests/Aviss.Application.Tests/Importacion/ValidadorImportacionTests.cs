@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Aviss.Application.Importacion;
+using Aviss.Domain.Catalogo;
 using Aviss.Domain.Entidades;
 
 namespace Aviss.Application.Tests.Importacion;
@@ -181,6 +182,69 @@ public class ValidadorImportacionTests
         var r = ValidadorImportacion.Validar(Lectura([Fila(2, "1", "VACIA")]), [Baja("VACIA", "VACIA"), Seca]);
         Assert.Null(r.Validas[0].EstadoId);
         Assert.Single(r.Advertencias);
+    }
+
+    [Theory]
+    [InlineData("ABORTO")]
+    [InlineData("aborto")]
+    [InlineData(" Aborto ")]
+    public void RPRO_igual_al_codigo_de_un_solo_evento_entra_sin_estado_y_con_advertencia(string rpro)
+    {
+        // Spec 005: OK, Aborto y Revisar Nuevamente no cambian el estado, así que no son un estado inicial válido.
+        var aborto = EstadoReproductivo.CrearEstandar(EstadosIniciales.Todos.Single(x => x.Codigo == "ABORTO"), Ahora);
+        var r = ValidadorImportacion.Validar(Lectura([Fila(2, "1", rpro)]), [Prenada, aborto]);
+
+        Assert.Null(r.Validas[0].EstadoId);
+        var adv = Assert.Single(r.Advertencias);
+        Assert.Equal(TipoAdvertencia.EstadoDesconocido, adv.Tipo);
+    }
+
+
+    [Theory]
+    [InlineData("OK")]
+    [InlineData("ABORTO")]
+    [InlineData("REVISAR NUEVAMENTE")]
+    [InlineData("Rechazo")]
+    [InlineData("PREÑADA FECHA PREVIA")]
+    public void RPRO_igual_a_un_evento_que_no_es_estado_inicial_entra_sin_estado_y_con_advertencia(string rpro)
+    {
+        // Spec 005 (segunda vuelta): OK, Revisar Nuevamente, Aborto (con pasos), Preñada fecha previa (con destino) y
+        // Rechazo (que ni está en el catálogo) no son un estado inicial: entran sin estado y con una advertencia.
+        var catalogo = EstadosIniciales.Todos
+            .Select(i => EstadoReproductivo.CrearEstandar(i, Ahora, i.DestinoClave is null ? null : Guid.NewGuid()))
+            .ToArray();
+        var r = ValidadorImportacion.Validar(Lectura([Fila(2, "1", rpro)]), catalogo);
+
+        Assert.Null(r.Validas[0].EstadoId);
+        var adv = Assert.Single(r.Advertencias);
+        Assert.Equal(TipoAdvertencia.EstadoDesconocido, adv.Tipo);
+    }
+
+    [Theory]
+    [InlineData("INSEMIN")]
+    [InlineData("SECA")]
+    [InlineData("FRESCA")]
+    [InlineData("PREÑADA")]
+    [InlineData("VACIA")]
+    [InlineData("NOINSEM")]
+    public void RPRO_de_un_estado_estandar_se_reconoce_igual_que_antes(string rpro)
+    {
+        var catalogo = EstadosIniciales.Todos
+            .Select(i => EstadoReproductivo.CrearEstandar(i, Ahora, i.DestinoClave is null ? null : Guid.NewGuid()))
+            .ToArray();
+        var r = ValidadorImportacion.Validar(Lectura([Fila(2, "1", rpro)]), catalogo);
+
+        Assert.NotNull(r.Validas[0].EstadoId);
+        Assert.Empty(r.Advertencias);
+    }
+
+    [Fact]
+    public void RPRO_de_un_estado_sigue_resolviendose_aunque_haya_solo_eventos_en_el_catalogo()
+    {
+        var aborto = EstadoReproductivo.CrearEstandar(EstadosIniciales.Todos.Single(x => x.Codigo == "ABORTO"), Ahora);
+        var r = ValidadorImportacion.Validar(Lectura([Fila(2, "1", "PREÑADA")]), [aborto, Prenada]);
+        Assert.Equal(Prenada.Id, r.Validas[0].EstadoId);
+        Assert.Empty(r.Advertencias);
     }
 
     [Theory]

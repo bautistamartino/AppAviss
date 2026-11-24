@@ -35,7 +35,8 @@ public sealed class ArranqueServiceTests : IDisposable
 
     private ArranqueService Servicio(IMigrador? migrador = null, ArranqueResultado? resultado = null)
         => new(_rutas, migrador ?? new MigradorEf(), new BackupService(_rutas, _reloj, _espacio),
-            new SembradorInicial(_reloj), new DispositivoService(_rutas), resultado ?? new ArranqueResultado());
+            new SembradorInicial(_reloj), resultado ?? new ArranqueResultado(),
+            new LimpiezaDeRastros(_rutas, new LimpiezaPreferenciasNula()));
 
     private static SqliteConnection Abrir(string ruta, bool soloLectura = false)
     {
@@ -94,7 +95,7 @@ public sealed class ArranqueServiceTests : IDisposable
     // ---------- Creación inicial (RF-20, RF-7b) ----------
 
     [Fact]
-    public async Task Sin_base_crea_una_completa_con_Sin_asignar_y_estados_y_sin_backup()
+    public async Task Sin_base_crea_una_completa_con_estados_sin_veterinarios_y_sin_backup()
     {
         var resultado = new ArranqueResultado();
         var r = await Servicio(resultado: resultado).IniciarAsync();
@@ -104,11 +105,11 @@ public sealed class ArranqueServiceTests : IDisposable
         Assert.Same(r, resultado.Actual);
         Assert.True(File.Exists(_rutas.BaseDeDatos));
         Assert.False(File.Exists(_rutas.BaseDeDatosCreando));
-        Assert.True(File.Exists(_rutas.ArchivoDispositivo));
+        Assert.False(File.Exists(_rutas.ArchivoDispositivoObsoleto)); // ya no se genera ningún identificador de tablet
         Assert.Empty(Backups());
 
-        Assert.Equal(1, Contar(_rutas.BaseDeDatos, "SELECT COUNT(*) FROM Usuario WHERE Nombre = 'Sin asignar'"));
-        Assert.Equal(6, Contar(_rutas.BaseDeDatos, "SELECT COUNT(*) FROM EstadoReproductivo"));
+        Assert.Equal(0, Contar(_rutas.BaseDeDatos, "SELECT COUNT(*) FROM sqlite_master WHERE name = 'Usuario'"));
+        Assert.Equal(10, Contar(_rutas.BaseDeDatos, "SELECT COUNT(*) FROM EstadoReproductivo"));
         Assert.Equal("ok", Escalar(_rutas.BaseDeDatos, "PRAGMA integrity_check"));
     }
 
@@ -125,7 +126,7 @@ public sealed class ArranqueServiceTests : IDisposable
         Assert.False(File.Exists(_rutas.BaseDeDatosCreando));
         Assert.False(File.Exists(_rutas.BaseDeDatosCreando + "-wal"));
         Assert.False(File.Exists(_rutas.BaseDeDatosCreando + "-shm"));
-        Assert.Equal(6, Contar(_rutas.BaseDeDatos, "SELECT COUNT(*) FROM EstadoReproductivo"));
+        Assert.Equal(10, Contar(_rutas.BaseDeDatos, "SELECT COUNT(*) FROM EstadoReproductivo"));
     }
 
     [Fact]
@@ -157,17 +158,6 @@ public sealed class ArranqueServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task Un_segundo_arranque_conserva_el_mismo_dispositivo()
-    {
-        await Servicio().IniciarAsync();
-        var id = File.ReadAllText(_rutas.ArchivoDispositivo);
-
-        await Servicio().IniciarAsync();
-
-        Assert.Equal(id, File.ReadAllText(_rutas.ArchivoDispositivo));
-    }
-
-    [Fact]
     public async Task Al_arrancar_no_pisa_los_estados_que_el_veterinario_modifico()
     {
         await BaseExistenteAsync();
@@ -177,7 +167,7 @@ public sealed class ArranqueServiceTests : IDisposable
         await Servicio().IniciarAsync();
 
         Assert.Equal("Seca larga", Escalar(_rutas.BaseDeDatos, "SELECT Nombre FROM EstadoReproductivo WHERE Codigo = 'SECA'"));
-        Assert.Equal(6, Contar(_rutas.BaseDeDatos, "SELECT COUNT(*) FROM EstadoReproductivo"));
+        Assert.Equal(10, Contar(_rutas.BaseDeDatos, "SELECT COUNT(*) FROM EstadoReproductivo"));
     }
 
     // ---------- Actualización con backup (RF-19, RF-22) ----------

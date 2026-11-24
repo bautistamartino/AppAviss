@@ -2,8 +2,7 @@ using Aviss.Domain.Reglas;
 
 namespace Aviss.Application.Comandos;
 
-// Comandos: los datos que entran a cada caso de uso. Todos llevan el UsuarioId explícito
-// (todavía no existe "usuario actual"; "Sin asignar" tiene Id fijo, ver plan).
+// Comandos: los datos que entran a cada caso de uso. No llevan quién los hace: la app no registra veterinario (spec 006).
 
 public sealed record CrearRodeoCommand(
     Guid EstablecimientoId,
@@ -16,6 +15,8 @@ public sealed record CrearRodeoCommand(
 
 /// <summary>
 /// El tacto no trae fecha: la hora la toma el servicio de su reloj (RF-8b).
+/// Con <see cref="Eleccion"/> (evento con pasos: Preñada fecha previa, Aborto con estado) el <c>EstadoNuevoId</c> debe ser el mismo Id del evento elegido
+/// (el servicio resuelve el estado en que queda la vaca y revalida los datos).
 /// <see cref="EstadoAnteriorEsperado"/>: nulo = no informado (se toma el actual del animal);
 /// si no es nulo, lleva el estado que la pantalla creía que tenía el animal (o vacío si creía que no tenía).
 /// </summary>
@@ -24,24 +25,22 @@ public sealed record RegistrarTactoCommand(
     Guid EstadoNuevoId,
     int? DiasPrenez,
     string? Observaciones,
-    Guid UsuarioId,
-    EstadoEsperado? EstadoAnteriorEsperado = null);
+    EstadoEsperado? EstadoAnteriorEsperado = null,
+    Aviss.Application.Campo.EleccionEvento? Eleccion = null);
 
-public sealed record AnularTactoCommand(Guid TactoId, Guid UsuarioId);
+public sealed record AnularTactoCommand(Guid TactoId);
 
 public sealed record AltaEnCampoCommand(
     Guid RodeoId,
     string NumeroCaravana,
     string? IdElectronico,
-    string? Observaciones,
-    Guid UsuarioId);
+    string? Observaciones);
 
 /// <summary>Trae los valores que deben quedar; el servicio compara con los actuales y registra solo lo que cambió.</summary>
 public sealed record EditarAnimalCommand(
     Guid AnimalId,
     string NumeroCaravana,
     string? IdElectronico,
-    string? Observaciones,
-    Guid UsuarioId);
+    string? Observaciones);
 
-public sealed record AnularAltaCommand(Guid AnimalId, Guid UsuarioId);
+public sealed record AnularAltaCommand(Guid AnimalId);

@@ -17,14 +17,13 @@ internal sealed class AnimalService : IAnimalService
     private readonly IAnimalRepository _animales;
     private readonly IRodeoRepository _rodeos;
     private readonly IEstablecimientoRepository _establecimientos;
-    private readonly IUsuarioRepository _usuarios;
     private readonly IHistorialRepository _historial;
     private readonly IRelojService _reloj;
 
     public AnimalService(IUnitOfWork uow, IAnimalRepository animales, IRodeoRepository rodeos,
-        IEstablecimientoRepository establecimientos, IUsuarioRepository usuarios, IHistorialRepository historial, IRelojService reloj)
-        => (_uow, _animales, _rodeos, _establecimientos, _usuarios, _historial, _reloj)
-            = (uow, animales, rodeos, establecimientos, usuarios, historial, reloj);
+        IEstablecimientoRepository establecimientos, IHistorialRepository historial, IRelojService reloj)
+        => (_uow, _animales, _rodeos, _establecimientos, _historial, _reloj)
+            = (uow, animales, rodeos, establecimientos, historial, reloj);
 
     public Task<Resultado<Guid>> AltaEnCampoAsync(AltaEnCampoCommand c, CancellationToken ct = default)
         => _uow.EjecutarAsync(async () =>
@@ -40,8 +39,6 @@ internal sealed class AnimalService : IAnimalService
     /// </summary>
     internal async Task<Resultado<Animal>> CrearAltaAsync(AltaEnCampoCommand c, CancellationToken ct)
     {
-        var errorUsuario = await Ayudas.ValidarUsuarioAsync(_usuarios, c.UsuarioId, ct);
-        if (errorUsuario is not null) return Resultado.Error<Animal>(errorUsuario.Codigo!.Value, errorUsuario.Mensaje!);
 
         var rodeo = await _rodeos.ObtenerAsync(c.RodeoId, ct);
         if (rodeo is null) return Resultado.Error<Animal>(CodigoError.NoEncontrado, "El rodeo no existe.");
@@ -72,7 +69,7 @@ internal sealed class AnimalService : IAnimalService
         catch (DominioException ex) { return Ayudas.DatosInvalidos<Animal>(ex); }
 
         _animales.Agregar(animal);
-        _historial.Agregar(Historial.Crear("Animal", animal.Id, "Alta", null, animal.NumeroCaravana, ahora, c.UsuarioId, AccionHistorial.Alta));
+        _historial.Agregar(Historial.Crear("Animal", animal.Id, "Alta", null, animal.NumeroCaravana, ahora, AccionHistorial.Alta));
         return Resultado.Ok(animal);
     }
 
@@ -83,8 +80,6 @@ internal sealed class AnimalService : IAnimalService
             if (animal is null) return Resultado.Error(CodigoError.NoEncontrado, "El animal no existe.");
             if (animal.Anulado) return Resultado.Error(CodigoError.AnimalAnulado, "El animal está anulado y no admite ediciones.");
 
-            var errorUsuario = await Ayudas.ValidarUsuarioAsync(_usuarios, c.UsuarioId, ct);
-            if (errorUsuario is not null) return errorUsuario;
 
             // Los valores nuevos se normalizan igual que al dar de alta.
             if (!Caravana.TryCrear(c.NumeroCaravana, out var caravana, out var errorCaravana))
@@ -121,17 +116,17 @@ internal sealed class AnimalService : IAnimalService
                 // Un registro de historial por campo cambiado (RF-10); se anota el valor anterior antes de cambiarlo.
                 if (cambiaCaravana)
                 {
-                    _historial.Agregar(Historial.Crear("Animal", animal.Id, "NumeroCaravana", animal.NumeroCaravana, caravana.Valor, ahora, c.UsuarioId, AccionHistorial.Edicion));
+                    _historial.Agregar(Historial.Crear("Animal", animal.Id, "NumeroCaravana", animal.NumeroCaravana, caravana.Valor, ahora, AccionHistorial.Edicion));
                     animal.CambiarCaravana(caravana, ahora);
                 }
                 if (cambiaIdElec)
                 {
-                    _historial.Agregar(Historial.Crear("Animal", animal.Id, "IdElectronico", animal.IdElectronico, idElec, ahora, c.UsuarioId, AccionHistorial.Edicion));
+                    _historial.Agregar(Historial.Crear("Animal", animal.Id, "IdElectronico", animal.IdElectronico, idElec, ahora, AccionHistorial.Edicion));
                     animal.CambiarIdElectronico(idElec, ahora);
                 }
                 if (cambiaObs)
                 {
-                    _historial.Agregar(Historial.Crear("Animal", animal.Id, "Observaciones", animal.Observaciones, observaciones, ahora, c.UsuarioId, AccionHistorial.Edicion));
+                    _historial.Agregar(Historial.Crear("Animal", animal.Id, "Observaciones", animal.Observaciones, observaciones, ahora, AccionHistorial.Edicion));
                     animal.CambiarObservaciones(observaciones, ahora);
                 }
             }
@@ -148,8 +143,6 @@ internal sealed class AnimalService : IAnimalService
                 return Resultado.Error(CodigoError.AnimalImportadoNoSeAnula, "Un animal importado no puede anularse.");
             if (animal.Anulado) return Resultado.Error(CodigoError.AnimalAnulado, "El animal ya está anulado.");
 
-            var errorUsuario = await Ayudas.ValidarUsuarioAsync(_usuarios, c.UsuarioId, ct);
-            if (errorUsuario is not null) return errorUsuario;
 
             if (await _animales.TieneTactosVigentesAsync(animal.Id, ct))
                 return Resultado.Error(CodigoError.AnimalConTactosVigentes, "El animal tiene tactos vigentes: anulá primero esos tactos.");
@@ -161,7 +154,7 @@ internal sealed class AnimalService : IAnimalService
             var ahora = _reloj.UtcAhora;
             try { animal.Anular(ahora); }
             catch (DominioException ex) { return Ayudas.DatosInvalidos(ex); }
-            _historial.Agregar(Historial.Crear("Animal", animal.Id, "Anulado", "0", "1", ahora, c.UsuarioId, AccionHistorial.AnulacionAlta));
+            _historial.Agregar(Historial.Crear("Animal", animal.Id, "Anulado", "0", "1", ahora, AccionHistorial.AnulacionAlta));
             return Resultado.Ok();
         }, ct);
 }

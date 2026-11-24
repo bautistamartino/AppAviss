@@ -8,7 +8,7 @@ public class CierreMangaTests
     private static readonly DateTime Ahora = new(2026, 11, 16, 12, 0, 0, DateTimeKind.Utc);
 
     private static CierreManga Cerrar(TipoCierreManga tipo = TipoCierreManga.Manual, int aviss = 40, int? confirmada = 42)
-        => CierreManga.Cerrar(Guid.NewGuid(), tipo, Ahora, aviss, confirmada, Guid.NewGuid(), Guid.NewGuid(), Ahora);
+        => CierreManga.Cerrar(Guid.NewGuid(), tipo, Ahora, aviss, confirmada, Ahora);
 
     [Fact]
     public void Calcula_la_diferencia_como_confirmada_menos_aviss()
@@ -58,8 +58,8 @@ public class CierreMangaTests
     [Fact]
     public void Rechaza_ids_vacios_y_fecha_no_utc()
     {
-        Assert.Throws<DominioException>(() => CierreManga.Cerrar(Guid.Empty, TipoCierreManga.Manual, Ahora, 1, 1, Guid.NewGuid(), Guid.NewGuid(), Ahora));
-        Assert.Throws<DominioException>(() => CierreManga.Cerrar(Guid.NewGuid(), TipoCierreManga.Manual, DateTime.SpecifyKind(Ahora, DateTimeKind.Local), 1, 1, Guid.NewGuid(), Guid.NewGuid(), Ahora));
+        Assert.Throws<DominioException>(() => CierreManga.Cerrar(Guid.Empty, TipoCierreManga.Manual, Ahora, 1, 1, Ahora));
+        Assert.Throws<DominioException>(() => CierreManga.Cerrar(Guid.NewGuid(), TipoCierreManga.Manual, DateTime.SpecifyKind(Ahora, DateTimeKind.Local), 1, 1, Ahora));
     }
 
     [Fact]

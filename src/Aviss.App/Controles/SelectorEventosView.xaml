@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:Aviss.App.ViewModels"
+             xmlns:conv="clr-namespace:Aviss.App.Convertidores"
+             xmlns:ctl="clr-namespace:Aviss.App.Controles"
+             xmlns:enums="clr-namespace:Aviss.Domain.Enums;assembly=Aviss.Domain"
+             xmlns:dto="clr-namespace:Aviss.Application.Campo;assembly=Aviss.Application"
+             x:Class="Aviss.App.Controles.SelectorEventosView"
+             x:Name="Control"
+             x:DataType="ctl:SelectorEventosView">
+
+    <!--
+        Selector de eventos de dos niveles (spec 005, RF-6 a RF-12, RF-14). Lo usan la ficha y "Últimos movimientos".
+        El BindingContext de "Raiz" es el SelectorEventosViewModel (se asigna desde la propiedad Selector, en el code-behind).
+        Los botones de 60 dp son el objetivo táctil cómodo para usar con guantes (constitución §9).
+    -->
+    <ContentView.Resources>
+        <conv:EstadoActualConverter x:Key="EstadoActual" />
+        <conv:ResultadoAbortoConverter x:Key="ResultadoAborto" />
+    </ContentView.Resources>
+
+    <VerticalStackLayout x:Name="Raiz" x:DataType="vm:SelectorEventosViewModel" Spacing="12">
+
+        <!-- La lista (principales u "Otro evento") se ve solo si no hay un paso abierto encima (RF-27). -->
+        <VerticalStackLayout Spacing="12" IsVisible="{Binding MostrandoLista}">
+
+        <!-- Nivel 1: 7 principales + "Otro evento" = 8 botones de 60 dp con 8 de separación (536 dp): entran sin desplazar con tope 560; si hay más, la barra se ve siempre. -->
+        <ScrollView MaximumHeightRequest="560" VerticalScrollBarVisibility="Always" IsVisible="{Binding MostrandoPrincipales}">
+            <VerticalStackLayout Spacing="8">
+                <VerticalStackLayout BindableLayout.ItemsSource="{Binding Principales}" Spacing="8">
+                    <BindableLayout.ItemTemplate>
+                        <DataTemplate x:DataType="dto:EventoCampoDto">
+                            <Button Text="{Binding Nombre}" Style="{StaticResource BotonCampo}" HeightRequest="60" FontSize="22"
+                                    Command="{Binding Source={RelativeSource AncestorType={x:Type vm:SelectorEventosViewModel}}, Path=ElegirCommand, x:DataType=vm:SelectorEventosViewModel}"
+                                    CommandParameter="{Binding .}">
+                                <Button.BackgroundColor>
+                                    <MultiBinding Converter="{StaticResource EstadoActual}" ConverterParameter="fondo">
+                                        <Binding Path="Id" />
+                                        <Binding Source="{RelativeSource AncestorType={x:Type vm:SelectorEventosViewModel}}" Path="Resaltado" x:DataType="vm:SelectorEventosViewModel" />
+                                    </MultiBinding>
+                                </Button.BackgroundColor>
+                                <Button.TextColor>
+                                    <MultiBinding Converter="{StaticResource EstadoActual}" ConverterParameter="texto">
+                                        <Binding Path="Id" />
+                                        <Binding Source="{RelativeSource AncestorType={x:Type vm:SelectorEventosViewModel}}" Path="Resaltado" x:DataType="vm:SelectorEventosViewModel" />
+                                    </MultiBinding>
+                                </Button.TextColor>
+                            </Button>
+                        </DataTemplate>
+                    </BindableLayout.ItemTemplate>
+                </VerticalStackLayout>
+
+                <!-- "Otro evento" se resalta (ámbar con texto negro) cuando el evento actual está dentro de esa lista (RF-9). -->
+                <Button Text="Otro evento" Style="{StaticResource BotonCampoSecundario}" HeightRequest="60" FontSize="22"
+                        Command="{Binding VerOtrosCommand}"
+                        SemanticProperties.Hint="Muestra todos los demás eventos">
+                    <Button.Triggers>
+                        <DataTrigger TargetType="Button" Binding="{Binding OtroEventoResaltado}" Value="True">
+                            <Setter Property="BackgroundColor" Value="#FFC107" />
+                            <Setter Property="TextColor" Value="Black" />
+                        </DataTrigger>
+                    </Button.Triggers>
+                </Button>
+            </VerticalStackLayout>
+        </ScrollView>
+
+        <!-- Nivel 2: "Otro evento" (Rechazo primero, el resto alfabético). Lista desplazable con la barra siempre visible (RF-10). -->
+        <ScrollView MaximumHeightRequest="560" VerticalScrollBarVisibility="Always" IsVisible="{Binding MostrandoOtros}">
+            <VerticalStackLayout BindableLayout.ItemsSource="{Binding Otros}" Spacing="8">
+                <BindableLayout.ItemTemplate>
+                    <DataTemplate x:DataType="dto:EventoCampoDto">
+                        <Button Text="{Binding Nombre}" Style="{StaticResource BotonCampo}" HeightRequest="60" FontSize="22"
+                                Command="{Binding Source={RelativeSource AncestorType={x:Type vm:SelectorEventosViewModel}}, Path=ElegirCommand, x:DataType=vm:SelectorEventosViewModel}"
+                                CommandParameter="{Binding .}">
+                            <Button.BackgroundColor>
+                                <MultiBinding Converter="{StaticResource EstadoActual}" ConverterParameter="fondo">
+                                    <Binding Path="Id" />
+                                    <Binding Source="{RelativeSource AncestorType={x:Type vm:SelectorEventosViewModel}}" Path="Resaltado" x:DataType="vm:SelectorEventosViewModel" />
+                                </MultiBinding>
+                            </Button.BackgroundColor>
+                            <Button.TextColor>
+                                <MultiBinding Converter="{StaticResource EstadoActual}" ConverterParameter="texto">
+                                    <Binding Path="Id" />
+                                    <Binding Source="{RelativeSource AncestorType={x:Type vm:SelectorEventosViewModel}}" Path="Resaltado" x:DataType="vm:SelectorEventosViewModel" />
+                                </MultiBinding>
+                            </Button.TextColor>
+                        </Button>
+                    </DataTemplate>
+                </BindableLayout.ItemTemplate>
+            </VerticalStackLayout>
+        </ScrollView>
+
+        <!-- Fuera del scroll: siempre visibles aunque la lista sea larga (RF-8, RF-10). -->
+        <Button Text="+ Agregar evento" Style="{StaticResource BotonCampoAlerta}" HeightRequest="56" FontSize="20"
+                IsVisible="{Binding PuedeCrearNuevo}"
+                Command="{Binding NuevoEventoCommand, Source={x:Reference Control}, x:DataType=ctl:SelectorEventosView}"
+                SemanticProperties.Hint="Crear un evento nuevo si no está en la lista" />
+        <Button Text="Volver" Style="{StaticResource BotonCampoSecundario}" HeightRequest="52" FontSize="20"
+                IsVisible="{Binding MostrandoOtros}" Command="{Binding VolverCommand}" />
+        </VerticalStackLayout>
+
+        <!-- Panel de días (preñez o aborto): teclado numérico, error y botones fijos (RF-23, RF-27). -->
+        <VerticalStackLayout Spacing="12" IsVisible="{Binding PideDias}">
+            <Label Text="{Binding TituloPaso}" Style="{StaticResource TituloCuadro}" FontSize="24" />
+            <Label Text="Días" Style="{StaticResource TextoCampo}" FontSize="18" />
+            <Entry x:Name="CampoDias" Text="{Binding TextoDias}" Keyboard="Numeric" Placeholder="Días" MaxLength="6"
+                   Style="{StaticResource EntradaCampo}" HeightRequest="64" FontSize="28"
+                   ReturnType="Done" ReturnCommand="{Binding ConfirmarDiasCommand}" />
+            <Border IsVisible="{Binding HayMensajeError}" BackgroundColor="{StaticResource CampoPeligro}" StrokeThickness="0" Padding="12,8">
+                <Label Text="{Binding MensajeError}" TextColor="White" FontSize="18" FontAttributes="Bold" />
+            </Border>
+            <Button Text="{Binding TextoConfirmar}" Style="{StaticResource BotonCampo}" HeightRequest="60" FontSize="22"
+                    BackgroundColor="{StaticResource CampoExito}" Command="{Binding ConfirmarDiasCommand}" />
+            <Button Text="Volver" Style="{StaticResource BotonCampoSecundario}" HeightRequest="52" FontSize="20"
+                    IsVisible="{Binding PuedeVolverDePaso}" Command="{Binding VolverDePasoCommand}" />
+            <Button Text="Cancelar" Style="{StaticResource BotonCampoSecundario}" HeightRequest="52" FontSize="20"
+                    Command="{Binding CancelarCommand}" />
+        </VerticalStackLayout>
+
+        <!-- Panel de resultado del aborto: Vacía OK, Inseminada, Seca, Fresca y Rechazo (RF-28). -->
+        <VerticalStackLayout Spacing="12" IsVisible="{Binding PideResultado}">
+            <Label Text="{Binding TituloPaso}" Style="{StaticResource TituloCuadro}" FontSize="24" />
+            <Label Text="¿En qué queda la vaca?" Style="{StaticResource TextoCampo}" FontSize="18" />
+            <VerticalStackLayout BindableLayout.ItemsSource="{Binding ResultadosDisponibles}" Spacing="8">
+                <BindableLayout.ItemTemplate>
+                    <DataTemplate x:DataType="enums:ResultadoAborto">
+                        <Button Style="{StaticResource BotonCampo}" HeightRequest="60" FontSize="22"
+                                Command="{Binding Source={RelativeSource AncestorType={x:Type vm:SelectorEventosViewModel}}, Path=ElegirResultadoCommand, x:DataType=vm:SelectorEventosViewModel}"
+                                CommandParameter="{Binding .}">
+                            <Button.Text>
+                                <MultiBinding Converter="{StaticResource ResultadoAborto}">
+                                    <Binding Path="." />
+                                </MultiBinding>
+                            </Button.Text>
+                            <Button.BackgroundColor>
+                                <MultiBinding Converter="{StaticResource ResultadoAborto}" ConverterParameter="fondo">
+                                    <Binding Path="." />
+                                    <Binding Source="{RelativeSource AncestorType={x:Type vm:SelectorEventosViewModel}}" Path="ResultadoElegido" x:DataType="vm:SelectorEventosViewModel" />
+                                </MultiBinding>
+                            </Button.BackgroundColor>
+                            <Button.TextColor>
+                                <MultiBinding Converter="{StaticResource ResultadoAborto}" ConverterParameter="texto">
+                                    <Binding Path="." />
+                                    <Binding Source="{RelativeSource AncestorType={x:Type vm:SelectorEventosViewModel}}" Path="ResultadoElegido" x:DataType="vm:SelectorEventosViewModel" />
+                                </MultiBinding>
+                            </Button.TextColor>
+                        </Button>
+                    </DataTemplate>
+                </BindableLayout.ItemTemplate>
+            </VerticalStackLayout>
+            <Button Text="Volver" Style="{StaticResource BotonCampoSecundario}" HeightRequest="52" FontSize="20"
+                    IsVisible="{Binding PuedeVolverDePaso}" Command="{Binding VolverDePasoCommand}" />
+            <Button Text="Cancelar" Style="{StaticResource BotonCampoSecundario}" HeightRequest="52" FontSize="20"
+                    Command="{Binding CancelarCommand}" />
+        </VerticalStackLayout>
+    </VerticalStackLayout>
+</ContentView>

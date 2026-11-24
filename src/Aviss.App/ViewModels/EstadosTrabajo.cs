@@ -35,7 +35,7 @@ public enum CuadroTrabajo
     CantidadReal,
     /// <summary>"Agregar evento": todas las opciones de estado para elegir una (RF-15).</summary>
     Eventos,
-    /// <summary>"Configuración": el engranaje, con las opciones del veterinario.</summary>
+    /// <summary>"Configuración": el engranaje, con las opciones de la tablet.</summary>
     Configuracion,
     /// <summary>"Cantidad de la manga": cuántas vacas entran, que se pone a mano al empezar cada manga.</summary>
     CantidadManga,

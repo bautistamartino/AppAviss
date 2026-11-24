@@ -16,7 +16,7 @@ public sealed class RegistrarTactoConMarcaTests : IDisposable
     {
         var (animal, _) = await _e.VacaMarcadaAsync("100", _e.EstadoSeca);
 
-        var r = await _e.Campo.RegistrarTactoAsync(new RegistrarTactoCommand(animal, _e.EstadoPrenada, null, null, _e.UsuarioId));
+        var r = await _e.Campo.RegistrarTactoAsync(new RegistrarTactoCommand(animal, _e.EstadoPrenada, null, null));
 
         Assert.True(r.EsCorrecto, r.Mensaje);
         Assert.Equal(EscenarioConServicios.Texto(_e.EstadoPrenada), _e.Col("Animal", animal, "EstadoReproductivoId"));
@@ -28,12 +28,12 @@ public sealed class RegistrarTactoConMarcaTests : IDisposable
     public async Task El_tacto_se_rechaza_si_es_anterior_a_la_ultima_marca_de_la_vaca()
     {
         var animal = _e.AnimalImportado("100", _e.EstadoSeca);
-        var manga = _e.Base.Manga(_e.RodeoId, 1, _e.UsuarioId);
+        var manga = _e.Base.Manga(_e.RodeoId, 1);
         // Una marca dos días "en el futuro": la hora de la tablet quedó atrasada.
-        _e.Base.MarcaPasada(animal, manga, _e.UsuarioId, fechaHora: _e.Reloj.UtcAhora.AddDays(2));
+        _e.Base.MarcaPasada(animal, manga, fechaHora: _e.Reloj.UtcAhora.AddDays(2));
         var antes = _e.FotoCampo();
 
-        var r = await _e.Campo.RegistrarTactoAsync(new RegistrarTactoCommand(animal, _e.EstadoPrenada, null, null, _e.UsuarioId));
+        var r = await _e.Campo.RegistrarTactoAsync(new RegistrarTactoCommand(animal, _e.EstadoPrenada, null, null));
 
         Assert.False(r.EsCorrecto);
         Assert.Equal(CodigoError.FechaAnteriorAlUltimoTacto, r.Codigo);
@@ -45,10 +45,10 @@ public sealed class RegistrarTactoConMarcaTests : IDisposable
     public async Task Una_marca_anulada_ya_no_cuenta_para_la_validacion_del_reloj()
     {
         var animal = _e.AnimalImportado("100", _e.EstadoSeca);
-        var manga = _e.Base.Manga(_e.RodeoId, 1, _e.UsuarioId);
-        _e.Base.MarcaPasada(animal, manga, _e.UsuarioId, fechaHora: _e.Reloj.UtcAhora.AddDays(2), anulada: true);
+        var manga = _e.Base.Manga(_e.RodeoId, 1);
+        _e.Base.MarcaPasada(animal, manga, fechaHora: _e.Reloj.UtcAhora.AddDays(2), anulada: true);
 
-        var r = await _e.Campo.RegistrarTactoAsync(new RegistrarTactoCommand(animal, _e.EstadoPrenada, null, null, _e.UsuarioId));
+        var r = await _e.Campo.RegistrarTactoAsync(new RegistrarTactoCommand(animal, _e.EstadoPrenada, null, null));
 
         Assert.True(r.EsCorrecto, r.Mensaje);
     }
@@ -60,7 +60,7 @@ public sealed class RegistrarTactoConMarcaTests : IDisposable
         var estadoBaja = _e.Base.Estado("VIEJO", "VIEJO", "VIEJO", activo: false);
         var antes = _e.FotoCampo();
 
-        var r = await _e.Campo.RegistrarTactoAsync(new RegistrarTactoCommand(animal, estadoBaja, null, null, _e.UsuarioId));
+        var r = await _e.Campo.RegistrarTactoAsync(new RegistrarTactoCommand(animal, estadoBaja, null, null));
 
         Assert.Equal(CodigoError.EstadoDeBaja, r.Codigo);
         Assert.Equal(antes, _e.FotoCampo());
@@ -71,7 +71,7 @@ public sealed class RegistrarTactoConMarcaTests : IDisposable
     {
         var (animal, _) = await _e.VacaMarcadaAsync("100", _e.EstadoSeca);
 
-        var r = await _e.Campo.RegistrarTactoAsync(new RegistrarTactoCommand(animal, _e.EstadoSeca, null, null, _e.UsuarioId));
+        var r = await _e.Campo.RegistrarTactoAsync(new RegistrarTactoCommand(animal, _e.EstadoSeca, null, null));
 
         Assert.True(r.EsCorrecto, r.Mensaje);
         Assert.Equal(EscenarioConServicios.Texto(_e.EstadoSeca), _e.Col("Tacto", r.Valor, "EstadoNuevoId"));
@@ -96,7 +96,8 @@ public sealed class RegistrarTactoConMarcaTests : IDisposable
     {
         _e.Base.Estado("VIEJO", "VIEJO", "VIEJO", activo: false);
 
-        var estados = await _e.Campo.ListarEstadosActivosAsync();
+        var lista = await _e.Campo.ListarEventosAsync();
+        var estados = lista.Principales.Concat(lista.Otros.Where(o => o.Id != EventosCampo.Rechazo)).ToList();
 
         Assert.Equal(["PREÑADA", "SECA"], estados.Select(s => s.Nombre).Order());
         Assert.DoesNotContain(estados, s => s.Nombre == "VIEJO");

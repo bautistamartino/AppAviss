@@ -14,8 +14,7 @@ public class FakeCampoService : ICampoService
 {
     // ---- configuración ----
     public IReadOnlyList<RodeoParaTrabajarDto> Rodeos { get; set; } = [];
-    public IReadOnlyList<VeterinarioDto> Veterinarios { get; set; } = [];
-    public IReadOnlyList<EstadoActivoDto> Estados { get; set; } = [];
+    public IReadOnlyList<EventoCampoDto> Estados { get; set; } = [];
     public IReadOnlyList<MovimientoDto> Movimientos { get; set; } = [];
 
     public EstadoTrabajoDto Estado { get; set; } = Datos.EstadoTrabajo();
@@ -28,25 +27,30 @@ public class FakeCampoService : ICampoService
     public Func<Resultado<ResumenMangaDto>> OnResumen { get; set; } = () => Resultado.Ok(Datos.Resumen());
     public Func<FinalizarMangaCommand, Resultado<ResultadoCierreDto>>? OnFinalizar { get; set; }
     public Func<TerminarElTactoCommand, Resultado<ResultadoCierreDto>>? OnTerminar { get; set; }
-    public Func<string, Resultado<Guid>>? OnCrearVeterinario { get; set; }
     public string? CaravanaMuestra { get; set; } = "MUESTRA-1";
 
     // ---- lo que llamaron ----
-    public List<(Guid RodeoId, Guid UsuarioId)> IniciosDeTrabajo { get; } = [];
+    public List<Guid> IniciosDeTrabajo { get; } = [];
     public List<ProcesarLecturaCommand> LecturasProcesadas { get; } = [];
     public List<RegistrarTactoCommand> Tactos { get; } = [];
     public List<DeshacerCommand> Deshaceres { get; } = [];
     public List<FinalizarMangaCommand> Finalizados { get; } = [];
     public List<TerminarElTactoCommand> Terminados { get; } = [];
-    public List<(string Nombre, string? Matricula)> VeterinariosCreados { get; } = [];
     public int ConsultasDeEstado { get; private set; }
     public int ConsultasDeMovimientos { get; private set; }
     public List<Guid> FichasPedidas { get; } = [];
 
     // ---- ICampoService ----
-    public Task<IReadOnlyList<RodeoParaTrabajarDto>> ListarRodeosParaTrabajarAsync(CancellationToken ct = default) => Task.FromResult(Rodeos);
-    public virtual Task<IReadOnlyList<VeterinarioDto>> ListarVeterinariosActivosAsync(CancellationToken ct = default) => Task.FromResult(Veterinarios);
-    public Task<IReadOnlyList<EstadoActivoDto>> ListarEstadosActivosAsync(CancellationToken ct = default) => Task.FromResult(Estados);
+    public virtual Task<IReadOnlyList<RodeoParaTrabajarDto>> ListarRodeosParaTrabajarAsync(CancellationToken ct = default) => Task.FromResult(Rodeos);
+    /// <summary>Los eventos del fake: <c>Estados</c> es la lista plana; los principales van arriba y el resto en "Otro evento" (con el Rechazo fijo primero, como el servicio real).</summary>
+    public Task<ListaEventosDto> ListarEventosAsync(CancellationToken ct = default)
+        => Task.FromResult(new ListaEventosDto(
+            Estados.Where(e => e.EsPrincipal).ToList(),
+            [ArmadorListaEventos.EventoRechazo, .. Estados.Where(e => !e.EsPrincipal)],
+            ResultadosAborto));
+
+    /// <summary>Los resultados del aborto que ofrece el fake (por defecto los cinco; un test puede sacar los de un estado desactivado).</summary>
+    public IReadOnlyList<ResultadoAborto> ResultadosAborto { get; set; } = Aviss.Domain.Catalogo.ReglasResultadoAborto.Todos;
 
     public List<(string Nombre, string CodigoDairyComp)> EstadosCreados { get; } = [];
     public Func<string, Resultado<Guid>>? OnCrearEstado { get; set; }
@@ -56,22 +60,13 @@ public class FakeCampoService : ICampoService
         EstadosCreados.Add((nombre, codigoDairyComp));
         if (OnCrearEstado is not null) return Task.FromResult(OnCrearEstado(nombre));
         var id = Guid.NewGuid();
-        Estados = [.. Estados, new EstadoActivoDto(id, nombre.ToUpperInvariant())];
+        Estados = [.. Estados, new EventoCampoDto(id, nombre.ToUpperInvariant(), true, false)];
         return Task.FromResult(Resultado.Ok(id));
     }
 
-    public Task<Resultado<Guid>> CrearVeterinarioAsync(string nombre, string? matricula, CancellationToken ct = default)
+    public Task<Resultado<EstadoTrabajoDto>> IniciarTrabajoAsync(Guid rodeoId, CancellationToken ct = default)
     {
-        VeterinariosCreados.Add((nombre, matricula));
-        if (OnCrearVeterinario is not null) return Task.FromResult(OnCrearVeterinario(nombre));
-        var id = Guid.NewGuid();
-        Veterinarios = [.. Veterinarios, new VeterinarioDto(id, nombre, matricula)];
-        return Task.FromResult(Resultado.Ok(id));
-    }
-
-    public Task<Resultado<EstadoTrabajoDto>> IniciarTrabajoAsync(Guid rodeoId, Guid usuarioId, CancellationToken ct = default)
-    {
-        IniciosDeTrabajo.Add((rodeoId, usuarioId));
+        IniciosDeTrabajo.Add(rodeoId);
         return Task.FromResult(Resultado.Ok(Estado));
     }
 
@@ -129,11 +124,11 @@ public class FakeCampoService : ICampoService
     public IReadOnlyList<EsperaDto> Esperas { get; set; } = [];
     public List<PonerEnEsperaCommand> EsperasPuestas { get; } = [];
     public List<SaltearEsperaCommand> EsperasSalteadas { get; } = [];
-    public List<RegistrarRechazoCommand> Rechazos { get; } = [];
+    public List<RegistrarSoloEventoCommand> Rechazos { get; } = [];
     public List<CorregirRegistroCommand> RegistrosCorregidos { get; } = [];
     public Func<PonerEnEsperaCommand, Resultado<Guid>>? OnPonerEnEspera { get; set; }
     public Func<SaltearEsperaCommand, Resultado>? OnSaltearEspera { get; set; }
-    public Func<RegistrarRechazoCommand, Resultado<Guid>>? OnRegistrarRechazo { get; set; }
+    public Func<RegistrarSoloEventoCommand, Resultado<Guid>>? OnRegistrarRechazo { get; set; }
     public Func<CorregirRegistroCommand, Resultado<Guid>>? OnCorregirRegistro { get; set; }
     public int ConsultasDeEsperas { get; private set; }
 
@@ -161,7 +156,7 @@ public class FakeCampoService : ICampoService
         return Task.FromResult(Esperas);
     }
 
-    public Task<Resultado<Guid>> RegistrarRechazoAsync(RegistrarRechazoCommand comando, CancellationToken ct = default)
+    public Task<Resultado<Guid>> RegistrarSoloEventoAsync(RegistrarSoloEventoCommand comando, CancellationToken ct = default)
     {
         Rechazos.Add(comando);
         return Task.FromResult(OnRegistrarRechazo?.Invoke(comando) ?? Resultado.Ok(Guid.NewGuid()));
@@ -189,7 +184,6 @@ public class FakeCampoService : ICampoService
 public static class Datos
 {
     public static readonly Guid RodeoId = Guid.Parse("11111111-0000-0000-0000-000000000001");
-    public static readonly VeterinarioDto Vet = new(Guid.Parse("22222222-0000-0000-0000-000000000001"), "Dra. Ana", "M-1");
 
     public static AvanceRodeoDto Avance(int total = 100, int procesadas = 0, DateTime? primera = null, DateTime? fin = null, bool terminado = false)
         => new(new DateOnly(2026, 11, 17), total, procesadas, total - procesadas, total == 0 ? 0 : procesadas * 100 / total, primera, fin, terminado);
@@ -219,7 +213,7 @@ public static class Datos
         => new(TipoResultadoLectura.SinTacto, caravana, animalId, caravana, null, marcaId ?? Guid.NewGuid(), manga, contador, null, null, false);
 
     public static UltimoRegistroDto Ultimo(TipoRegistroCampo tipo = TipoRegistroCampo.Marca, string? estado = null, int? manga = 1)
-        => new(tipo, Guid.NewGuid(), new DateTime(2026, 11, 17, 13, 0, 0, DateTimeKind.Utc), estado, "Dra. Ana", manga);
+        => new(tipo, Guid.NewGuid(), new DateTime(2026, 11, 17, 13, 0, 0, DateTimeKind.Utc), estado, manga);
 
     public static ResultadoLecturaDto Repetido(Guid animalId, string caravana, UltimoRegistroDto? ultimo = null, bool puedeCorregir = false)
         => new(TipoResultadoLectura.Repetido, caravana, animalId, caravana, null, null, 1, null, TipoAviso.Repetido, ultimo ?? Ultimo(), puedeCorregir);
@@ -240,8 +234,10 @@ public static class Datos
 
     public static MovimientoDto Movimiento(TipoMovimiento tipo, bool puedeDeshacer = true, bool anulado = false,
         int? cantidadAviss = null, int? cantidadConfirmada = null, int? contadorActual = null, string? caravana = "1001",
-        string? detalle = null, string? cvet = null, string? observaciones = null)
+        string? detalle = null, string? cvet = null, string? observaciones = null, Guid? eventoId = null,
+        int? diasPreniez = null, int? diasAborto = null, ResultadoAborto? resultadoAborto = null)
         => new(tipo, Guid.NewGuid(), tipo == TipoMovimiento.Cierre ? null : Guid.NewGuid(), caravana, 1, detalle,
-            new DateTime(2026, 11, 17, 13, 0, 0, DateTimeKind.Utc), "Dra. Ana", anulado, puedeDeshacer,
-            cantidadAviss, cantidadConfirmada, contadorActual, cvet, observaciones);
+            new DateTime(2026, 11, 17, 13, 0, 0, DateTimeKind.Utc), anulado, puedeDeshacer,
+            cantidadAviss, cantidadConfirmada, contadorActual, cvet, observaciones,
+            eventoId ?? (tipo == TipoMovimiento.Rechazo ? EventosCampo.Rechazo : null), diasPreniez, diasAborto, resultadoAborto);
 }

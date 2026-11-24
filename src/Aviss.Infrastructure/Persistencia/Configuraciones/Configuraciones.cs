@@ -1,5 +1,6 @@
 using Aviss.Domain.Entidades;
 using Aviss.Domain.Enums;
+using Aviss.Domain.Reglas;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -59,17 +60,6 @@ internal sealed class RodeoConfig : IEntityTypeConfiguration<Rodeo>
     }
 }
 
-internal sealed class UsuarioConfig : IEntityTypeConfiguration<Usuario>
-{
-    public void Configure(EntityTypeBuilder<Usuario> b)
-    {
-        Comun.ConfigurarId(b, "Usuario");
-        b.Property(e => e.Nombre).IsRequired();
-        b.HasCheckConstraint("CK_Usuario_Nombre", "length(trim(Nombre)) > 0");
-        b.HasCheckConstraint("CK_Usuario_Matricula", "Matricula IS NULL OR length(Matricula) <= 30");
-    }
-}
-
 internal sealed class EstadoReproductivoConfig : IEntityTypeConfiguration<EstadoReproductivo>
 {
     public void Configure(EntityTypeBuilder<EstadoReproductivo> b)
@@ -91,6 +81,31 @@ internal sealed class EstadoReproductivoConfig : IEntityTypeConfiguration<Estado
         b.HasIndex(e => e.CodigoDairyComp).IsUnique().HasFilter("Activo = 1");
 
         b.HasCheckConstraint("CK_Estado_Codigo", "length(Codigo) > 0 AND Codigo NOT GLOB '*[^A-Z0-9_]*'");
+
+        // Spec 005 (migración "EventosDelCatalogo", escrita a mano): tipo, principal, orden e identidad estándar.
+        // Todas con valor por defecto en la base, así las filas viejas quedan válidas.
+        b.Property(e => e.Tipo).HasConversion<string>().IsRequired().HasDefaultValue(TipoEvento.Estado);
+        b.Property(e => e.EsPrincipal).HasDefaultValue(false);
+        b.Property(e => e.Orden).HasDefaultValue(0);
+        b.Property(e => e.ClaveEstandar);
+        // Un evento estándar no se puede duplicar: la clave es única entre los que la tienen (los creados a mano no).
+        b.HasIndex(e => e.ClaveEstandar).IsUnique().HasFilter("ClaveEstandar IS NOT NULL");
+
+        b.HasCheckConstraint("CK_Estado_Tipo", "Tipo IN ('Estado','SoloEvento')");
+        b.HasCheckConstraint("CK_Estado_EsPrincipal", "EsPrincipal IN (0,1)");
+        b.HasCheckConstraint("CK_Estado_Orden", "\"Orden\" >= 0");
+        b.HasCheckConstraint("CK_Estado_ClaveEstandar",
+            "ClaveEstandar IS NULL OR (length(ClaveEstandar) > 0 AND ClaveEstandar NOT GLOB '*[^A-Z0-9_]*')");
+
+        // Spec 005, segunda vuelta (migración "EventosConPasos", escrita a mano): los pasos que pide el evento y el estado en
+        // que deja a la vaca. El CHECK de Pasos no fija los valores (solo letras y comas): un tercer evento con pasos no
+        // pide migración; los valores válidos los conoce el código (PasoEvento).
+        b.Property(e => e.Pasos);
+        b.Property(e => e.EstadoDestinoId);
+        b.HasOne<EstadoReproductivo>().WithMany().HasForeignKey(e => e.EstadoDestinoId).OnDelete(DeleteBehavior.Restrict);
+        b.HasIndex(e => e.EstadoDestinoId);
+        b.HasCheckConstraint("CK_Estado_Pasos",
+            "Pasos IS NULL OR (length(Pasos) > 0 AND Pasos NOT GLOB '*[^A-Za-z,]*')");
     }
 }
 
@@ -133,7 +148,6 @@ internal sealed class TactoConfig : IEntityTypeConfiguration<Tacto>
         b.Property(e => e.EstadoNuevoId);
 
         b.HasOne<Animal>().WithMany().HasForeignKey(e => e.AnimalId).OnDelete(DeleteBehavior.Restrict);
-        b.HasOne<Usuario>().WithMany().HasForeignKey(e => e.UsuarioId).OnDelete(DeleteBehavior.Restrict);
         b.HasOne<EstadoReproductivo>().WithMany().HasForeignKey(e => e.EstadoAnteriorId).OnDelete(DeleteBehavior.Restrict);
         b.HasOne<EstadoReproductivo>().WithMany().HasForeignKey(e => e.EstadoNuevoId).OnDelete(DeleteBehavior.Restrict);
 
@@ -153,13 +167,32 @@ internal sealed class TactoConfig : IEntityTypeConfiguration<Tacto>
         b.HasIndex(e => e.TactoAnuladoId).IsUnique().HasFilter("TactoAnuladoId IS NOT NULL");
         b.HasIndex(e => e.EstadoAnteriorId);
         b.HasIndex(e => e.EstadoNuevoId);
-        b.HasIndex(e => e.UsuarioId);
 
         b.HasCheckConstraint("CK_Tacto_Dias", "DiasPrenez IS NULL OR DiasPrenez BETWEEN 0 AND 300");
         b.HasCheckConstraint("CK_Tacto_Tipo", "Tipo IN ('Normal','Anulacion')");
         b.HasCheckConstraint("CK_Tacto_Anulacion", "(Tipo = 'Anulacion') = (TactoAnuladoId IS NOT NULL)");
         b.HasCheckConstraint("CK_Tacto_NoAnulaAnulacion", "Tipo = 'Normal' OR Anulado = 0");
         b.HasCheckConstraint("CK_Tacto_EstadoNuevo", "Tipo = 'Anulacion' OR EstadoNuevoId IS NOT NULL");
+
+        // Spec 005, segunda vuelta (migración "EventosConPasos", escrita a mano). Los rangos salen de RangosDias, que es
+        // la única fuente en el código; el SQL de la migración los repite como números porque una migración publicada
+        // no debe cambiar. Si un rango cambia hay que escribir una migración chica de CHECK.
+        b.Property(e => e.EventoId);
+        b.Property(e => e.DiasPreniezInformados);
+        b.Property(e => e.DiasAborto);
+        b.HasOne<EstadoReproductivo>().WithMany().HasForeignKey(e => e.EventoId).OnDelete(DeleteBehavior.Restrict);
+        b.HasIndex(e => e.EventoId);
+        b.HasCheckConstraint("CK_Tacto_DiasPreniezInformados",
+            $"DiasPreniezInformados IS NULL OR DiasPreniezInformados BETWEEN {RangosDias.Preniez.Minimo} AND {RangosDias.Preniez.Maximo}");
+        b.HasCheckConstraint("CK_Tacto_DiasAborto",
+            $"DiasAborto IS NULL OR DiasAborto BETWEEN {RangosDias.Aborto.Minimo} AND {RangosDias.Aborto.Maximo}");
+        // Un tacto informa días de preñez o de aborto, no los dos; y los días siempre vienen con el evento que los pide.
+        b.HasCheckConstraint("CK_Tacto_DiasExclusivos", "DiasPreniezInformados IS NULL OR DiasAborto IS NULL");
+        b.HasCheckConstraint("CK_Tacto_DiasConEvento",
+            "EventoId IS NOT NULL OR (DiasPreniezInformados IS NULL AND DiasAborto IS NULL)");
+        // Una anulación no copia datos del original (que los conserva).
+        b.HasCheckConstraint("CK_Tacto_AnulacionSinEvento",
+            "Tipo = 'Normal' OR (EventoId IS NULL AND DiasPreniezInformados IS NULL AND DiasAborto IS NULL)");
     }
 }
 
@@ -172,7 +205,6 @@ internal sealed class HistorialConfig : IEntityTypeConfiguration<Historial>
         b.Property(e => e.Campo).IsRequired();
         b.Property(e => e.Accion).HasConversion<string>().IsRequired();
 
-        b.HasOne<Usuario>().WithMany().HasForeignKey(e => e.UsuarioId).OnDelete(DeleteBehavior.Restrict);
         // EntidadId NO tiene FK: apunta a tablas distintas según Entidad.
         b.HasIndex(e => new { e.Entidad, e.EntidadId });
 
@@ -181,8 +213,7 @@ internal sealed class HistorialConfig : IEntityTypeConfiguration<Historial>
 }
 
 // ---------------------------------------------------------------------------------------------------------------
-// Spec 003: mangas y marcas de pasada. Los triggers, el índice único por expresión de Usuario.Nombre y el CHECK del
-// historial reescrito van a mano en la migración "Mangas".
+// Spec 003: mangas y marcas de pasada. Los triggers y el CHECK del historial reescrito van a mano en las migraciones (Mangas, EsperaYRechazo, QuitarVeterinario).
 // ---------------------------------------------------------------------------------------------------------------
 
 internal sealed class MangaConfig : IEntityTypeConfiguration<Manga>
@@ -192,11 +223,9 @@ internal sealed class MangaConfig : IEntityTypeConfiguration<Manga>
         Comun.ConfigurarId(b, "Manga");
 
         b.HasOne<Rodeo>().WithMany().HasForeignKey(e => e.RodeoId).OnDelete(DeleteBehavior.Restrict);
-        b.HasOne<Usuario>().WithMany().HasForeignKey(e => e.AbiertaPorUsuarioId).OnDelete(DeleteBehavior.Restrict);
 
         // El número de manga es único por rodeo: dos tablets no pueden crear la "Manga 3" del mismo rodeo.
         b.HasIndex(e => new { e.RodeoId, e.Numero }).IsUnique();
-        b.HasIndex(e => e.AbiertaPorUsuarioId);
 
         b.HasCheckConstraint("CK_Manga_Numero", "Numero >= 1");
     }
@@ -210,11 +239,9 @@ internal sealed class CierreMangaConfig : IEntityTypeConfiguration<CierreManga>
         b.Property(e => e.Tipo).HasConversion<string>().IsRequired();
 
         b.HasOne<Manga>().WithMany().HasForeignKey(e => e.MangaId).OnDelete(DeleteBehavior.Restrict);
-        b.HasOne<Usuario>().WithMany().HasForeignKey(e => e.UsuarioId).OnDelete(DeleteBehavior.Restrict);
 
         // Una manga no puede tener dos cierres vigentes a la vez (uno anulado y otro nuevo, sí).
         b.HasIndex(e => e.MangaId).IsUnique().HasFilter("Anulado = 0");
-        b.HasIndex(e => e.UsuarioId);
 
         b.HasCheckConstraint("CK_CierreManga_Tipo", "Tipo IN ('Manual','TerminoElTacto','Automatico')");
         b.HasCheckConstraint("CK_CierreManga_CantidadAviss", "CantidadAviss >= 0");
@@ -234,7 +261,6 @@ internal sealed class MarcaPasadaConfig : IEntityTypeConfiguration<MarcaPasada>
 
         b.HasOne<Animal>().WithMany().HasForeignKey(e => e.AnimalId).OnDelete(DeleteBehavior.Restrict);
         b.HasOne<Manga>().WithMany().HasForeignKey(e => e.MangaId).OnDelete(DeleteBehavior.Restrict);
-        b.HasOne<Usuario>().WithMany().HasForeignKey(e => e.UsuarioId).OnDelete(DeleteBehavior.Restrict);
 
         // El orden de guardado es único también acá (entre tablas lo garantiza el cálculo dentro de la transacción).
         b.HasIndex(e => e.OrdenInsercion).IsUnique();
@@ -244,7 +270,6 @@ internal sealed class MarcaPasadaConfig : IEntityTypeConfiguration<MarcaPasada>
         b.HasIndex(e => new { e.AnimalId, e.FechaHoraUtc, e.OrdenInsercion });
         // Para el avance del día (marcas dentro de un rango de fechas).
         b.HasIndex(e => e.FechaHoraUtc);
-        b.HasIndex(e => e.UsuarioId);
 
         b.HasCheckConstraint("CK_MarcaPasada_Anulado", "Anulado IN (0,1)");
     }
@@ -262,22 +287,18 @@ internal sealed class EsperaConfig : IEntityTypeConfiguration<Espera>
         b.Property(e => e.Estado).HasConversion<string>().IsRequired();
 
         b.HasOne<Animal>().WithMany().HasForeignKey(e => e.AnimalId).OnDelete(DeleteBehavior.Restrict);
-        b.HasOne<Usuario>().WithMany().HasForeignKey(e => e.UsuarioId).OnDelete(DeleteBehavior.Restrict);
-        b.HasOne<Usuario>().WithMany().HasForeignKey(e => e.ResueltaPorUsuarioId).OnDelete(DeleteBehavior.Restrict);
         // RegistroResolucionId NO tiene FK: apunta a Tacto o a Rechazo según cómo se resolvió.
 
         // Una vaca tiene una sola espera pendiente (la vaca es de un solo rodeo, así que es una por rodeo); resueltas o
         // salteadas puede haber muchas.
         b.HasIndex(e => e.AnimalId).IsUnique().HasFilter("Estado = 'Pendiente'");
-        b.HasIndex(e => e.UsuarioId);
-        b.HasIndex(e => e.ResueltaPorUsuarioId);
 
         b.HasCheckConstraint("CK_Espera_Estado", "Estado IN ('Pendiente','Resuelta','Salteada')");
         // Coherencia de los datos de resolución con el estado.
         b.HasCheckConstraint("CK_Espera_Resolucion",
-            "(Estado = 'Pendiente' AND ResueltaEnUtc IS NULL AND ResueltaPorUsuarioId IS NULL AND RegistroResolucionId IS NULL)"
-            + " OR (Estado = 'Resuelta' AND ResueltaEnUtc IS NOT NULL AND ResueltaPorUsuarioId IS NOT NULL AND RegistroResolucionId IS NOT NULL)"
-            + " OR (Estado = 'Salteada' AND ResueltaEnUtc IS NOT NULL AND ResueltaPorUsuarioId IS NOT NULL AND RegistroResolucionId IS NULL)");
+            "(Estado = 'Pendiente' AND ResueltaEnUtc IS NULL AND RegistroResolucionId IS NULL)"
+            + " OR (Estado = 'Resuelta' AND ResueltaEnUtc IS NOT NULL AND RegistroResolucionId IS NOT NULL)"
+            + " OR (Estado = 'Salteada' AND ResueltaEnUtc IS NOT NULL AND RegistroResolucionId IS NULL)");
     }
 }
 
@@ -288,20 +309,26 @@ internal sealed class RechazoConfig : IEntityTypeConfiguration<Rechazo>
         Comun.ConfigurarId(b, "Rechazo");
 
         b.HasOne<Animal>().WithMany().HasForeignKey(e => e.AnimalId).OnDelete(DeleteBehavior.Restrict);
-        b.HasOne<Usuario>().WithMany().HasForeignKey(e => e.UsuarioId).OnDelete(DeleteBehavior.Restrict);
-        b.HasOne<Usuario>().WithMany().HasForeignKey(e => e.AnuladoPorUsuarioId).OnDelete(DeleteBehavior.Restrict);
+        // Spec 005: el evento del catálogo (solo evento) que guarda este registro; nulo = el Rechazo fijo.
+        // Los triggers que exigen Tipo = 'SoloEvento' y la inmutabilidad de EventoId van a mano en "EventosDelCatalogo".
+        b.HasOne<EstadoReproductivo>().WithMany().HasForeignKey(e => e.EventoId).OnDelete(DeleteBehavior.Restrict);
+        b.HasIndex(e => e.EventoId);
 
         // Orden de guardado único (compartido con tactos y marcas; entre tablas lo garantiza el cálculo en la transacción).
         b.HasIndex(e => e.OrdenInsercion).IsUnique();
         // Para encontrar rápido el último registro vigente de una vaca.
         b.HasIndex(e => new { e.AnimalId, e.FechaHoraUtc, e.OrdenInsercion });
-        b.HasIndex(e => e.UsuarioId);
-        b.HasIndex(e => e.AnuladoPorUsuarioId);
 
         b.HasCheckConstraint("CK_Rechazo_Anulado", "Anulado IN (0,1)");
-        // Anulado implica saber quién y cuándo; sin anular, esos datos no existen.
+        // Anulado implica tener fecha de anulación; sin anular, no la hay.
         b.HasCheckConstraint("CK_Rechazo_Anulacion",
-            "(Anulado = 0 AND AnuladoEnUtc IS NULL AND AnuladoPorUsuarioId IS NULL)"
-            + " OR (Anulado = 1 AND AnuladoEnUtc IS NOT NULL AND AnuladoPorUsuarioId IS NOT NULL)");
+            "(Anulado = 0 AND AnuladoEnUtc IS NULL)"
+            + " OR (Anulado = 1 AND AnuladoEnUtc IS NOT NULL)");
+
+        // Spec 005, segunda vuelta: días de aborto de un Aborto con resultado Rechazo. Solo con evento y en rango.
+        b.Property(e => e.DiasAborto);
+        b.HasCheckConstraint("CK_Rechazo_DiasAborto",
+            $"DiasAborto IS NULL OR DiasAborto BETWEEN {RangosDias.Aborto.Minimo} AND {RangosDias.Aborto.Maximo}");
+        b.HasCheckConstraint("CK_Rechazo_DiasConEvento", "DiasAborto IS NULL OR EventoId IS NOT NULL");
     }
 }

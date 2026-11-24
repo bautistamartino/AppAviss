@@ -59,7 +59,7 @@ Pendientes al retomar:
 
 1. Pasar el revisor sobre la spec 003 y mergear `spec/003-flujo-de-tacto` a `main` (la rama ya está subida a GitHub).
 2. Probar en la tablet lo que quedó sin verificar (chicharra del CVET 0, aviso de manga completa, cierre automático, "+ Nuevo evento", engranaje): lista en la spec 003, "Criterios de aceptación de esta sección".
-3. Confirmar con el usuario las decisiones abiertas: si hace falta registrar al veterinario, dos veterinarios por tacto, dos mangas a la vez y varios lotes (spec 003, "Preguntas abiertas").
+3. Confirmar con el usuario las decisiones abiertas: dos mangas a la vez (el veterinario ya no se registra: spec 006) y varios lotes (spec 003, "Preguntas abiertas").
 4. La spec 004 (tratamientos, tres renglones de evento, rechazo y "En Espera") está en borrador sin aprobar.
 5. Sacar el botón "↺ A 0" (resetear rodeo) cuando se termine de probar (spec 003, RF-50).
 6. Sigue pendiente la prueba 0.2 de reimportación en Dairy Comp.

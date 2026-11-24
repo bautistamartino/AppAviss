@@ -116,9 +116,6 @@ namespace Aviss.Infrastructure.Migrations
                     b.Property<int?>("Diferencia")
                         .HasColumnType("INTEGER");
 
-                    b.Property<Guid>("DispositivoId")
-                        .HasColumnType("TEXT");
-
                     b.Property<string>("FechaHoraUtc")
                         .IsRequired()
                         .HasColumnType("TEXT");
@@ -130,16 +127,11 @@ namespace Aviss.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
-                    b.Property<Guid>("UsuarioId")
-                        .HasColumnType("TEXT");
-
                     b.HasKey("Id");
 
                     b.HasIndex("MangaId")
                         .IsUnique()
                         .HasFilter("Anulado = 0");
-
-                    b.HasIndex("UsuarioId");
 
                     b.ToTable("CierreManga", null, t =>
                         {
@@ -171,9 +163,6 @@ namespace Aviss.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
-                    b.Property<Guid>("DispositivoId")
-                        .HasColumnType("TEXT");
-
                     b.Property<string>("Estado")
                         .IsRequired()
                         .HasColumnType("TEXT");
@@ -188,27 +177,17 @@ namespace Aviss.Infrastructure.Migrations
                     b.Property<string>("ResueltaEnUtc")
                         .HasColumnType("TEXT");
 
-                    b.Property<Guid?>("ResueltaPorUsuarioId")
-                        .HasColumnType("TEXT");
-
-                    b.Property<Guid>("UsuarioId")
-                        .HasColumnType("TEXT");
-
                     b.HasKey("Id");
 
                     b.HasIndex("AnimalId")
                         .IsUnique()
                         .HasFilter("Estado = 'Pendiente'");
 
-                    b.HasIndex("ResueltaPorUsuarioId");
-
-                    b.HasIndex("UsuarioId");
-
                     b.ToTable("Espera", null, t =>
                         {
                             t.HasCheckConstraint("CK_Espera_Estado", "Estado IN ('Pendiente','Resuelta','Salteada')");
 
-                            t.HasCheckConstraint("CK_Espera_Resolucion", "(Estado = 'Pendiente' AND ResueltaEnUtc IS NULL AND ResueltaPorUsuarioId IS NULL AND RegistroResolucionId IS NULL) OR (Estado = 'Resuelta' AND ResueltaEnUtc IS NOT NULL AND ResueltaPorUsuarioId IS NOT NULL AND RegistroResolucionId IS NOT NULL) OR (Estado = 'Salteada' AND ResueltaEnUtc IS NOT NULL AND ResueltaPorUsuarioId IS NOT NULL AND RegistroResolucionId IS NULL)");
+                            t.HasCheckConstraint("CK_Espera_Resolucion", "(Estado = 'Pendiente' AND ResueltaEnUtc IS NULL AND RegistroResolucionId IS NULL) OR (Estado = 'Resuelta' AND ResueltaEnUtc IS NOT NULL AND RegistroResolucionId IS NOT NULL) OR (Estado = 'Salteada' AND ResueltaEnUtc IS NOT NULL AND RegistroResolucionId IS NULL)");
                         });
                 });
 
@@ -255,6 +234,9 @@ namespace Aviss.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("ClaveEstandar")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("Codigo")
                         .IsRequired()
                         .HasColumnType("TEXT");
@@ -267,6 +249,14 @@ namespace Aviss.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
+                    b.Property<bool>("EsPrincipal")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(false);
+
+                    b.Property<Guid?>("EstadoDestinoId")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("Nombre")
                         .IsRequired()
                         .HasColumnType("TEXT");
@@ -277,7 +267,25 @@ namespace Aviss.Infrastructure.Migrations
                         .HasColumnName("NombreClave")
                         .HasComputedColumnSql("replace(replace(replace(replace(replace(replace(replace(upper(Nombre),'ñ','Ñ'),'á','Á'),'é','É'),'í','Í'),'ó','Ó'),'ú','Ú'),'ü','Ü')", true);
 
+                    b.Property<int>("Orden")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(0);
+
+                    b.Property<string>("Pasos")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Tipo")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT")
+                        .HasDefaultValue("Estado");
+
                     b.HasKey("Id");
+
+                    b.HasIndex("ClaveEstandar")
+                        .IsUnique()
+                        .HasFilter("ClaveEstandar IS NOT NULL");
 
                     b.HasIndex("Codigo")
                         .IsUnique();
@@ -286,12 +294,24 @@ namespace Aviss.Infrastructure.Migrations
                         .IsUnique()
                         .HasFilter("Activo = 1");
 
+                    b.HasIndex("EstadoDestinoId");
+
                     b.HasIndex("NombreClaveBd")
                         .IsUnique();
 
                     b.ToTable("EstadoReproductivo", null, t =>
                         {
+                            t.HasCheckConstraint("CK_Estado_ClaveEstandar", "ClaveEstandar IS NULL OR (length(ClaveEstandar) > 0 AND ClaveEstandar NOT GLOB '*[^A-Z0-9_]*')");
+
                             t.HasCheckConstraint("CK_Estado_Codigo", "length(Codigo) > 0 AND Codigo NOT GLOB '*[^A-Z0-9_]*'");
+
+                            t.HasCheckConstraint("CK_Estado_EsPrincipal", "EsPrincipal IN (0,1)");
+
+                            t.HasCheckConstraint("CK_Estado_Orden", "\"Orden\" >= 0");
+
+                            t.HasCheckConstraint("CK_Estado_Pasos", "Pasos IS NULL OR (length(Pasos) > 0 AND Pasos NOT GLOB '*[^A-Za-z,]*')");
+
+                            t.HasCheckConstraint("CK_Estado_Tipo", "Tipo IN ('Estado','SoloEvento')");
                         });
                 });
 
@@ -323,9 +343,6 @@ namespace Aviss.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
-                    b.Property<Guid>("UsuarioId")
-                        .HasColumnType("TEXT");
-
                     b.Property<string>("ValorAnterior")
                         .HasColumnType("TEXT");
 
@@ -333,8 +350,6 @@ namespace Aviss.Infrastructure.Migrations
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("UsuarioId");
 
                     b.HasIndex("Entidad", "EntidadId");
 
@@ -349,14 +364,8 @@ namespace Aviss.Infrastructure.Migrations
                     b.Property<Guid>("Id")
                         .HasColumnType("TEXT");
 
-                    b.Property<Guid>("AbiertaPorUsuarioId")
-                        .HasColumnType("TEXT");
-
                     b.Property<string>("CreadoEnUtc")
                         .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<Guid>("DispositivoId")
                         .HasColumnType("TEXT");
 
                     b.Property<int>("Numero")
@@ -366,8 +375,6 @@ namespace Aviss.Infrastructure.Migrations
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("AbiertaPorUsuarioId");
 
                     b.HasIndex("RodeoId", "Numero")
                         .IsUnique();
@@ -397,9 +404,6 @@ namespace Aviss.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
-                    b.Property<Guid>("DispositivoId")
-                        .HasColumnType("TEXT");
-
                     b.Property<string>("FechaHoraUtc")
                         .IsRequired()
                         .HasColumnType("TEXT");
@@ -410,17 +414,12 @@ namespace Aviss.Infrastructure.Migrations
                     b.Property<long>("OrdenInsercion")
                         .HasColumnType("INTEGER");
 
-                    b.Property<Guid>("UsuarioId")
-                        .HasColumnType("TEXT");
-
                     b.HasKey("Id");
 
                     b.HasIndex("FechaHoraUtc");
 
                     b.HasIndex("OrdenInsercion")
                         .IsUnique();
-
-                    b.HasIndex("UsuarioId");
 
                     b.HasIndex("MangaId", "AnimalId")
                         .IsUnique()
@@ -452,14 +451,14 @@ namespace Aviss.Infrastructure.Migrations
                     b.Property<string>("AnuladoEnUtc")
                         .HasColumnType("TEXT");
 
-                    b.Property<Guid?>("AnuladoPorUsuarioId")
-                        .HasColumnType("TEXT");
-
                     b.Property<string>("CreadoEnUtc")
                         .IsRequired()
                         .HasColumnType("TEXT");
 
-                    b.Property<Guid>("DispositivoId")
+                    b.Property<int?>("DiasAborto")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<Guid?>("EventoId")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("FechaHoraUtc")
@@ -472,25 +471,24 @@ namespace Aviss.Infrastructure.Migrations
                     b.Property<long>("OrdenInsercion")
                         .HasColumnType("INTEGER");
 
-                    b.Property<Guid>("UsuarioId")
-                        .HasColumnType("TEXT");
-
                     b.HasKey("Id");
 
-                    b.HasIndex("AnuladoPorUsuarioId");
+                    b.HasIndex("EventoId");
 
                     b.HasIndex("OrdenInsercion")
                         .IsUnique();
-
-                    b.HasIndex("UsuarioId");
 
                     b.HasIndex("AnimalId", "FechaHoraUtc", "OrdenInsercion");
 
                     b.ToTable("Rechazo", null, t =>
                         {
-                            t.HasCheckConstraint("CK_Rechazo_Anulacion", "(Anulado = 0 AND AnuladoEnUtc IS NULL AND AnuladoPorUsuarioId IS NULL) OR (Anulado = 1 AND AnuladoEnUtc IS NOT NULL AND AnuladoPorUsuarioId IS NOT NULL)");
+                            t.HasCheckConstraint("CK_Rechazo_Anulacion", "(Anulado = 0 AND AnuladoEnUtc IS NULL) OR (Anulado = 1 AND AnuladoEnUtc IS NOT NULL)");
 
                             t.HasCheckConstraint("CK_Rechazo_Anulado", "Anulado IN (0,1)");
+
+                            t.HasCheckConstraint("CK_Rechazo_DiasAborto", "DiasAborto IS NULL OR DiasAborto BETWEEN 0 AND 400");
+
+                            t.HasCheckConstraint("CK_Rechazo_DiasConEvento", "DiasAborto IS NULL OR EventoId IS NOT NULL");
                         });
                 });
 
@@ -574,16 +572,22 @@ namespace Aviss.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
+                    b.Property<int?>("DiasAborto")
+                        .HasColumnType("INTEGER");
+
                     b.Property<int?>("DiasPrenez")
                         .HasColumnType("INTEGER");
 
-                    b.Property<Guid>("DispositivoId")
-                        .HasColumnType("TEXT");
+                    b.Property<int?>("DiasPreniezInformados")
+                        .HasColumnType("INTEGER");
 
                     b.Property<Guid?>("EstadoAnteriorId")
                         .HasColumnType("TEXT");
 
                     b.Property<Guid?>("EstadoNuevoId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("EventoId")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("FechaHoraUtc")
@@ -603,14 +607,13 @@ namespace Aviss.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
-                    b.Property<Guid>("UsuarioId")
-                        .HasColumnType("TEXT");
-
                     b.HasKey("Id");
 
                     b.HasIndex("EstadoAnteriorId");
 
                     b.HasIndex("EstadoNuevoId");
+
+                    b.HasIndex("EventoId");
 
                     b.HasIndex("FechaHoraUtc");
 
@@ -621,8 +624,6 @@ namespace Aviss.Infrastructure.Migrations
                         .IsUnique()
                         .HasFilter("TactoAnuladoId IS NOT NULL");
 
-                    b.HasIndex("UsuarioId");
-
                     b.HasIndex("AnimalId", "TactoAnuladoId");
 
                     b.HasIndex("AnimalId", "FechaHoraUtc", "OrdenInsercion");
@@ -631,46 +632,23 @@ namespace Aviss.Infrastructure.Migrations
                         {
                             t.HasCheckConstraint("CK_Tacto_Anulacion", "(Tipo = 'Anulacion') = (TactoAnuladoId IS NOT NULL)");
 
+                            t.HasCheckConstraint("CK_Tacto_AnulacionSinEvento", "Tipo = 'Normal' OR (EventoId IS NULL AND DiasPreniezInformados IS NULL AND DiasAborto IS NULL)");
+
                             t.HasCheckConstraint("CK_Tacto_Dias", "DiasPrenez IS NULL OR DiasPrenez BETWEEN 0 AND 300");
+
+                            t.HasCheckConstraint("CK_Tacto_DiasAborto", "DiasAborto IS NULL OR DiasAborto BETWEEN 0 AND 400");
+
+                            t.HasCheckConstraint("CK_Tacto_DiasConEvento", "EventoId IS NOT NULL OR (DiasPreniezInformados IS NULL AND DiasAborto IS NULL)");
+
+                            t.HasCheckConstraint("CK_Tacto_DiasExclusivos", "DiasPreniezInformados IS NULL OR DiasAborto IS NULL");
+
+                            t.HasCheckConstraint("CK_Tacto_DiasPreniezInformados", "DiasPreniezInformados IS NULL OR DiasPreniezInformados BETWEEN 1 AND 400");
 
                             t.HasCheckConstraint("CK_Tacto_EstadoNuevo", "Tipo = 'Anulacion' OR EstadoNuevoId IS NOT NULL");
 
                             t.HasCheckConstraint("CK_Tacto_NoAnulaAnulacion", "Tipo = 'Normal' OR Anulado = 0");
 
                             t.HasCheckConstraint("CK_Tacto_Tipo", "Tipo IN ('Normal','Anulacion')");
-                        });
-                });
-
-            modelBuilder.Entity("Aviss.Domain.Entidades.Usuario", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .HasColumnType("TEXT");
-
-                    b.Property<bool>("Activo")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("ActualizadoEnUtc")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("CreadoEnUtc")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Matricula")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Nombre")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("Usuario", null, t =>
-                        {
-                            t.HasCheckConstraint("CK_Usuario_Matricula", "Matricula IS NULL OR length(Matricula) <= 30");
-
-                            t.HasCheckConstraint("CK_Usuario_Nombre", "length(trim(Nombre)) > 0");
                         });
                 });
 
@@ -695,12 +673,6 @@ namespace Aviss.Infrastructure.Migrations
                         .HasForeignKey("MangaId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
-
-                    b.HasOne("Aviss.Domain.Entidades.Usuario", null)
-                        .WithMany()
-                        .HasForeignKey("UsuarioId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
                 });
 
             modelBuilder.Entity("Aviss.Domain.Entidades.Espera", b =>
@@ -710,36 +682,18 @@ namespace Aviss.Infrastructure.Migrations
                         .HasForeignKey("AnimalId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
-
-                    b.HasOne("Aviss.Domain.Entidades.Usuario", null)
-                        .WithMany()
-                        .HasForeignKey("ResueltaPorUsuarioId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("Aviss.Domain.Entidades.Usuario", null)
-                        .WithMany()
-                        .HasForeignKey("UsuarioId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
                 });
 
-            modelBuilder.Entity("Aviss.Domain.Entidades.Historial", b =>
+            modelBuilder.Entity("Aviss.Domain.Entidades.EstadoReproductivo", b =>
                 {
-                    b.HasOne("Aviss.Domain.Entidades.Usuario", null)
+                    b.HasOne("Aviss.Domain.Entidades.EstadoReproductivo", null)
                         .WithMany()
-                        .HasForeignKey("UsuarioId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .HasForeignKey("EstadoDestinoId")
+                        .OnDelete(DeleteBehavior.Restrict);
                 });
 
             modelBuilder.Entity("Aviss.Domain.Entidades.Manga", b =>
                 {
-                    b.HasOne("Aviss.Domain.Entidades.Usuario", null)
-                        .WithMany()
-                        .HasForeignKey("AbiertaPorUsuarioId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
                     b.HasOne("Aviss.Domain.Entidades.Rodeo", null)
                         .WithMany()
                         .HasForeignKey("RodeoId")
@@ -760,12 +714,6 @@ namespace Aviss.Infrastructure.Migrations
                         .HasForeignKey("MangaId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
-
-                    b.HasOne("Aviss.Domain.Entidades.Usuario", null)
-                        .WithMany()
-                        .HasForeignKey("UsuarioId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
                 });
 
             modelBuilder.Entity("Aviss.Domain.Entidades.Rechazo", b =>
@@ -776,16 +724,10 @@ namespace Aviss.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("Aviss.Domain.Entidades.Usuario", null)
+                    b.HasOne("Aviss.Domain.Entidades.EstadoReproductivo", null)
                         .WithMany()
-                        .HasForeignKey("AnuladoPorUsuarioId")
+                        .HasForeignKey("EventoId")
                         .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("Aviss.Domain.Entidades.Usuario", null)
-                        .WithMany()
-                        .HasForeignKey("UsuarioId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
                 });
 
             modelBuilder.Entity("Aviss.Domain.Entidades.Rodeo", b =>
@@ -815,11 +757,10 @@ namespace Aviss.Infrastructure.Migrations
                         .HasForeignKey("EstadoNuevoId")
                         .OnDelete(DeleteBehavior.Restrict);
 
-                    b.HasOne("Aviss.Domain.Entidades.Usuario", null)
+                    b.HasOne("Aviss.Domain.Entidades.EstadoReproductivo", null)
                         .WithMany()
-                        .HasForeignKey("UsuarioId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .HasForeignKey("EventoId")
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("Aviss.Domain.Entidades.Tacto", null)
                         .WithMany()

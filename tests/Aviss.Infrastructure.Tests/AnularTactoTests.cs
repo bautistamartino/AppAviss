@@ -15,8 +15,8 @@ public sealed class AnularTactoTests : IDisposable
     private static string T(Guid? id) => EscenarioConServicios.Texto(id);
     private static string F(DateTime d) => BaseDeDatosDePrueba.Fecha(d);
 
-    private Task<Resultado<Guid>> Anular(Guid tacto, Guid? usuario = null)
-        => _e.Servicio<ITrabajoCampoService>().AnularTactoAsync(new AnularTactoCommand(tacto, usuario ?? _e.UsuarioId));
+    private Task<Resultado<Guid>> Anular(Guid tacto)
+        => _e.Servicio<ITrabajoCampoService>().AnularTactoAsync(new AnularTactoCommand(tacto));
 
     [Fact]
     public async Task Guarda_el_tacto_de_anulacion_con_los_datos_exactos_y_devuelve_al_animal_a_lo_anterior()
@@ -25,8 +25,7 @@ public sealed class AnularTactoTests : IDisposable
         var fechaT1 = _e.Reloj.UtcAhora;
         await _e.TactoAsync(animal, _e.EstadoPrenada);   // SECA -> PREÑADA
         _e.Reloj.Avanzar(TimeSpan.FromHours(2));
-        var otroVet = _e.Base.Usuario("Vet Dos");
-        var t2 = await _e.TactoAsync(animal, _e.EstadoSeca, usuarioId: otroVet); // PREÑADA -> SECA
+        var t2 = await _e.TactoAsync(animal, _e.EstadoSeca); // PREÑADA -> SECA
 
         _e.Reloj.Avanzar(TimeSpan.FromHours(1));
         var ahora = _e.Reloj.UtcAhora;
@@ -39,17 +38,14 @@ public sealed class AnularTactoTests : IDisposable
         Assert.Equal(T(_e.EstadoPrenada), _e.Col("Tacto", anulacion, "EstadoNuevoId"));   // estado anterior del anulado
         Assert.Null(_e.Col("Tacto", anulacion, "DiasPrenez"));
         Assert.Equal(F(ahora), _e.Col("Tacto", anulacion, "FechaHoraUtc"));
-        Assert.Equal(T(_e.UsuarioId), _e.Col("Tacto", anulacion, "UsuarioId"));
-        Assert.Equal(T(_e.DispositivoId), _e.Col("Tacto", anulacion, "DispositivoId"));
         Assert.Equal("0", _e.Col("Tacto", anulacion, "Anulado"));
 
         // El animal vuelve al estado anterior del tacto anulado y a la fecha del último vigente anterior (t1).
         Assert.Equal(T(_e.EstadoPrenada), _e.Col("Animal", animal, "EstadoReproductivoId"));
         Assert.Equal(F(fechaT1), _e.Col("Animal", animal, "FechaUltimoTactoUtc"));
 
-        // El original queda marcado y el otro veterinario conserva su autoría.
+        // El original queda marcado.
         Assert.Equal("1", _e.Col("Tacto", t2, "Anulado"));
-        Assert.Equal(T(otroVet), _e.Col("Tacto", t2, "UsuarioId"));
 
         // Historial: tacto t1, tacto t2 y la anulación.
         Assert.Equal(3, _e.Cuenta("Historial"));
@@ -151,14 +147,11 @@ public sealed class AnularTactoTests : IDisposable
     }
 
     [Fact]
-    public async Task Rechaza_tacto_o_usuario_inexistente_o_usuario_de_baja()
+    public async Task Rechaza_tacto_inexistente()
     {
         var animal = _e.AnimalCampo();
         var t = await _e.TactoAsync(animal, _e.EstadoSeca);
         Assert.Equal(CodigoError.NoEncontrado, (await Anular(Guid.NewGuid())).Codigo);
-        Assert.Equal(CodigoError.NoEncontrado, (await Anular(t, Guid.NewGuid())).Codigo);
-        var baja = _e.Base.Usuario("Baja", activo: false);
-        Assert.Equal(CodigoError.UsuarioDeBaja, (await Anular(t, baja)).Codigo);
         Assert.Equal("0", _e.Col("Tacto", t, "Anulado"));
     }
 

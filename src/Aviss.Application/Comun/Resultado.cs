@@ -27,7 +27,6 @@ public enum CodigoError
     RodeoDeBaja,
     EstablecimientoDeBaja,
     EstadoDeBaja,
-    UsuarioDeBaja,
     EstadoAnteriorNoCoincide,
     FechaFutura,
     FechaAnteriorAlUltimoTacto,

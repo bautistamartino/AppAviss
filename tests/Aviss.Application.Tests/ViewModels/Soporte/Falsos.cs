@@ -49,13 +49,8 @@ public sealed class FakeLector : IRfidReader, ISimuladorLecturas
     }
 }
 
-public sealed class FakePreferencias : IPreferenciasDispositivo
+public sealed class FakePreferencias : IPreferenciasMangas
 {
-    public Guid? Recordado { get; set; }
-    public int Guardados { get; private set; }
-    public Guid? ObtenerVeterinarioRecordado() => Recordado;
-    public void GuardarVeterinarioRecordado(Guid veterinarioId) { Recordado = veterinarioId; Guardados++; }
-
     // Control por manga: una preferencia por establecimiento. Si nunca se eligió, se devuelve el valor por defecto de la prueba.
     public Dictionary<Guid, bool> ControlPorManga { get; } = [];
     public bool? ControlPorMangaPorDefecto { get; set; }

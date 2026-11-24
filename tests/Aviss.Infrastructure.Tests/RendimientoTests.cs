@@ -54,15 +54,13 @@ public sealed class RendimientoTests : IDisposable
 
         using var tacto = c.CreateCommand();
         tacto.Transaction = tx;
-        tacto.CommandText = @"INSERT INTO Tacto (Id, AnimalId, FechaHoraUtc, OrdenInsercion, EstadoNuevoId, UsuarioId, DispositivoId, Tipo, Anulado, CreadoEnUtc, ActualizadoEnUtc)
-                              VALUES ($id, $a, $fh, $o, $e, $u, $d, 'Normal', 0, $fh, $fh)";
+        tacto.CommandText = @"INSERT INTO Tacto (Id, AnimalId, FechaHoraUtc, OrdenInsercion, EstadoNuevoId, Tipo, Anulado, CreadoEnUtc, ActualizadoEnUtc)
+                              VALUES ($id, $a, $fh, $o, $e, 'Normal', 0, $fh, $fh)";
         var tId = tacto.Parameters.Add("$id", SqliteType.Text);
         var tA = tacto.Parameters.Add("$a", SqliteType.Text);
         var tFh = tacto.Parameters.Add("$fh", SqliteType.Text);
         var tO = tacto.Parameters.Add("$o", SqliteType.Integer);
         tacto.Parameters.AddWithValue("$e", _e.EstadoSeca);
-        tacto.Parameters.AddWithValue("$u", _e.UsuarioId);
-        tacto.Parameters.AddWithValue("$d", Guid.NewGuid());
         tacto.Prepare();
         for (var i = 0; i < Tactos; i++)
         {
@@ -97,11 +95,11 @@ public sealed class RendimientoTests : IDisposable
     {
         // Calentamiento con otro animal.
         await _e.Servicio<ITrabajoCampoService>().RegistrarTactoAsync(
-            new RegistrarTactoCommand(_ids[1], _e.EstadoPrenada, null, null, _e.UsuarioId));
+            new RegistrarTactoCommand(_ids[1], _e.EstadoPrenada, null, null));
 
         var servicio = _e.Servicio<ITrabajoCampoService>();
         var reloj = Stopwatch.StartNew();
-        var r = await servicio.RegistrarTactoAsync(new RegistrarTactoCommand(_ids[7], _e.EstadoPrenada, 60, null, _e.UsuarioId));
+        var r = await servicio.RegistrarTactoAsync(new RegistrarTactoCommand(_ids[7], _e.EstadoPrenada, 60, null));
         reloj.Stop();
 
         Assert.True(r.EsCorrecto, r.Mensaje);

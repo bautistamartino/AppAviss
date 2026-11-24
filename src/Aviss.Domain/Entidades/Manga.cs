@@ -15,13 +15,11 @@ public sealed class Manga : Entidad
     /// <summary>Número correlativo dentro del rodeo, desde 1. Único por rodeo (índice único en la base).</summary>
     public int Numero { get; private set; }
 
-    public Guid AbiertaPorUsuarioId { get; private set; }
-    public Guid DispositivoId { get; private set; }
 
     private Manga() { }
     private Manga(DateTime ahoraUtc) : base(ahoraUtc) { }
 
-    public static Manga Abrir(Guid rodeoId, int numero, Guid usuarioId, Guid dispositivoId, DateTime ahoraUtc)
+    public static Manga Abrir(Guid rodeoId, int numero, DateTime ahoraUtc)
     {
         if (numero < 1)
             throw new DominioException("El número de manga debe ser 1 o más.");
@@ -29,8 +27,6 @@ public sealed class Manga : Entidad
         {
             RodeoId = Validar.IdObligatorio(rodeoId, "El rodeo"),
             Numero = numero,
-            AbiertaPorUsuarioId = Validar.IdObligatorio(usuarioId, "El usuario"),
-            DispositivoId = Validar.IdObligatorio(dispositivoId, "El dispositivo")
         };
     }
 }

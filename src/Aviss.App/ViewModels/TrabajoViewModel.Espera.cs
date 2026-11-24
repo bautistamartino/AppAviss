@@ -65,19 +65,7 @@ public sealed partial class TrabajoViewModel
     public const int MaximoEnBotonera = 4;
 
     /// <summary>El evento fijo "Rechazo" de la lista de eventos: no es un estado del catálogo (decisión 1 del plan).</summary>
-    public static readonly EstadoActivoDto EventoRechazo = new(EventosCampo.Rechazo, "Rechazo");
-
-    // ---- La lista de eventos de la ficha: los estados activos y, al final, "Rechazo" (RF-6)
-
-    /// <summary>Lo que muestra "Agregar evento": los estados activos y siempre "Rechazo" al final, antes de "+ Nuevo evento".</summary>
-    public ObservableCollection<EstadoActivoDto> Eventos { get; } = [];
-
-    private void ReconstruirEventos()
-    {
-        Eventos.Clear();
-        foreach (var e in Estados) Eventos.Add(e);
-        Eventos.Add(EventoRechazo);
-    }
+    public static readonly EventoCampoDto EventoRechazo = ArmadorListaEventos.EventoRechazo;
 
     // ---- Las esperas del rodeo (RF-2)
 
@@ -143,11 +131,11 @@ public sealed partial class TrabajoViewModel
     [RelayCommand]
     private async Task PonerEnEsperaAsync()
     {
-        if (!PuedePonerEnEspera || Ficha is not { } ficha || _sesion.Veterinario is not { } vet) return;
+        if (!PuedePonerEnEspera || Ficha is not { } ficha) return;
         try
         {
             MensajeError = null;
-            var resultado = await EnCampoAsync(() => _campo.PonerEnEsperaAsync(new PonerEnEsperaCommand(ficha.AnimalId, vet.Id)));
+            var resultado = await EnCampoAsync(() => _campo.PonerEnEsperaAsync(new PonerEnEsperaCommand(ficha.AnimalId)));
             if (!resultado.EsCorrecto)
             {
                 MensajeError = resultado.Mensaje;   // por ejemplo, ya estaba en espera: la ficha sigue abierta
@@ -226,11 +214,10 @@ public sealed partial class TrabajoViewModel
             return;
         }
 
-        if (_sesion.Veterinario is not { } vet) return;
         try
         {
             MensajeError = null;
-            var resultado = await EnCampoAsync(() => _campo.SaltearEsperaAsync(new SaltearEsperaCommand(ficha.AnimalId, vet.Id)));
+            var resultado = await EnCampoAsync(() => _campo.SaltearEsperaAsync(new SaltearEsperaCommand(ficha.AnimalId)));
             if (!resultado.EsCorrecto)
             {
                 MensajeError = resultado.Mensaje;   // la ficha sigue abierta

@@ -1,4 +1,3 @@
-using Aviss.Domain.Entidades;
 using Aviss.Infrastructure.Tests.Soporte;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
@@ -12,6 +11,7 @@ namespace Aviss.Infrastructure.Tests;
 /// "aplicar una segunda migración sobre una base con datos". El peligro concreto: SQLite reconstruye la tabla
 /// Historial al cambiar su CHECK y, al hacerlo, pierde sus triggers (el historial quedaría modificable en silencio).
 /// </summary>
+[Collection("Migraciones")] // comparten ClearAllPools y archivos: de a una
 public sealed class MigracionMangasTests : IDisposable
 {
     private readonly BaseDeDatosDePrueba _db = new(migrar: false);
@@ -39,19 +39,20 @@ public sealed class MigracionMangasTests : IDisposable
     public void Actualizar_desde_Inicial_con_datos_conserva_todo_y_los_triggers()
     {
         MigrarHasta("Inicial");
+        var old = new EsquemaAnterior(_db);
 
         // Datos creados con el esquema viejo (sin la regla de nombre único: dos veterinarios con el mismo nombre).
-        _db.Usuario("Sin asignar", id: Usuario.SinAsignarId);
-        var vet1 = _db.Usuario("Dra. Pérez");
-        _db.Usuario("DRA. PÉREZ ");
+        old.Usuario("Sin asignar", id: EsquemaAnterior.SinAsignarId);
+        var vet1 = old.Usuario("Dra. Pérez");
+        old.Usuario("DRA. PÉREZ ");
         var rodeo = _db.Rodeo();
         var estado = _db.Estado("SECA", "SECA", "SECA");
         var animal = _db.Animal(rodeo, "100", estadoId: estado);
-        var tacto = _db.Tacto(animal, vet1, estado, diasPrenez: 40);
-        var historial = _db.Historial(vet1, "Tacto");
+        var tacto = old.Tacto(animal, vet1, estado, diasPrenez: 40);
+        var historial = old.Historial(vet1, "Tacto");
         foreach (var t in TriggersDeInicial) Assert.True(_db.ExisteTrigger(t), "antes de migrar: " + t);
 
-        MigrarHasta(null);
+        MigrarHasta("Mangas");
 
         // Los datos siguen.
         Assert.Equal(3, _db.Contar("SELECT COUNT(*) FROM Usuario"));
@@ -73,11 +74,12 @@ public sealed class MigracionMangasTests : IDisposable
     public void El_nombre_duplicado_queda_diferenciado_y_el_indice_nuevo_rige()
     {
         MigrarHasta("Inicial");
-        var vet1 = _db.Usuario("Dra. Pérez");
-        var vet2 = _db.Usuario("DRA. PÉREZ ");
-        var otro = _db.Usuario("Dr. López");
+        var old = new EsquemaAnterior(_db);
+        var vet1 = old.Usuario("Dra. Pérez");
+        var vet2 = old.Usuario("DRA. PÉREZ ");
+        var otro = old.Usuario("Dr. López");
 
-        MigrarHasta(null);
+        MigrarHasta("Mangas");
 
         // El primero conserva su nombre, el repetido se diferencia con su rowid y ningún otro cambia.
         Assert.Equal("Dra. Pérez", _db.Escalar("SELECT Nombre FROM Usuario WHERE Id = $id", ("$id", vet1)));
@@ -88,19 +90,20 @@ public sealed class MigracionMangasTests : IDisposable
 
         // Ya no hay dos con la misma clave y el índice impide crear otro repetido.
         Assert.Equal(3, _db.Contar("SELECT COUNT(DISTINCT upper(trim(Nombre))) FROM Usuario"));
-        Assert.Throws<SqliteException>(() => _db.Usuario("dr. lópez"));
+        Assert.Throws<SqliteException>(() => old.Usuario("dr. lópez"));
     }
 
     [Fact]
     public void Si_Sin_asignar_esta_repetido_se_conserva_Sin_asignar_y_se_renombra_el_otro()
     {
         MigrarHasta("Inicial");
-        var intruso = _db.Usuario("sin asignar");                       // antes que el verdadero: rowid menor
-        _db.Usuario("Sin asignar", id: Usuario.SinAsignarId);
+        var old = new EsquemaAnterior(_db);
+        var intruso = old.Usuario("sin asignar");                       // antes que el verdadero: rowid menor
+        old.Usuario("Sin asignar", id: EsquemaAnterior.SinAsignarId);
 
-        MigrarHasta(null);
+        MigrarHasta("Mangas");
 
-        Assert.Equal("Sin asignar", _db.Escalar("SELECT Nombre FROM Usuario WHERE Id = $id", ("$id", Usuario.SinAsignarId)));
+        Assert.Equal("Sin asignar", _db.Escalar("SELECT Nombre FROM Usuario WHERE Id = $id", ("$id", EsquemaAnterior.SinAsignarId)));
         Assert.Matches(@"^sin asignar \(\d+\)$", (string)_db.Escalar("SELECT Nombre FROM Usuario WHERE Id = $id", ("$id", intruso))!);
     }
 
@@ -108,9 +111,10 @@ public sealed class MigracionMangasTests : IDisposable
     public void Tres_repetidos_quedan_los_tres_distintos()
     {
         MigrarHasta("Inicial");
-        _db.Usuario("Vet"); _db.Usuario("vet"); _db.Usuario(" VET");
+        var old = new EsquemaAnterior(_db);
+        old.Usuario("Vet"); old.Usuario("vet"); old.Usuario(" VET");
 
-        MigrarHasta(null);
+        MigrarHasta("Mangas");
 
         Assert.Equal(3, _db.Contar("SELECT COUNT(DISTINCT Nombre) FROM Usuario"));
         Assert.Equal(1, _db.Contar("SELECT COUNT(*) FROM Usuario WHERE Nombre = 'Vet'"));
@@ -120,14 +124,15 @@ public sealed class MigracionMangasTests : IDisposable
     public void Despues_de_actualizar_el_historial_acepta_las_acciones_nuevas_y_rechaza_otras()
     {
         MigrarHasta("Inicial");
-        var vet = _db.Usuario("Vet");
-        Assert.Throws<SqliteException>(() => _db.Historial(vet, "MarcaPasada"));   // el esquema viejo no la conocía
+        var old = new EsquemaAnterior(_db);
+        var vet = old.Usuario("Vet");
+        Assert.Throws<SqliteException>(() => old.Historial(vet, "MarcaPasada"));   // el esquema viejo no la conocía
 
-        MigrarHasta(null);
+        MigrarHasta("Mangas");
 
         foreach (var a in new[] { "MarcaPasada", "AnulacionMarca", "MangaAbierta", "MangaCerrada", "AnulacionCierre" })
-            _db.Historial(vet, a);
-        Assert.Throws<SqliteException>(() => _db.Historial(vet, "Otra"));
+            old.Historial(vet, a);
+        Assert.Throws<SqliteException>(() => old.Historial(vet, "Otra"));
         Assert.Equal(5, _db.Contar("SELECT COUNT(*) FROM Historial"));
     }
 
@@ -135,6 +140,7 @@ public sealed class MigracionMangasTests : IDisposable
     public void Una_base_nueva_y_una_actualizada_tienen_los_mismos_triggers_e_indices()
     {
         MigrarHasta("Inicial");
+        var old = new EsquemaAnterior(_db);
         MigrarHasta(null);
         using var nueva = new BaseDeDatosDePrueba();
 

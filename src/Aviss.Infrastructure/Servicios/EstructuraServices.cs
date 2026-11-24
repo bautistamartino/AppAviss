@@ -7,7 +7,7 @@ using Aviss.Domain.Entidades;
 
 namespace Aviss.Infrastructure.Servicios;
 
-// Establecimientos, rodeos, usuarios y catálogo de estados. Cada método es una operación: una transacción (UnitOfWork)
+// Establecimientos, rodeos y catálogo de estados. Cada método es una operación: una transacción (UnitOfWork)
 // y un Resultado. Los rechazos de negocio no lanzan excepciones; los fallos reales (disco, base) sí, y revierten todo.
 
 internal sealed class EstablecimientoService : IEstablecimientoService
@@ -86,54 +86,6 @@ internal sealed class RodeoService : IRodeoService
 
     // La cantidad no se guarda: se cuenta (RF-2).
     public Task<int> ContarAnimalesAsync(Guid rodeoId, CancellationToken ct = default) => _rodeos.ContarAnimalesAsync(rodeoId, ct);
-}
-
-internal sealed class UsuarioService : IUsuarioService
-{
-    private readonly IUnitOfWork _uow;
-    private readonly IUsuarioRepository _repo;
-    private readonly IRelojService _reloj;
-
-    public UsuarioService(IUnitOfWork uow, IUsuarioRepository repo, IRelojService reloj)
-        => (_uow, _repo, _reloj) = (uow, repo, reloj);
-
-    public Task<Resultado<Guid>> CrearAsync(string nombre, string? matricula, CancellationToken ct = default)
-        => _uow.EjecutarAsync(async () =>
-        {
-            try
-            {
-                var u = Usuario.Crear(nombre, matricula, _reloj.UtcAhora);
-                // El nombre no se repite con ningún otro usuario (activo o de baja, "Sin asignar" incluido), sin
-                // distinguir mayúsculas ni espacios de los extremos (spec 003, RF-1). La base lo garantiza también
-                // con un índice único; este chequeo da el mensaje claro antes de llegar a ese error.
-                if (await _repo.ExisteNombreAsync(u.Nombre, ct))
-                    return Resultado.Error<Guid>(CodigoError.Duplicado, "Ya hay un veterinario con ese nombre.");
-                _repo.Agregar(u);
-                return Resultado.Ok(u.Id);
-            }
-            catch (DominioException ex) { return Ayudas.DatosInvalidos<Guid>(ex); }
-        }, ct);
-
-    public Task<Resultado> DarDeBajaAsync(Guid id, CancellationToken ct = default)
-        => _uow.EjecutarAsync(async () =>
-        {
-            var u = await _repo.ObtenerAsync(id, ct);
-            if (u is null) return Resultado.Error(CodigoError.NoEncontrado, "El usuario no existe.");
-            // "Sin asignar" no se da de baja si no queda otro usuario activo (RF-7b); además lo impide un trigger.
-            if (id == Usuario.SinAsignarId && u.Activo && await _repo.ContarActivosExceptoAsync(id, ct) == 0)
-                return Resultado.Error(CodigoError.DatosInvalidos, "Este usuario no se puede dar de baja mientras no haya otro usuario activo.");
-            if (u.Activo) u.DarDeBaja(_reloj.UtcAhora);
-            return Resultado.Ok();
-        }, ct);
-
-    public Task<Resultado> ReactivarAsync(Guid id, CancellationToken ct = default)
-        => _uow.EjecutarAsync(async () =>
-        {
-            var u = await _repo.ObtenerAsync(id, ct);
-            if (u is null) return Resultado.Error(CodigoError.NoEncontrado, "El usuario no existe.");
-            if (!u.Activo) u.Reactivar(_reloj.UtcAhora);
-            return Resultado.Ok();
-        }, ct);
 }
 
 internal sealed class CatalogoEstadosService : ICatalogoEstadosService

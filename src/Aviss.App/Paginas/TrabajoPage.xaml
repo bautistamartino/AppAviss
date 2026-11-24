@@ -2,6 +2,7 @@
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:vm="clr-namespace:Aviss.App.ViewModels"
+             xmlns:ctl="clr-namespace:Aviss.App.Controles"
              xmlns:conv="clr-namespace:Aviss.App.Convertidores"
              xmlns:dto="clr-namespace:Aviss.Application.Campo;assembly=Aviss.Application"
              x:Class="Aviss.App.Paginas.TrabajoPage"
@@ -30,11 +31,11 @@
 
             <!-- Encabezado contraíble (RF-3). La barra de arriba se ve siempre: flechita para contraer o abrir, el ID y el CVET de la
                  vaca abierta (o el rodeo si no hay) y el contador de la manga. Abierta, muestra además el rodeo, el avance, los
-                 horarios de la primera y la última vaca, el veterinario y los botones de cierre. -->
+                 horarios de la primera y la última vaca y los botones de cierre. -->
             <Border Grid.Row="0" BackgroundColor="{StaticResource CampoPanel}" StrokeThickness="0" Padding="8,4,12,4">
                 <VerticalStackLayout Spacing="6">
 
-                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+                    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
                         <!-- Esquina de arriba a la izquierda: el engranaje (configuración, de un solo toque) y, bien separada para no tocar
                              una por la otra, la flechita que contrae o abre los datos. -->
                         <HorizontalStackLayout Grid.Column="0" Spacing="26" VerticalOptions="Center">
@@ -49,11 +50,6 @@
                         </HorizontalStackLayout>
                         <Label Grid.Column="1" Text="{Binding TituloBarra}" Style="{StaticResource TextoCampoClaro}" FontSize="22" FontAttributes="Bold"
                                HorizontalTextAlignment="Center" VerticalOptions="Center" LineBreakMode="TailTruncation" />
-                        <!-- El veterinario: tocarlo abre la lista para cambiarlo sin salir de la manga (RF-1). -->
-                        <Button Grid.Column="2" Text="{Binding NombreVeterinario, StringFormat='Vet: {0} ▾'}"
-                                Style="{StaticResource BotonCampoSecundario}" FontSize="15" HeightRequest="40" MinimumWidthRequest="0"
-                                Padding="10,0" VerticalOptions="Center" Clicked="OnCambiarVeterinarioClicked"
-                                SemanticProperties.Hint="Cambiar el veterinario que firma los registros" />
                     </Grid>
 
                     <!-- Lo que se contrae -->
@@ -193,8 +189,8 @@
                             <Label Grid.Column="1" Text="Observación" Style="{StaticResource TextoCampo}" FontSize="16" FontAttributes="Bold" TextColor="{StaticResource Gray600}" />
                         </Grid>
                         <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
-                            <Button Grid.Column="0" Text="{Binding TextoEventoElegido}" Style="{StaticResource BotonCampoSecundario}" FontSize="20"
-                                    HeightRequest="56" MinimumWidthRequest="0" Padding="8,0" LineBreakMode="TailTruncation"
+                            <Button Grid.Column="0" Text="{Binding TextoEventoElegido}" Style="{StaticResource BotonCampoSecundario}" FontSize="17"
+                                    HeightRequest="68" MinimumWidthRequest="0" Padding="8,2" LineBreakMode="WordWrap"
                                     Command="{Binding AbrirEventosCommand}"
                                     SemanticProperties.Hint="Elegir el evento de esta vaca" />
                             <Button Grid.Column="1" Text="{Binding TextoCasilleroObservacion}" Style="{StaticResource BotonCampoSecundario}" FontSize="18"
@@ -473,7 +469,7 @@
             </VerticalStackLayout>
         </Grid>
 
-        <!-- Configuración (el engranaje): las opciones de trabajo de cada veterinario. Los cambios valen al instante y se recuerdan. -->
+        <!-- Configuración (el engranaje): las opciones de trabajo de la tablet. Los cambios valen al instante y se recuerdan. -->
         <Grid IsVisible="{Binding HayConfiguracion}" BackgroundColor="{StaticResource CampoVelo}" Padding="14">
             <Grid.GestureRecognizers><TapGestureRecognizer /></Grid.GestureRecognizers>
             <Border BackgroundColor="White" StrokeThickness="0" Padding="18,16" HorizontalOptions="Fill" VerticalOptions="Start" Margin="0,60,0,0">
@@ -571,36 +567,9 @@
                     </VerticalStackLayout>
 
                     <VerticalStackLayout Spacing="12" IsVisible="{Binding HayFormularioEvento, Converter={StaticResource Invertir}}">
-                    <!-- Alto para los 6 estados de siempre sin desplazar; si hay más (eventos propios), la barra queda siempre visible. -->
-                    <ScrollView MaximumHeightRequest="480" VerticalScrollBarVisibility="Always">
-                        <VerticalStackLayout BindableLayout.ItemsSource="{Binding Eventos}" Spacing="8">
-                            <BindableLayout.ItemTemplate>
-                                <DataTemplate x:DataType="dto:EstadoActivoDto">
-                                    <Button Text="{Binding Nombre}" Style="{StaticResource BotonCampo}" HeightRequest="60" FontSize="22"
-                                            Command="{Binding Source={RelativeSource AncestorType={x:Type vm:TrabajoViewModel}}, Path=ElegirEventoCommand, x:DataType=vm:TrabajoViewModel}"
-                                            CommandParameter="{Binding .}">
-                                        <Button.BackgroundColor>
-                                            <MultiBinding Converter="{StaticResource EstadoActual}" ConverterParameter="fondo">
-                                                <Binding Path="Id" />
-                                                <Binding Source="{RelativeSource AncestorType={x:Type vm:TrabajoViewModel}}" Path="Ficha.EstadoId" x:DataType="vm:TrabajoViewModel" />
-                                            </MultiBinding>
-                                        </Button.BackgroundColor>
-                                        <Button.TextColor>
-                                            <MultiBinding Converter="{StaticResource EstadoActual}" ConverterParameter="texto">
-                                                <Binding Path="Id" />
-                                                <Binding Source="{RelativeSource AncestorType={x:Type vm:TrabajoViewModel}}" Path="Ficha.EstadoId" x:DataType="vm:TrabajoViewModel" />
-                                            </MultiBinding>
-                                        </Button.TextColor>
-                                    </Button>
-                                </DataTemplate>
-                            </BindableLayout.ItemTemplate>
-                        </VerticalStackLayout>
-                    </ScrollView>
-                    <Button Text="+ Nuevo evento" Style="{StaticResource BotonCampoAlerta}" HeightRequest="56" FontSize="20"
-                            Command="{Binding AbrirNuevoEventoCommand}"
-                            SemanticProperties.Hint="Crear un evento nuevo si no está en la lista" />
+                    <ctl:SelectorEventosView Selector="{Binding Selector}" NuevoEventoCommand="{Binding AbrirNuevoEventoCommand}" />
                     <Button Text="Cancelar" Style="{StaticResource BotonCampoSecundario}" HeightRequest="52" FontSize="20"
-                            Command="{Binding CerrarCuadroAgregarCommand}" />
+                            IsVisible="{Binding Selector.MostrandoLista}" Command="{Binding CerrarCuadroAgregarCommand}" />
                     </VerticalStackLayout>
                 </VerticalStackLayout>
             </Border>
@@ -620,21 +589,6 @@
                             Command="{Binding GuardarObservacionCommand}" />
                     <Button Text="Cancelar" Style="{StaticResource BotonCampoSecundario}" HeightRequest="52" FontSize="20"
                             Command="{Binding CerrarCuadroAgregarCommand}" />
-                </VerticalStackLayout>
-            </Border>
-        </Grid>
-
-        <!-- Cambiar de veterinario: lo arma el código de la página (llama a ListarVeterinariosAsync y CambiarVeterinarioCommand). -->
-        <Grid x:Name="CapaVeterinarios" IsVisible="False" BackgroundColor="{StaticResource CampoVelo}" Padding="14">
-            <Grid.GestureRecognizers><TapGestureRecognizer /></Grid.GestureRecognizers>
-            <Border BackgroundColor="White" StrokeThickness="0" Padding="18,16" HorizontalOptions="Fill" VerticalOptions="Center"
-                   >
-                <VerticalStackLayout Spacing="16">
-                    <Label Text="¿Quién tacta ahora?" Style="{StaticResource TituloCuadro}" FontSize="26" />
-                    <ScrollView MaximumHeightRequest="300">
-                        <VerticalStackLayout x:Name="ListaVeterinarios" Spacing="10" />
-                    </ScrollView>
-                    <Button Text="Cancelar" Style="{StaticResource BotonCampoSecundario}" Clicked="OnCerrarVeterinariosClicked" />
                 </VerticalStackLayout>
             </Border>
         </Grid>

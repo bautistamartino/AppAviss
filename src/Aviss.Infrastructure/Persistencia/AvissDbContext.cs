@@ -9,7 +9,6 @@ public sealed class AvissDbContext : DbContext
 
     public DbSet<Establecimiento> Establecimientos => Set<Establecimiento>();
     public DbSet<Rodeo> Rodeos => Set<Rodeo>();
-    public DbSet<Usuario> Usuarios => Set<Usuario>();
     public DbSet<EstadoReproductivo> Estados => Set<EstadoReproductivo>();
     public DbSet<Animal> Animales => Set<Animal>();
     public DbSet<Tacto> Tactos => Set<Tacto>();

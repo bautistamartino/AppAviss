@@ -20,7 +20,7 @@ public sealed class EsperaServiceTests : IDisposable
 
     private static string T(Guid? id) => EscenarioConServicios.Texto(id);
 
-    private Task<Resultado<Guid>> PonerAsync(Guid animal) => _e.Campo.PonerEnEsperaAsync(new PonerEnEsperaCommand(animal, _e.UsuarioId));
+    private Task<Resultado<Guid>> PonerAsync(Guid animal) => _e.Campo.PonerEnEsperaAsync(new PonerEnEsperaCommand(animal));
 
     private async Task<Guid> PonerOkAsync(Guid animal)
     {
@@ -42,7 +42,6 @@ public sealed class EsperaServiceTests : IDisposable
 
         Assert.Equal("Pendiente", Estado(id));
         Assert.Equal(T(animal), _e.Col("Espera", id, "AnimalId"));
-        Assert.Equal(T(_e.UsuarioId), _e.Col("Espera", id, "UsuarioId"));
         Assert.Equal(BaseDeDatosDePrueba.Fecha(_e.Reloj.UtcAhora), _e.Col("Espera", id, "FechaHoraUtc"));
         Assert.Null(_e.Col("Espera", id, "ResueltaEnUtc"));
         Assert.Equal(1, _e.Cuenta("Historial", "Accion = 'EsperaCreada'"));
@@ -90,7 +89,7 @@ public sealed class EsperaServiceTests : IDisposable
     {
         var animal = _e.AnimalImportado("100", _e.EstadoSeca);
         await PonerOkAsync(animal);
-        await _e.Campo.SaltearEsperaAsync(new SaltearEsperaCommand(animal, _e.UsuarioId));
+        await _e.Campo.SaltearEsperaAsync(new SaltearEsperaCommand(animal));
 
         var otra = await PonerAsync(animal);
 
@@ -100,15 +99,12 @@ public sealed class EsperaServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task Poner_en_espera_a_un_animal_que_no_existe_o_con_un_veterinario_de_baja_se_rechaza()
+    public async Task Poner_en_espera_a_un_animal_que_no_existe_se_rechaza()
     {
         var inexistente = await PonerAsync(Guid.NewGuid());
         Assert.Equal(CodigoError.NoEncontrado, inexistente.Codigo);
 
         var animal = _e.AnimalImportado("100");
-        var deBaja = _e.Base.Usuario("Vet Baja", activo: false);
-        var r = await _e.Campo.PonerEnEsperaAsync(new PonerEnEsperaCommand(animal, deBaja));
-        Assert.Equal(CodigoError.UsuarioDeBaja, r.Codigo);
         Assert.Equal(0, _e.Cuenta("Espera"));
     }
 
@@ -126,7 +122,7 @@ public sealed class EsperaServiceTests : IDisposable
         _e.Reloj.Avanzar(TimeSpan.FromMinutes(1));
         await PonerOkAsync(c);
         // una resuelta no aparece
-        await _e.Campo.SaltearEsperaAsync(new SaltearEsperaCommand(b, _e.UsuarioId));
+        await _e.Campo.SaltearEsperaAsync(new SaltearEsperaCommand(b));
 
         var lista = await _e.Campo.ListarEsperasAsync(_e.RodeoId);
 
@@ -162,7 +158,6 @@ public sealed class EsperaServiceTests : IDisposable
 
         Assert.Equal("Resuelta", Estado(espera));
         Assert.Equal(T(tacto), _e.Col("Espera", espera, "RegistroResolucionId"));
-        Assert.Equal(T(_e.UsuarioId), _e.Col("Espera", espera, "ResueltaPorUsuarioId"));
         Assert.Equal(BaseDeDatosDePrueba.Fecha(_e.Reloj.UtcAhora), _e.Col("Espera", espera, "ResueltaEnUtc"));
         Assert.Equal(1, _e.Cuenta("Historial", "Accion = 'EsperaResuelta'"));
         Assert.Empty(await _e.Campo.ListarEsperasAsync(_e.RodeoId));
@@ -174,7 +169,7 @@ public sealed class EsperaServiceTests : IDisposable
         var animal = _e.AnimalImportado("100", _e.EstadoSeca);
         var espera = await PonerOkAsync(animal);
 
-        var rechazo = await _e.Campo.RegistrarRechazoAsync(new RegistrarRechazoCommand(animal, "pata", _e.UsuarioId));
+        var rechazo = await _e.Campo.RegistrarSoloEventoAsync(new RegistrarSoloEventoCommand(animal, EventosCampo.Rechazo, "pata"));
 
         Assert.True(rechazo.EsCorrecto, rechazo.Mensaje);
         Assert.Equal("Resuelta", Estado(espera));
@@ -188,10 +183,10 @@ public sealed class EsperaServiceTests : IDisposable
         var animal = _e.AnimalImportado("100", _e.EstadoSeca);
         var espera = await PonerOkAsync(animal);
         // Un registro "del futuro" respecto del reloj: el tacto se rechaza por reloj atrasado (spec 003 RF-21).
-        var manga = _e.Base.Manga(_e.RodeoId, 9, _e.UsuarioId);
-        _e.Base.MarcaPasada(animal, manga, _e.UsuarioId, fechaHora: _e.Reloj.UtcAhora.AddHours(2));
+        var manga = _e.Base.Manga(_e.RodeoId, 9);
+        _e.Base.MarcaPasada(animal, manga, fechaHora: _e.Reloj.UtcAhora.AddHours(2));
 
-        var r = await _e.Campo.RegistrarTactoAsync(new RegistrarTactoCommand(animal, _e.EstadoPrenada, null, null, _e.UsuarioId));
+        var r = await _e.Campo.RegistrarTactoAsync(new RegistrarTactoCommand(animal, _e.EstadoPrenada, null, null));
 
         Assert.False(r.EsCorrecto);
         Assert.Equal("Pendiente", Estado(espera));
@@ -204,10 +199,10 @@ public sealed class EsperaServiceTests : IDisposable
     {
         var animal = _e.AnimalImportado("100", _e.EstadoSeca);
         var espera = await PonerOkAsync(animal);
-        var manga = _e.Base.Manga(_e.RodeoId, 9, _e.UsuarioId);
-        _e.Base.MarcaPasada(animal, manga, _e.UsuarioId, fechaHora: _e.Reloj.UtcAhora.AddHours(2));
+        var manga = _e.Base.Manga(_e.RodeoId, 9);
+        _e.Base.MarcaPasada(animal, manga, fechaHora: _e.Reloj.UtcAhora.AddHours(2));
 
-        var r = await _e.Campo.RegistrarRechazoAsync(new RegistrarRechazoCommand(animal, null, _e.UsuarioId));
+        var r = await _e.Campo.RegistrarSoloEventoAsync(new RegistrarSoloEventoCommand(animal, EventosCampo.Rechazo, null));
 
         Assert.False(r.EsCorrecto);
         Assert.Equal("Pendiente", Estado(espera));
@@ -223,7 +218,7 @@ public sealed class EsperaServiceTests : IDisposable
         _e.ForzarFallaAlGuardarHistorial("EsperaResuelta");
 
         await Assert.ThrowsAnyAsync<Exception>(() => _e.Campo.RegistrarTactoAsync(
-            new RegistrarTactoCommand(animal, _e.EstadoPrenada, null, null, _e.UsuarioId)));
+            new RegistrarTactoCommand(animal, _e.EstadoPrenada, null, null)));
 
         Assert.Equal("Pendiente", Estado(espera));
         Assert.Equal(0, _e.Cuenta("Tacto"));
@@ -251,12 +246,11 @@ public sealed class EsperaServiceTests : IDisposable
         var espera = await PonerOkAsync(animal);
         _e.Reloj.Avanzar(TimeSpan.FromMinutes(2));
 
-        var r = await _e.Campo.SaltearEsperaAsync(new SaltearEsperaCommand(animal, _e.UsuarioId));
+        var r = await _e.Campo.SaltearEsperaAsync(new SaltearEsperaCommand(animal));
 
         Assert.True(r.EsCorrecto, r.Mensaje);
         Assert.Equal("Salteada", Estado(espera));
         Assert.Null(_e.Col("Espera", espera, "RegistroResolucionId"));
-        Assert.Equal(T(_e.UsuarioId), _e.Col("Espera", espera, "ResueltaPorUsuarioId"));
         Assert.Equal(BaseDeDatosDePrueba.Fecha(_e.Reloj.UtcAhora), _e.Col("Espera", espera, "ResueltaEnUtc"));
         Assert.Equal(1, _e.Cuenta("Historial", "Accion = 'EsperaSalteada'"));
         Assert.Equal(0, _e.Cuenta("Tacto"));
@@ -269,7 +263,7 @@ public sealed class EsperaServiceTests : IDisposable
     {
         var animal = _e.AnimalImportado("100");
 
-        var r = await _e.Campo.SaltearEsperaAsync(new SaltearEsperaCommand(animal, _e.UsuarioId));
+        var r = await _e.Campo.SaltearEsperaAsync(new SaltearEsperaCommand(animal));
 
         Assert.False(r.EsCorrecto);
         Assert.Equal(CodigoError.EsperaNoPendiente, r.Codigo);
@@ -283,9 +277,9 @@ public sealed class EsperaServiceTests : IDisposable
         var (espera, animal) = await EsperaDeUnaVacaMarcadaAsync();
 
         _e.Reloj.Avanzar(TimeSpan.FromDays(3)); // días después: sigue pendiente, con su tiempo a la vista
-        var terminar = await _e.Campo.TerminarElTactoAsync(new TerminarElTactoCommand(_e.RodeoId, null, _e.UsuarioId));
+        var terminar = await _e.Campo.TerminarElTactoAsync(new TerminarElTactoCommand(_e.RodeoId, null));
         Assert.True(terminar.EsCorrecto, terminar.Mensaje);
-        await _e.Campo.IniciarTrabajoAsync(_e.RodeoId, _e.UsuarioId);
+        await _e.Campo.IniciarTrabajoAsync(_e.RodeoId);
 
         Assert.Equal("Pendiente", Estado(espera));
         var lista = await _e.Campo.ListarEsperasAsync(_e.RodeoId);
@@ -385,7 +379,7 @@ public sealed class EsperaServiceTests : IDisposable
         var (_, lectura) = await _e.VacaMarcadaAsync("100");
         var animal = lectura.AnimalId!.Value;
         await PonerOkAsync(animal);
-        await _e.Campo.SaltearEsperaAsync(new SaltearEsperaCommand(animal, _e.UsuarioId));
+        await _e.Campo.SaltearEsperaAsync(new SaltearEsperaCommand(animal));
 
         var r = await _e.DeshacerAsync(TipoDeshacer.Marca, lectura.MarcaId!.Value);
 
@@ -424,19 +418,19 @@ public sealed class EsperaServiceTests : IDisposable
     // ------------------------------------------------------------------ Historial (RF-12)
 
     [Fact]
-    public async Task Las_tres_acciones_de_espera_quedan_en_el_historial_con_veterinario_y_fecha()
+    public async Task Las_tres_acciones_de_espera_quedan_en_el_historial_con_su_fecha()
     {
         var a = _e.AnimalImportado("1", _e.EstadoSeca);
         var b = _e.AnimalImportado("2", _e.EstadoSeca);
         var ea = await PonerOkAsync(a);
         await PonerOkAsync(b);
         await _e.TactoAsync(a, _e.EstadoPrenada);
-        await _e.Campo.SaltearEsperaAsync(new SaltearEsperaCommand(b, _e.UsuarioId));
+        await _e.Campo.SaltearEsperaAsync(new SaltearEsperaCommand(b));
 
         Assert.Equal(2, _e.Cuenta("Historial", "Accion = 'EsperaCreada'"));
         Assert.Equal(1, _e.Cuenta("Historial", "Accion = 'EsperaResuelta'"));
         Assert.Equal(1, _e.Cuenta("Historial", "Accion = 'EsperaSalteada'"));
-        Assert.Equal(1, _e.Cuenta("Historial", $"Accion = 'EsperaResuelta' AND Entidad = 'Espera' AND EntidadId = '{T(ea)}' AND UsuarioId = '{T(_e.UsuarioId)}'"));
+        Assert.Equal(1, _e.Cuenta("Historial", $"Accion = 'EsperaResuelta' AND Entidad = 'Espera' AND EntidadId = '{T(ea)}'"));
     }
 
     // ------------------------------------------------------------------ apoyo

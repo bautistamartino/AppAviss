@@ -81,3 +81,21 @@ public sealed class EstadoActualConverter : IMultiValueConverter
 
     public object?[]? ConvertBack(object? value, Type[] targetTypes, object? parameter, CultureInfo culture) => throw new NotSupportedException();
 }
+
+/// <summary>Texto de cada resultado del aborto ("Vacía OK", "Inseminada", ...) tomado de las reglas del dominio. Resalta el elegido con el parámetro "fondo"/"texto".</summary>
+public sealed class ResultadoAbortoConverter : IMultiValueConverter
+{
+    public object? Convert(object?[] values, Type targetType, object? parameter, CultureInfo culture)
+    {
+        if (values.Length == 0 || values[0] is not Aviss.Domain.Enums.ResultadoAborto r) return "";
+        var elegido = values.Length > 1 && values[1] is Aviss.Domain.Enums.ResultadoAborto e && e == r;
+        return parameter as string switch
+        {
+            "fondo" => elegido ? Color.FromArgb("#FFC107") : Color.FromArgb("#512BD4"),
+            "texto" => elegido ? Colors.Black : Colors.White,
+            _ => Aviss.Domain.Catalogo.ReglasResultadoAborto.Etiqueta(r)
+        };
+    }
+
+    public object?[]? ConvertBack(object? value, Type[] targetTypes, object? parameter, CultureInfo culture) => throw new NotSupportedException();
+}

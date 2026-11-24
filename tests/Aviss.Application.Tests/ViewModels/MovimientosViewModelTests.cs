@@ -15,7 +15,7 @@ public class MovimientosViewModelTests
 
         public Banco()
         {
-            Sesion.Empezar(Datos.Vet, Datos.Rodeo());
+            Sesion.Empezar(Datos.Rodeo());
             Vm = new MovimientosViewModel(Campo, Sesion);
         }
     }
@@ -59,7 +59,6 @@ public class MovimientosViewModelTests
         var cmd = Assert.Single(b.Campo.Deshaceres);
         Assert.Equal(esperado, cmd.Tipo);
         Assert.Equal(movimiento.RegistroId, cmd.Id);   // en un alta es el id del animal
-        Assert.Equal(Datos.Vet.Id, cmd.UsuarioId);
         Assert.Equal(2, b.Campo.ConsultasDeMovimientos);   // recargó
         Assert.True(b.Vm.HayMensajeInfo);
     }
@@ -150,6 +149,14 @@ public class MovimientosViewModelTests
     }
 
     [Fact]
+    public void Las_filas_y_el_DTO_del_movimiento_no_traen_el_nombre_de_nadie()
+    {
+        // Spec 006, RF-5: ni el DTO ni la fila tienen un campo con el nombre de quien lo hizo.
+        var miembros = typeof(MovimientoDto).GetProperties().Select(p => p.Name).Concat(typeof(MovimientoItem).GetProperties().Select(p => p.Name));
+        Assert.DoesNotContain(miembros, n => n.Contains("Veterinario", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
     public void Una_marca_muestra_hora_caravana_y_cvet_sin_evento()
     {
         var item = new MovimientoItem(Datos.Movimiento(TipoMovimiento.Marca, caravana: "77", cvet: "0"));
@@ -183,14 +190,14 @@ public class MovimientosViewModelTests
 
     // ------------------------------------------------------------------ editar un tacto
 
-    private static readonly EstadoActivoDto Prenada = new(Guid.Parse("33333333-0000-0000-0000-000000000001"), "PREÑADA");
-    private static readonly EstadoActivoDto Vacia = new(Guid.Parse("33333333-0000-0000-0000-000000000002"), "VACIA");
+    private static readonly EventoCampoDto Prenada = new(Guid.Parse("33333333-0000-0000-0000-000000000001"), "PREÑADA", true, true);
+    private static readonly EventoCampoDto Vacia = new(Guid.Parse("33333333-0000-0000-0000-000000000002"), "VACIA", true, true);
 
     private static async Task<(Banco Banco, MovimientoItem Tacto)> BancoConUnTactoAsync(bool puedeDeshacer = true)
     {
         var b = new Banco();
         b.Campo.Estados = [Prenada, Vacia];
-        b.Campo.Movimientos = [Datos.Movimiento(TipoMovimiento.Tacto, puedeDeshacer: puedeDeshacer, caravana: "1014", detalle: "PREÑADA", cvet: "PRE", observaciones: "Cojera")];
+        b.Campo.Movimientos = [Datos.Movimiento(TipoMovimiento.Tacto, puedeDeshacer: puedeDeshacer, caravana: "1014", detalle: "PREÑADA", cvet: "PRE", observaciones: "Cojera", eventoId: Prenada.Id)];
         await b.Vm.CargarAsync();
         return (b, b.Vm.Movimientos[0]);
     }
@@ -219,7 +226,8 @@ public class MovimientosViewModelTests
         await b.Vm.EditarCommand.ExecuteAsync(tacto);
 
         Assert.True(b.Vm.HayEdicion);
-        Assert.Equal([Prenada, Vacia, TrabajoViewModel.EventoRechazo], b.Vm.EstadosParaEditar);   // el Rechazo siempre está al final
+        Assert.Equal([Prenada, Vacia], b.Vm.Selector.Principales);
+        Assert.Equal([TrabajoViewModel.EventoRechazo], b.Vm.Selector.Otros);   // el Rechazo siempre está en "Otro evento"
         Assert.Equal(Prenada, b.Vm.EventoEditado);
         Assert.Equal("Cojera", b.Vm.ObservacionEditada);
         Assert.Equal("Editar el tacto de 1014", b.Vm.TituloEdicion);
@@ -248,7 +256,7 @@ public class MovimientosViewModelTests
         await b.Vm.GuardarEdicionCommand.ExecuteAsync(null);
 
         var cmd = Assert.Single(b.Campo.RegistrosCorregidos);
-        Assert.Equal((tacto.Dto.RegistroId, Vacia.Id, "Se secó", Datos.Vet.Id), (cmd.RegistroId, cmd.Evento, cmd.Observaciones, cmd.UsuarioId));
+        Assert.Equal((tacto.Dto.RegistroId, Vacia.Id, "Se secó"), (cmd.RegistroId, cmd.Evento, cmd.Observaciones));
         Assert.False(b.Vm.HayEdicion);
         Assert.Equal("Se corrigió el registro.", b.Vm.MensajeInfo);
         Assert.Equal(consultas + 1, b.Campo.ConsultasDeMovimientos);
@@ -376,6 +384,75 @@ public class MovimientosViewModelTests
         b.Vm.ElegirEventoEditadoCommand.Execute(Vacia);
         await b.Vm.GuardarEdicionCommand.ExecuteAsync(null);
         Assert.Equal(Vacia.Id, b.Campo.RegistrosCorregidos[1].Evento);
+    }
+
+    // ------------------------------------------------------------------ el selector compartido (spec 005, RF-9, RF-12, RF-17)
+
+    private static readonly EventoCampoDto Ok = new(Guid.Parse("33333333-0000-0000-0000-000000000010"), "OK", false, true);
+    private static readonly EventoCampoDto Seca = new(Guid.Parse("33333333-0000-0000-0000-000000000011"), "SECA", true, false);
+
+    [Fact]
+    public async Task Editar_abre_el_selector_en_los_principales_con_el_evento_del_registro_resaltado()
+    {
+        var (b, tacto) = await BancoConUnTactoAsync();
+        b.Vm.Selector.VerOtrosCommand.Execute(null);   // de una edición anterior: debe volver a abrir en los principales
+
+        await b.Vm.EditarCommand.ExecuteAsync(tacto);
+
+        Assert.False(b.Vm.Selector.MostrandoOtros);
+        Assert.Equal(Prenada.Id, b.Vm.Selector.Resaltado);
+        Assert.False(b.Vm.Selector.OtroEventoResaltado);
+        Assert.False(b.Vm.Selector.PermiteNuevo);   // editar no crea eventos
+    }
+
+    [Fact]
+    public async Task Editar_un_tacto_de_un_evento_de_Otro_evento_resalta_ese_boton()
+    {
+        var b = new Banco();
+        b.Campo.Estados = [Prenada, Seca];
+        b.Campo.Movimientos = [Datos.Movimiento(TipoMovimiento.Tacto, caravana: "1014", detalle: "SECA", eventoId: Seca.Id)];
+        await b.Vm.CargarAsync();
+
+        await b.Vm.EditarCommand.ExecuteAsync(b.Vm.Movimientos[0]);
+
+        Assert.True(b.Vm.Selector.OtroEventoResaltado);
+        Assert.Equal(Seca, b.Vm.EventoEditado);
+    }
+
+    [Fact]
+    public async Task Editar_un_rechazo_resalta_Otro_evento()
+    {
+        var b = new Banco();
+        b.Campo.Estados = [Prenada];
+        b.Campo.Movimientos = [Datos.Movimiento(TipoMovimiento.Rechazo, caravana: "1014", detalle: "Rechazo")];
+        await b.Vm.CargarAsync();
+
+        await b.Vm.EditarCommand.ExecuteAsync(b.Vm.Movimientos[0]);
+
+        Assert.Equal(EventosCampo.Rechazo, b.Vm.Selector.Resaltado);
+        Assert.True(b.Vm.Selector.OtroEventoResaltado);
+    }
+
+    [Fact]
+    public async Task Un_solo_evento_como_OK_se_puede_editar_y_cambiar_por_un_estado_con_el_mismo_selector()
+    {
+        var b = new Banco();
+        b.Campo.Estados = [Ok, Prenada];
+        b.Campo.Movimientos = [Datos.Movimiento(TipoMovimiento.Rechazo, caravana: "1014", detalle: "OK", eventoId: Ok.Id)];
+        await b.Vm.CargarAsync();
+        var item = b.Vm.Movimientos[0];
+        Assert.True(item.PuedeEditar);
+
+        await b.Vm.EditarCommand.ExecuteAsync(item);
+        Assert.Equal(Ok, b.Vm.EventoEditado);
+        Assert.Equal("Editar el evento de 1014", b.Vm.TituloEdicion);
+
+        await b.Vm.Selector.ElegirCommand.ExecuteAsync(Prenada);   // elegir en el selector anota el evento; guardar es aparte
+        Assert.Equal(Prenada, b.Vm.EventoEditado);
+        Assert.Empty(b.Campo.RegistrosCorregidos);
+
+        await b.Vm.GuardarEdicionCommand.ExecuteAsync(null);
+        Assert.Equal(Prenada.Id, Assert.Single(b.Campo.RegistrosCorregidos).Evento);
     }
 
     private sealed class Fallo : FakeCampoService

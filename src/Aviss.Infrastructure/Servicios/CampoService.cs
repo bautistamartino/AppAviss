@@ -44,14 +44,8 @@ internal sealed class CampoService : ICampoService
     public Task<IReadOnlyList<RodeoParaTrabajarDto>> ListarRodeosParaTrabajarAsync(CancellationToken ct = default)
         => LeerAsync(p => p.GetRequiredService<ConsultaCampoService>().ListarRodeosParaTrabajarAsync(ct));
 
-    public Task<IReadOnlyList<VeterinarioDto>> ListarVeterinariosActivosAsync(CancellationToken ct = default)
-        => LeerAsync(p => p.GetRequiredService<ConsultaCampoService>().ListarVeterinariosActivosAsync(ct));
-
-    public Task<Resultado<Guid>> CrearVeterinarioAsync(string nombre, string? matricula, CancellationToken ct = default)
-        => EscribirAsync(p => p.GetRequiredService<IUsuarioService>().CrearAsync(nombre, matricula, ct), ct);
-
-    public Task<IReadOnlyList<EstadoActivoDto>> ListarEstadosActivosAsync(CancellationToken ct = default)
-        => LeerAsync(p => p.GetRequiredService<ConsultaCampoService>().ListarEstadosActivosAsync(ct));
+    public Task<ListaEventosDto> ListarEventosAsync(CancellationToken ct = default)
+        => LeerAsync(p => p.GetRequiredService<ConsultaCampoService>().ListarEventosAsync(ct));
 
     public Task<Resultado<Guid>> CrearEstadoAsync(string nombre, string codigoDairyComp, CancellationToken ct = default)
     {
@@ -63,8 +57,8 @@ internal sealed class CampoService : ICampoService
 
     // ---- Mangas ----
 
-    public Task<Resultado<EstadoTrabajoDto>> IniciarTrabajoAsync(Guid rodeoId, Guid usuarioId, CancellationToken ct = default)
-        => EscribirAsync(p => p.GetRequiredService<MangaService>().IniciarTrabajoAsync(rodeoId, usuarioId, ct), ct);
+    public Task<Resultado<EstadoTrabajoDto>> IniciarTrabajoAsync(Guid rodeoId, CancellationToken ct = default)
+        => EscribirAsync(p => p.GetRequiredService<MangaService>().IniciarTrabajoAsync(rodeoId, ct), ct);
 
     public Task<Resultado<EstadoTrabajoDto>> ObtenerEstadoTrabajoAsync(Guid rodeoId, CancellationToken ct = default)
         => LeerAsync(p => p.GetRequiredService<MangaService>().ObtenerEstadoAsync(rodeoId, ct));
@@ -110,8 +104,8 @@ internal sealed class CampoService : ICampoService
     public Task<IReadOnlyList<EsperaDto>> ListarEsperasAsync(Guid rodeoId, CancellationToken ct = default)
         => LeerAsync(p => p.GetRequiredService<ConsultaCampoService>().ListarEsperasAsync(rodeoId, ct));
 
-    public Task<Resultado<Guid>> RegistrarRechazoAsync(RegistrarRechazoCommand comando, CancellationToken ct = default)
-        => EscribirAsync(p => p.GetRequiredService<ITrabajoCampoService>().RegistrarRechazoAsync(comando, ct), ct);
+    public Task<Resultado<Guid>> RegistrarSoloEventoAsync(RegistrarSoloEventoCommand comando, CancellationToken ct = default)
+        => EscribirAsync(p => p.GetRequiredService<ITrabajoCampoService>().RegistrarSoloEventoAsync(comando, ct), ct);
 
     public Task<Resultado<ResultadoDeshacerDto>> DeshacerAsync(DeshacerCommand comando, CancellationToken ct = default)
         => EscribirAsync(p => DeshacerEnScopeAsync(p, comando, ct), ct);
@@ -121,15 +115,15 @@ internal sealed class CampoService : ICampoService
         switch (c.Tipo)
         {
             case TipoDeshacer.Marca:
-                return await p.GetRequiredService<MarcaPasadaService>().DeshacerAsync(c.Id, c.UsuarioId, ct);
+                return await p.GetRequiredService<MarcaPasadaService>().DeshacerAsync(c.Id, ct);
             case TipoDeshacer.Cierre:
-                return await p.GetRequiredService<MangaService>().ReabrirAsync(c.Id, c.UsuarioId, ct);
+                return await p.GetRequiredService<MangaService>().ReabrirAsync(c.Id, ct);
             case TipoDeshacer.Tacto:
             {
                 // La anulación de un tacto ya la resuelve el servicio de tactos (spec 001); acá se agrega el animal al resultado
                 // para que la pantalla pueda actualizar su ficha.
                 var tacto = await p.GetRequiredService<ITactoRepository>().ObtenerAsync(c.Id, ct);
-                var r = await p.GetRequiredService<ITrabajoCampoService>().AnularTactoAsync(new AnularTactoCommand(c.Id, c.UsuarioId), ct);
+                var r = await p.GetRequiredService<ITrabajoCampoService>().AnularTactoAsync(new AnularTactoCommand(c.Id), ct);
                 if (!r.EsCorrecto) return Resultado.Error<ResultadoDeshacerDto>(r.Codigo!.Value, r.Mensaje!);
                 return Resultado.Ok(new ResultadoDeshacerDto(TipoDeshacer.Tacto, tacto?.AnimalId, null, null, null));
             }
@@ -137,7 +131,7 @@ internal sealed class CampoService : ICampoService
             {
                 // Igual que el tacto: se agrega el animal al resultado para que la pantalla actualice su ficha.
                 var rechazo = await p.GetRequiredService<IRechazoRepository>().ObtenerAsync(c.Id, ct);
-                var r = await p.GetRequiredService<ITrabajoCampoService>().AnularRechazoAsync(new AnularRechazoCommand(c.Id, c.UsuarioId), ct);
+                var r = await p.GetRequiredService<ITrabajoCampoService>().AnularRechazoAsync(new AnularRechazoCommand(c.Id), ct);
                 if (!r.EsCorrecto) return Resultado.Error<ResultadoDeshacerDto>(r.Codigo!.Value, r.Mensaje!);
                 return Resultado.Ok(new ResultadoDeshacerDto(TipoDeshacer.Rechazo, rechazo?.AnimalId, null, null, null));
             }
