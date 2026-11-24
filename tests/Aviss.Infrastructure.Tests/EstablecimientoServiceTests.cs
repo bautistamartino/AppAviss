@@ -152,6 +152,17 @@ public sealed class EstablecimientoServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task Renombrar_ignora_mayusculas_pero_las_tildes_cuentan_como_en_la_importacion()
+    {
+        var s = _e.Servicio<IEstablecimientoService>();
+        var id = (await s.CrearAsync("Tambo Norte", null)).Valor;
+        await s.CrearAsync("Peña", null);
+
+        Assert.Equal(CodigoError.Duplicado, (await s.RenombrarAsync(id, "PEÑA")).Codigo);
+        Assert.True((await s.RenombrarAsync(id, "Pena")).EsCorrecto);
+    }
+
+    [Fact]
     public async Task Renombrar_por_la_fachada_de_campo_cambia_el_nombre()
     {
         var id = (await _e.Servicio<IEstablecimientoService>().CrearAsync("Tambo Norte", null)).Valor;

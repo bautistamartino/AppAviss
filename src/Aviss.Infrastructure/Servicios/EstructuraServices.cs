@@ -47,7 +47,7 @@ internal sealed class EstablecimientoService : IEstablecimientoService
             try { e.Renombrar(nombre, _reloj.UtcAhora); }
             catch (DominioException ex) { return Ayudas.DatosInvalidos(ex); }
 
-            // Mismo criterio que la importación (RF-15): se compara la clave sin mayúsculas ni tildes, con TODOS los
+            // Mismo criterio que la importación (RF-15): se compara la clave sin distinguir mayúsculas (las tildes cuentan), con TODOS los
             // establecimientos (incluidos los de baja) menos este mismo: dejarlo igual o cambiar solo mayúsculas no es repetido.
             var clave = Caravana.CalcularClave(e.Nombre);
             var todos = await _repo.ListarAsync(ct);

@@ -16,7 +16,7 @@ public interface IEstablecimientoService
     Task<Resultado> ReactivarAsync(Guid id, CancellationToken ct = default);
     /// <summary>
     /// Cambia el nombre de un establecimiento activo. <c>DatosInvalidos</c> si está vacío, <c>Duplicado</c> si lo usa OTRO
-    /// establecimiento (sin distinguir mayúsculas ni tildes, incluidos los dados de baja), <c>NoEncontrado</c> si no existe o está de baja.
+    /// establecimiento (sin distinguir mayúsculas; las tildes cuentan, igual que en la importación, incluidos los dados de baja), <c>NoEncontrado</c> si no existe o está de baja.
     /// </summary>
     Task<Resultado> RenombrarAsync(Guid id, string nombre, CancellationToken ct = default);
     Task<IReadOnlyList<Establecimiento>> ListarAsync(CancellationToken ct = default);
