@@ -25,15 +25,46 @@ internal static partial class LectorCsv
     [GeneratedRegex(@"^-?(0|[1-9][0-9]*),[0-9]+$", RegexOptions.CultureInvariant)]
     private static partial Regex PatronNumeroConComa();
 
+    /// <summary>
+    /// Un registro (línea lógica) del CSV con sus campos ya separados y su posición en el texto decodificado, para que la
+    /// exportación (spec 007) pueda agregar columnas al final de cada línea sin tocar el resto. <see cref="Fin"/> es donde termina
+    /// el contenido (antes del salto de línea) y <see cref="Terminador"/> el salto que lo cierra ("\r\n", "\n", "\r" o "" en la última).
+    /// </summary>
+    internal readonly record struct RegistroCsv(List<string> Campos, int Inicio, int Fin, string Terminador);
+
+    /// <summary>
+    /// El CSV tal como está en los bytes: texto, codificación con su marca de orden de bytes (para volver a escribirlo igual),
+    /// separador y registros. Es lo que usa la exportación para editar el original A NIVEL DE TEXTO.
+    /// </summary>
+    internal sealed record CsvAnalizado(string Texto, Encoding Codificacion, byte[] Preambulo, char Separador, List<RegistroCsv> Registros);
+
+    /// <summary>Decodifica y parte en registros con las MISMAS reglas que <see cref="ComoHoja"/>. Nulo si no es un listado de texto.</summary>
+    internal static CsvAnalizado? Analizar(byte[] contenido)
+    {
+        try
+        {
+            var texto = Decodificar(contenido, out var codificacion, out var preambulo);
+            if (texto is null) return null;
+
+            var posiciones = new List<RegistroCsv>();
+            Separar(texto, out char separador, posiciones);
+            return separador == '\0' ? null : new CsvAnalizado(texto, codificacion, preambulo, separador, posiciones);
+        }
+        catch (Exception)
+        {
+            return null;
+        }
+    }
+
     /// <summary>La hoja con el contenido, o nulo si no es un listado de texto con una columna ID.</summary>
     public static ISheet? ComoHoja(byte[] contenido)
     {
         try
         {
-            var texto = Decodificar(contenido);
+            var texto = Decodificar(contenido, out _, out _);
             if (texto is null) return null;
 
-            var filas = Separar(texto, out char separador);
+            var filas = Separar(texto, out char separador, null);
             if (separador == '\0') return null;
 
             // El encabezado es la primera fila con contenido y tiene que traer ID (igual que el .xls).
@@ -76,20 +107,33 @@ internal static partial class LectorCsv
         return false;
     }
 
-    /// <summary>Bytes a texto. Nulo si parece binario (con caracteres NUL).</summary>
-    private static string? Decodificar(byte[] b)
+    /// <summary>
+    /// Bytes a texto. Nulo si parece binario (con caracteres NUL). Además devuelve la codificación y los bytes de la marca de orden
+    /// (BOM) que traía el archivo, para que la exportación lo vuelva a escribir igual.
+    /// </summary>
+    private static string? Decodificar(byte[] b, out Encoding codificacion, out byte[] preambulo)
     {
         string texto;
         if (b.Length >= 3 && b[0] == 0xEF && b[1] == 0xBB && b[2] == 0xBF)
+        {
+            codificacion = new UTF8Encoding(false); preambulo = b[..3];
             texto = Encoding.UTF8.GetString(b, 3, b.Length - 3);
+        }
         else if (b.Length >= 2 && b[0] == 0xFF && b[1] == 0xFE)
+        {
+            codificacion = new UnicodeEncoding(false, false); preambulo = b[..2];
             texto = Encoding.Unicode.GetString(b, 2, b.Length - 2);
+        }
         else if (b.Length >= 2 && b[0] == 0xFE && b[1] == 0xFF)
+        {
+            codificacion = new UnicodeEncoding(true, false); preambulo = b[..2];
             texto = Encoding.BigEndianUnicode.GetString(b, 2, b.Length - 2);
+        }
         else
         {
-            try { texto = new UTF8Encoding(false, throwOnInvalidBytes: true).GetString(b); }
-            catch (DecoderFallbackException) { texto = Encoding.Latin1.GetString(b); } // Windows-1252: sirve para las tildes y la Ñ
+            preambulo = [];
+            try { codificacion = new UTF8Encoding(false, throwOnInvalidBytes: true); texto = codificacion.GetString(b); }
+            catch (DecoderFallbackException) { codificacion = Encoding.Latin1; texto = Encoding.Latin1.GetString(b); } // Windows-1252: sirve para las tildes y la Ñ
         }
         return texto.Contains('\0') ? null : texto;
     }
@@ -98,7 +142,7 @@ internal static partial class LectorCsv
     /// Parte el texto en filas de campos. Elige el separador que más aparece en la primera línea con contenido (fuera de
     /// comillas); '\0' si ninguno aparece (un texto sin columnas).
     /// </summary>
-    private static List<List<string>> Separar(string texto, out char separador)
+    private static List<List<string>> Separar(string texto, out char separador, List<RegistroCsv>? posiciones)
     {
         separador = ElegirSeparador(texto);
         var filas = new List<List<string>>();
@@ -107,9 +151,17 @@ internal static partial class LectorCsv
         var fila = new List<string>();
         var campo = new StringBuilder();
         bool entreComillas = false;
+        int inicioRegistro = 0; // donde empieza el registro actual en el texto (solo se usa para informar las posiciones)
 
         void CerrarCampo() { fila.Add(campo.ToString()); campo.Clear(); }
-        void CerrarFila() { CerrarCampo(); filas.Add(fila); fila = new List<string>(); }
+        void CerrarFila(int fin, string terminador, int siguienteInicio)
+        {
+            CerrarCampo();
+            filas.Add(fila);
+            posiciones?.Add(new RegistroCsv(fila, inicioRegistro, fin, terminador));
+            fila = new List<string>();
+            inicioRegistro = siguienteInicio;
+        }
 
         for (int i = 0; i < texto.Length; i++)
         {
@@ -125,11 +177,17 @@ internal static partial class LectorCsv
             }
             else if (c == '"' && campo.Length == 0) entreComillas = true;
             else if (c == separador) CerrarCampo();
-            else if (c == '\r') { if (i + 1 < texto.Length && texto[i + 1] == '\n') i++; CerrarFila(); }
-            else if (c == '\n') CerrarFila();
+            else if (c == '\r')
+            {
+                int fin = i;
+                bool crlf = i + 1 < texto.Length && texto[i + 1] == '\n';
+                if (crlf) i++;
+                CerrarFila(fin, crlf ? "\r\n" : "\r", i + 1);
+            }
+            else if (c == '\n') CerrarFila(i, "\n", i + 1);
             else campo.Append(c);
         }
-        if (campo.Length > 0 || fila.Count > 0) CerrarFila();
+        if (campo.Length > 0 || fila.Count > 0) CerrarFila(texto.Length, "", texto.Length);
         return filas;
     }
 

@@ -1,4 +1,6 @@
+using Aviss.Application.Exportacion;
 using Aviss.Application.Importacion;
+using Aviss.Excel.Exportacion;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Aviss.Excel;
@@ -12,6 +14,8 @@ public static class DependencyInjection
     public static IServiceCollection AddAvissExcel(this IServiceCollection servicios)
     {
         servicios.AddSingleton<IExcelProfile, PerfilDairyComp>();
+        // Spec 007: el exportador tampoco guarda estado; arma el archivo de vuelta desde el original del rodeo.
+        servicios.AddSingleton<IExportadorArchivo, ExportadorDairyComp>();
         return servicios;
     }
 }

@@ -27,7 +27,7 @@ public sealed class PerfilDairyComp : IExcelProfile
     private const ushort RegistroFilePass = 0x002F; // marca de "libro .xls cifrado con contraseña"
 
     // "Total:N" con variantes ("TOTAL : 5", "total:5"). Solo dígitos ASCII.
-    private static readonly Regex PatronTotal = new(@"^\s*total\s*:\s*([0-9]+)\s*$",
+    internal static readonly Regex PatronTotal = new(@"^\s*total\s*:\s*([0-9]+)\s*$",
         RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
 
     public string Nombre => NombrePerfil;
@@ -52,8 +52,23 @@ public sealed class PerfilDairyComp : IExcelProfile
 
     private static ResultadoLectura LeerInterno(byte[] contenido, int maxFilas)
     {
+        var hoja = AbrirHoja(contenido, out var rechazo);
+        return hoja is null ? rechazo! : LeerHoja(hoja, maxFilas);
+    }
+
+    /// <summary>
+    /// Primera mitad de la lectura: abre el archivo y devuelve su primera hoja, o el rechazo si no se puede. Se sacó a un método
+    /// propio (spec 007) para que la exportación abra el original con EXACTAMENTE las mismas reglas que la importación. Puede lanzar
+    /// excepciones de NPOI: quien la llama las atrapa, como hace <see cref="Leer"/>.
+    /// </summary>
+    internal static ISheet? AbrirHoja(byte[] contenido, out ResultadoLectura? rechazo)
+    {
+        rechazo = null;
         if (contenido is null || contenido.Length == 0)
-            return ResultadoLectura.Rechazado(MotivoRechazoArchivo.Vacio);
+        {
+            rechazo = ResultadoLectura.Rechazado(MotivoRechazoArchivo.Vacio);
+            return null;
+        }
 
         // El formato se detecta por el CONTENIDO, no por la extensión: un .xlsx renombrado a .xls empieza con "PK" (zip).
         if (!EmpiezaConFirmaOle2(contenido))
@@ -61,17 +76,23 @@ public sealed class PerfilDairyComp : IExcelProfile
             // Ni .xls ni .xlsx (un zip empieza con "PK"): puede ser el listado guardado como CSV o TXT. Se arma una hoja en
             // memoria y se aplican las mismas reglas que al .xls. Si no parece un listado con columna ID, no se soporta.
             if (contenido.Length >= 2 && contenido[0] == (byte)'P' && contenido[1] == (byte)'K')
-                return ResultadoLectura.Rechazado(MotivoRechazoArchivo.FormatoNoSoportado);
+            {
+                rechazo = ResultadoLectura.Rechazado(MotivoRechazoArchivo.FormatoNoSoportado);
+                return null;
+            }
 
             var hojaTexto = LectorCsv.ComoHoja(contenido);
-            return hojaTexto is null
-                ? ResultadoLectura.Rechazado(MotivoRechazoArchivo.FormatoNoSoportado)
-                : LeerHoja(hojaTexto, maxFilas);
+            if (hojaTexto is null)
+                rechazo = ResultadoLectura.Rechazado(MotivoRechazoArchivo.FormatoNoSoportado);
+            return hojaTexto;
         }
 
         contenido = CompletarUltimoSector(contenido, out bool cabeceraInvalida);
         if (cabeceraInvalida)
-            return ResultadoLectura.Rechazado(MotivoRechazoArchivo.Corrupto);
+        {
+            rechazo = ResultadoLectura.Rechazado(MotivoRechazoArchivo.Corrupto);
+            return null;
+        }
 
         using var memoria = new MemoryStream(contenido, writable: false); // solo lectura: el original no se toca
         var sistemaArchivos = new POIFSFileSystem(memoria);
@@ -79,15 +100,24 @@ public sealed class PerfilDairyComp : IExcelProfile
         // Un .xlsx guardado con contraseña también es un contenedor OLE2, pero con estas dos entradas.
         var raiz = sistemaArchivos.Root;
         if (raiz.HasEntry("EncryptedPackage") || raiz.HasEntry("EncryptionInfo"))
-            return ResultadoLectura.Rechazado(MotivoRechazoArchivo.Protegido);
+        {
+            rechazo = ResultadoLectura.Rechazado(MotivoRechazoArchivo.Protegido);
+            return null;
+        }
 
         // Un .xls de verdad guarda su contenido en "Workbook" (Excel 97+) o "Book" (Excel 5). Otro OLE2 (.doc, .ppt) no.
         string? nombreFlujo = raiz.HasEntry("Workbook") ? "Workbook" : raiz.HasEntry("Book") ? "Book" : null;
         if (nombreFlujo is null)
-            return ResultadoLectura.Rechazado(MotivoRechazoArchivo.FormatoNoSoportado);
+        {
+            rechazo = ResultadoLectura.Rechazado(MotivoRechazoArchivo.FormatoNoSoportado);
+            return null;
+        }
 
         if (TieneRegistroFilePass(sistemaArchivos, nombreFlujo))
-            return ResultadoLectura.Rechazado(MotivoRechazoArchivo.Protegido);
+        {
+            rechazo = ResultadoLectura.Rechazado(MotivoRechazoArchivo.Protegido);
+            return null;
+        }
 
         HSSFWorkbook libro;
         try
@@ -101,12 +131,29 @@ public sealed class PerfilDairyComp : IExcelProfile
             libro = LectorBiffTolerante.Reconstruir(sistemaArchivos);
         }
         if (libro.NumberOfSheets == 0)
-            return ResultadoLectura.Rechazado(MotivoRechazoArchivo.SinHojas);
+        {
+            rechazo = ResultadoLectura.Rechazado(MotivoRechazoArchivo.SinHojas);
+            return null;
+        }
 
-        return LeerHoja(libro.GetSheetAt(0), maxFilas);
+        return libro.GetSheetAt(0);
     }
 
-    private static ResultadoLectura LeerHoja(ISheet hoja, int maxFilas)
+    /// <summary>True si el contenido es un libro .xls (contenedor OLE2); si no, es texto (CSV/TXT).</summary>
+    internal static bool EsLibroOle2(byte[] contenido) => EmpiezaConFirmaOle2(contenido);
+
+    /// <summary>Índice (desde 0) de la primera fila con contenido: la de los encabezados. -1 si la hoja está vacía.</summary>
+    internal static int FilaDeEncabezados(ISheet hoja)
+    {
+        for (int i = hoja.FirstRowNum; i <= hoja.LastRowNum; i++)
+        {
+            var fila = hoja.GetRow(i);
+            if (fila is not null && TieneContenido(fila)) return i;
+        }
+        return -1;
+    }
+
+    internal static ResultadoLectura LeerHoja(ISheet hoja, int maxFilas)
     {
         // 1) Encabezados: la primera fila con contenido (RF-3).
         int filaEncabezados = -1;
@@ -267,7 +314,7 @@ public sealed class PerfilDairyComp : IExcelProfile
             && int.TryParse(siguiente.Texto.Trim(), NumberStyles.None, CultureInfo.InvariantCulture, out total);
     }
 
-    private static bool TieneContenido(IRow fila)
+    internal static bool TieneContenido(IRow fila)
     {
         for (int c = Math.Max(0, (int)fila.FirstCellNum); c < fila.LastCellNum; c++)
         {
@@ -278,7 +325,7 @@ public sealed class PerfilDairyComp : IExcelProfile
     }
 
     /// <summary>Clasifica una celda por su tipo y arma su texto. Devuelve null si la celda no existe o está en blanco.</summary>
-    private static CeldaLeida? Convertir(ICell? celda)
+    internal static CeldaLeida? Convertir(ICell? celda)
     {
         if (celda is null) return null;
 

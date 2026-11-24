@@ -118,7 +118,7 @@ public class LectorBiffToleranteTests
 
     // Inserta un registro SELECTION (0x001D) justo después de la primera celda de la hoja: un orden que Excel tolera
     // y NPOI no. Reescribe el contenedor OLE2 con el flujo "Workbook" modificado (todo en memoria).
-    private static byte[] ConSeleccionFueraDeLugar(byte[] xls)
+    internal static byte[] ConSeleccionFueraDeLugar(byte[] xls)
     {
         var flujo = LeerFlujoWorkbook(xls);
 
