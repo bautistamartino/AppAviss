@@ -64,7 +64,6 @@ public enum CodigoError
 
     // En Espera y Rechazo (spec 004); los mensajes fijos están en MensajesCampo
     VacaYaEnEspera,
-    VacaNoEntraEnTacto,
     EsperaNoPendiente,
     VacaEnEspera,
     RechazoYaAnulado,

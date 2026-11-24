@@ -136,6 +136,7 @@ Lectura → marca automática → ficha → elegir el evento (y, si se quiere, u
 
 - Botones grandes, alto contraste, legibles al sol, pensados para una mano.
 - **CVET** de Dairy Comp: 0 = no entra en tacto (chicharra, queda marcada y suma, sin ficha); otro valor = motivo del tacto, se muestra en el título.
+- **Lectura con ficha abierta (spec 009):** con una ficha abierta, una lectura de otra vaca que entra en tacto abre el aviso de tres opciones (sin marcar a la nueva hasta elegir); CVET 0, repetidas, en espera sin ficha abierta y no encontradas siguen como antes. La ficha de CVET 0 es completa. Atrás de Android = Cancelar lectura.
 - Barra de arriba siempre visible (engranaje, flechita para contraer, título); contraída o abierta, con avance, horarios, contador de manga (opcional) y "Terminar el tacto".
 - **Mangas opcionales por establecimiento** (engranaje): cantidad a mano, contador N/M y cierre automático al completarse.
 - Deshacer con aviso de 5 s al guardar un tacto o cerrar una manga; en "Últimos movimientos", **Deshacer** y **Editar** (editar = anular y registrar uno nuevo, en una transacción).

@@ -135,13 +135,13 @@ public sealed partial class TrabajoViewModel : ObservableObject
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HayFicha), nameof(HayResumenTerminado), nameof(EstaEsperando), nameof(TituloBarra), nameof(HayVerFichaSinTacto))]
-    [NotifyPropertyChangedFor(nameof(HayMotivoTacto), nameof(NoEntraEnTacto), nameof(PuedeAgregarEventos), nameof(PuedePonerEnEspera), nameof(EsEsperaAbierta))]
+    [NotifyPropertyChangedFor(nameof(HayMotivoTacto), nameof(MostrarCartelCvetCero), nameof(PuedePonerEnEspera), nameof(EsEsperaAbierta))]
     [NotifyCanExecuteChangedFor(nameof(EntrarCommand))]
     private EtapaTrabajo _etapa = EtapaTrabajo.Esperando;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HayFicha))]
-    [NotifyPropertyChangedFor(nameof(HayMotivoTacto), nameof(TextoMotivoTacto), nameof(NoEntraEnTacto), nameof(PuedeAgregarEventos), nameof(TituloFicha), nameof(FilasDatos), nameof(TituloBarra), nameof(PuedePonerEnEspera), nameof(EsEsperaAbierta), nameof(HayRechazoVigente), nameof(TextoRechazoVigente))]
+    [NotifyPropertyChangedFor(nameof(HayMotivoTacto), nameof(TextoMotivoTacto), nameof(MostrarCartelCvetCero), nameof(TituloFicha), nameof(FilasDatos), nameof(TituloBarra), nameof(PuedePonerEnEspera), nameof(EsEsperaAbierta), nameof(HayRechazoVigente), nameof(TextoRechazoVigente))]
     [NotifyCanExecuteChangedFor(nameof(EntrarCommand))]
     private FichaAnimalDto? _ficha;
 
@@ -178,6 +178,7 @@ public sealed partial class TrabajoViewModel : ObservableObject
         OnPropertyChanged(nameof(HayCuadro));
         OnPropertyChanged(nameof(PuedePonerEnEspera));
         OnPropertyChanged(nameof(HayListaEspera));
+        OnPropertyChanged(nameof(HayConfirmarReemplazo));
         OnPropertyChanged(nameof(TextoSegundaConfirmacion));
         OnPropertyChanged(nameof(HayAdvertenciaMangaAbierta));
         OnPropertyChanged(nameof(AdvertenciaMangaAbierta));
@@ -188,7 +189,7 @@ public sealed partial class TrabajoViewModel : ObservableObject
         CuadroTrabajo.ConfirmarCorregir or CuadroTrabajo.Verificacion
         or CuadroTrabajo.CantidadReal or CuadroTrabajo.SegundaConfirmacion
         or CuadroTrabajo.Eventos or CuadroTrabajo.Observacion or CuadroTrabajo.CantidadManga or CuadroTrabajo.Configuracion
-        or CuadroTrabajo.ListaEspera;
+        or CuadroTrabajo.ListaEspera or CuadroTrabajo.ConfirmarReemplazo;
 
     /// <summary>Abre o cierra un cuadro y avisa a la cola de lecturas: al cerrar uno que bloqueaba, se procesa la pendiente.</summary>
     private async Task CambiarCuadroAsync(CuadroTrabajo nuevo)
@@ -367,6 +368,10 @@ public sealed partial class TrabajoViewModel : ObservableObject
     public Task EncolarLecturaAsync(string codigo, bool esManual = false)
     {
         if (string.IsNullOrWhiteSpace(codigo)) return Task.CompletedTask;
+        // Con el aviso de tres opciones abierto, el mismo código que lo abrió se ignora (el bastón suele repetirlo) y no pisa la
+        // lectura guardada (spec 009, RF-9).
+        if (Cuadro == CuadroTrabajo.ConfirmarReemplazo && _reemplazoPendiente is { } pendiente && pendiente.Codigo == codigo.Trim())
+            return Task.CompletedTask;
         return _cola.EncolarAsync(codigo.Trim(), esManual);
     }
 
@@ -382,7 +387,10 @@ public sealed partial class TrabajoViewModel : ObservableObject
             MensajeError = null;
             MensajeInfo = null;
 
-            var resultado = await EnCampoAsync(() => _campo.ProcesarLecturaAsync(new ProcesarLecturaCommand(rodeo.RodeoId, lectura.Codigo)));
+            // Con cualquier ficha abierta (también la de una vaca con CVET 0 abierta con "Ver ficha") el servicio no marca a una vaca
+            // nueva que entra en tacto: devuelve "RequiereDecision" y la pantalla pregunta antes (spec 009, RF-1).
+            var hayFichaAbierta = Etapa == EtapaTrabajo.Ficha;
+            var resultado = await EnCampoAsync(() => _campo.ProcesarLecturaAsync(new ProcesarLecturaCommand(rodeo.RodeoId, lectura.Codigo, hayFichaAbierta)));
             if (!resultado.EsCorrecto)
             {
                 // Rechazo (por ejemplo reloj mal puesto): no se guardó nada ni se muestra la ficha como procesada (RF-12).
@@ -417,9 +425,8 @@ public sealed partial class TrabajoViewModel : ObservableObject
 
             case TipoResultadoLectura.SinTacto:
                 // CVET 0: no entra en tacto. Queda marcada (suma al conteo y se puede deshacer) pero no se abre la ficha: suena la
-                // chicharra y no hay nada que cerrar, así se puede leer la siguiente enseguida. Una ficha abierta de otra vaca
-                // se cierra, como pasa con cualquier lectura nueva (RF-19).
-                CerrarFichaInterno();
+                // chicharra y no hay nada que cerrar, así se puede leer la siguiente enseguida. Una ficha abierta NO se toca (spec 009,
+                // RF-8.2): tiene un evento o una observación que se perderían.
                 if (r.NumeroManga is { } numeroSinTacto) NumeroManga = numeroSinTacto;
                 if (r.ContadorManga is { } contadorSinTacto) Contador = contadorSinTacto;
                 MangaAbierta = true;
@@ -441,6 +448,12 @@ public sealed partial class TrabajoViewModel : ObservableObject
                 await CambiarCuadroAsync(CuadroTrabajo.Aviso);
                 break;
 
+            case TipoResultadoLectura.RequiereDecision when r.AnimalId is not null:
+                // Spec 009: había una ficha abierta y la vaca nueva entra en tacto: NO se marcó. Se pregunta qué hacer.
+                if (Ficha?.AnimalId == r.AnimalId) return;
+                await AbrirConfirmarReemplazoAsync(r, lectura, r.Ficha);
+                break;
+
             case TipoResultadoLectura.EnEspera:
                 // Vaca en espera (RF-5): se abre su ficha para ponerle el evento, sin aviso de repetida, sin marcar y sin sumar.
                 if (r.AnimalId is null || Ficha?.AnimalId == r.AnimalId) return;
@@ -451,7 +464,11 @@ public sealed partial class TrabajoViewModel : ObservableObject
                     if (!pedida.EsCorrecto) { MensajeError = pedida.Mensaje; return; }
                     fichaEspera = pedida.Valor;
                 }
-                MostrarFicha(fichaEspera);
+                // Con una ficha abierta se pregunta antes de reemplazarla (spec 009, RF-6); sin ficha, se abre directo.
+                if (Etapa == EtapaTrabajo.Ficha)
+                    await AbrirConfirmarReemplazoAsync(r, lectura, fichaEspera);
+                else
+                    MostrarFicha(fichaEspera);
                 break;
 
             default:   // NoEncontrada

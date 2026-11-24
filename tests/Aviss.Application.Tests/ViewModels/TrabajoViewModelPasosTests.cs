@@ -192,7 +192,9 @@ public class TrabajoViewModelPasosTests
         Assert.Equal("1001", b.Vm.Ficha!.Caravana);
 
         await b.Vm.CerrarCuadroAgregarCommand.ExecuteAsync(null);
-        Assert.Equal("2002", b.Vm.Ficha!.Caravana);
+        // Spec 009: la lectura guardada se procesa al cerrar el cuadro; con la ficha de la 1001 abierta, pregunta antes de reemplazarla.
+        Assert.Equal(CuadroTrabajo.ConfirmarReemplazo, b.Vm.Cuadro);
+        Assert.Equal("1001", b.Vm.Ficha!.Caravana);
     }
 
     [Theory]

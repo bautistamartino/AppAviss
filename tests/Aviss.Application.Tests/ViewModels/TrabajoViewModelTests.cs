@@ -170,17 +170,19 @@ public class TrabajoViewModelTests
     }
 
     [Fact]
-    public async Task Otra_vaca_reemplaza_la_ficha_abierta()
+    public async Task Otra_vaca_con_una_ficha_abierta_no_la_reemplaza_en_silencio_pregunta_antes()
     {
         var b = new Banco();
-        b.Vaca("1001");
+        var (primera, _) = b.Vaca("1001");
         var (segunda, _) = b.Vaca("1002", contador: 2);
 
         await b.LeerAsync("1001");
         await b.LeerAsync("1002");
 
-        Assert.Equal(segunda, b.Vm.Ficha!.AnimalId);
-        Assert.Equal(2, b.Campo.LecturasProcesadas.Count);   // las dos quedaron marcadas
+        // Spec 009: la ficha de la 1001 sigue abierta y la 1002 espera la decisión del veterinario (no se marcó).
+        Assert.Equal(primera, b.Vm.Ficha!.AnimalId);
+        Assert.Equal(CuadroTrabajo.ConfirmarReemplazo, b.Vm.Cuadro);
+        Assert.NotEqual(segunda, b.Vm.Ficha.AnimalId);
     }
 
     [Fact]
@@ -238,7 +240,7 @@ public class TrabajoViewModelTests
     }
 
     [Fact]
-    public async Task Una_vaca_con_cvet_cero_cierra_la_ficha_de_la_anterior()
+    public async Task Una_vaca_con_cvet_cero_no_cierra_la_ficha_de_la_anterior()
     {
         var b = new Banco();
         b.Vaca("1001");
@@ -248,7 +250,7 @@ public class TrabajoViewModelTests
 
         await b.LeerAsync("2224");
 
-        Assert.Null(b.Vm.Ficha);
+        Assert.NotNull(b.Vm.Ficha);   // spec 009, RF-8.2: la ficha abierta no se toca
     }
 
     [Fact]
@@ -262,8 +264,7 @@ public class TrabajoViewModelTests
 
         Assert.True(b.Vm.HayMotivoTacto);
         Assert.Equal("Motivo del tacto · CVET: PRE", b.Vm.TextoMotivoTacto);
-        Assert.False(b.Vm.NoEntraEnTacto);
-        Assert.True(b.Vm.PuedeAgregarEventos);
+        Assert.False(b.Vm.MostrarCartelCvetCero);
     }
 
     // ---- "Ver ficha" de la última vaca que no entró en tacto (CVET 0), para mirar sus datos por curiosidad
@@ -288,7 +289,7 @@ public class TrabajoViewModelTests
     }
 
     [Fact]
-    public async Task Ver_la_ficha_la_abre_solo_para_mirar_sin_marcar_de_nuevo_ni_dejar_tactar()
+    public async Task Ver_la_ficha_la_abre_completa_sin_marcar_de_nuevo_y_con_el_cartel_de_CVET_0()
     {
         var (b, animal) = await BancoConUnaVacaSinTactoAsync();
 
@@ -296,8 +297,8 @@ public class TrabajoViewModelTests
 
         Assert.Equal(animal, b.Vm.Ficha!.AnimalId);
         Assert.Equal(EtapaTrabajo.Ficha, b.Vm.Etapa);
-        Assert.True(b.Vm.NoEntraEnTacto);
-        Assert.False(b.Vm.PuedeAgregarEventos);
+        Assert.True(b.Vm.MostrarCartelCvetCero);   // cartel solo informativo (spec 009, RF-15)
+        Assert.True(b.Vm.PuedePonerEnEspera);      // y se puede tactar o poner en espera igual
         Assert.Equal(["2224"], b.Campo.LecturasProcesadas.Select(l => l.Codigo));   // no se leyó ni se marcó otra vez
         Assert.Equal([animal], b.Campo.FichasPedidas);
         Assert.False(b.Vm.HayVerFichaSinTacto);   // ya no se está esperando: el botón no se ve mientras está la ficha
@@ -373,11 +374,11 @@ public class TrabajoViewModelTests
         await b.LeerAsync("1001");
 
         Assert.False(b.Vm.HayMotivoTacto);
-        Assert.True(b.Vm.PuedeAgregarEventos);
+        Assert.False(b.Vm.MostrarCartelCvetCero);
     }
 
     [Fact]
-    public async Task La_ficha_de_una_vaca_con_cvet_cero_no_deja_agregar_eventos_ni_observaciones()
+    public async Task La_ficha_de_una_vaca_con_cvet_cero_abierta_desde_el_aviso_tambien_deja_tactar_y_muestra_el_cartel()
     {
         var b = new Banco();
         var animal = Guid.NewGuid();
@@ -388,19 +389,14 @@ public class TrabajoViewModelTests
         await b.Vm.VerFichaCommand.ExecuteAsync(null);
         Assert.NotNull(b.Vm.Ficha);
 
-        Assert.True(b.Vm.NoEntraEnTacto);
-        Assert.False(b.Vm.PuedeAgregarEventos);
+        Assert.True(b.Vm.MostrarCartelCvetCero);   // cartel informativo, no bloquea nada (spec 009, RF-15)
         Assert.False(b.Vm.HayMotivoTacto);
 
-        await b.Vm.AbrirEventosCommand.ExecuteAsync(null);
-        await b.Vm.AbrirObservacionCommand.ExecuteAsync(null);
         await b.ElegirYEntrarAsync(Prenada);
 
-        Assert.Equal(CuadroTrabajo.Ninguno, b.Vm.Cuadro);
-        Assert.Empty(b.Campo.Tactos);
+        Assert.Equal(animal, Assert.Single(b.Campo.Tactos).AnimalId);   // se tacta como cualquier otra vaca
+        Assert.Null(b.Vm.Ficha);
     }
-
-    // ------------------------------------------------------------------ elegir el evento y "Entrar" (como en el Daily)
 
     [Fact]
     public async Task Elegir_un_evento_no_guarda_nada_queda_en_el_casillero_y_habilita_Entrar()
@@ -518,6 +514,7 @@ public class TrabajoViewModelTests
         Assert.True(b.Vm.MostrarHistorial);
 
         await b.LeerAsync("1002");
+        await b.Vm.SaltarYAbrirNuevaCommand.ExecuteAsync(null);   // spec 009: con la ficha abierta se elige abrir la nueva
 
         Assert.Null(b.Vm.EventoElegido);
         Assert.False(b.Vm.MostrarHistorial);
@@ -552,6 +549,7 @@ public class TrabajoViewModelTests
         await b.LeerAsync("1014");
         Assert.Equal("ID 1014 · CVET PRE", b.Vm.TituloFicha);
 
+        b.Vm.CerrarFichaCommand.Execute(null);   // con una ficha abierta, otra lectura preguntaría (spec 009): se la cierra antes
         await b.LeerAsync("77");
         Assert.Equal("ID 77", b.Vm.TituloFicha);
     }

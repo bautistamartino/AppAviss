@@ -100,6 +100,18 @@ internal sealed class MarcaPasadaService
                 return Resultado.Error<ResultadoLecturaDto>(cod, mensaje);
             }
 
+            // Spec 009 (RF-1): con una ficha con tacto abierta, una vaca que se marcaría y entra en tacto NO se marca: se
+            // devuelve su ficha y la pantalla pregunta. Va después de TODA la validación (rodeo, espera, "procesada hoy",
+            // reloj y baja) para que esos casos salgan igual que siempre, y no toca el Marcador: no se guarda nada (RF-11).
+            // Una vaca con CVET 0 no pregunta: se marca como hoy (RF-8).
+            if (c.HayFichaConTactoAbierta
+                && Aviss.Domain.Reglas.ReglasCvet.EntraEnTacto(ConstructorFicha.LeerCvet(animal.DatosOriginalesJson)))
+            {
+                var fichaNueva = await _ficha.ArmarAsync(animal, ct);
+                return Resultado.Ok(new ResultadoLecturaDto(TipoResultadoLectura.RequiereDecision, codigo, animal.Id, animal.NumeroCaravana,
+                    fichaNueva, null, null, null, null, null, false));
+            }
+
             try
             {
                 var preparada = await _marcador.MarcarAsync(animal.Id, c.RodeoId, ahora, ct);

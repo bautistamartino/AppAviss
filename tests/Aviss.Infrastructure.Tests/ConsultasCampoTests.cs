@@ -263,6 +263,33 @@ public sealed class ConsultasCampoTests : IDisposable
     }
 
     [Fact]
+    public async Task La_ficha_de_la_vaca_1019_con_CVET_0_trae_todos_sus_datos_por_el_servicio_real()
+    {
+        // Spec 009, RF-15: caso de referencia (rodeo BAUTI1). El servicio arma la ficha completa aunque el CVET sea 0.
+        var json = """{"ID":"1019","CVET":"0","LACT":"2","DEL":"211","FPART":"23/04/26","FCELO":"10/07/26","UTORO":"WINDSTAR  ","DDUC":"133","DCC":"133","RPRO":"PREÑADA ","FAPAR":"18/04/27","LECHE":"0"}""";
+        var animal = _e.AnimalImportado("1019", _e.EstadoPrenada, json: json);
+
+        var r = await _e.Campo.ObtenerFichaAsync(animal);
+
+        Assert.True(r.EsCorrecto, r.Mensaje);
+        var f = r.Valor;
+        Assert.False(f.EntraEnTacto);
+        Assert.Equal("0", f.Cvet);
+        Assert.Equal("PREÑADA", f.EstadoNombre);
+        var datos = f.Campos.Concat(f.Extras!).Where(c => c.Valor.Length > 0).ToDictionary(c => c.Nombre, c => c.Valor);
+        Assert.Equal("2", datos["LACT"]);
+        Assert.Equal("211", datos["DEL"]);
+        Assert.Equal("23/04/26", datos["FPART"]);
+        Assert.Equal("10/07/26", datos["FCELO"]);
+        Assert.Equal("133", datos["DDUC"]);
+        Assert.Equal("133", datos["DCC"]);
+        Assert.Equal("PREÑADA", datos["RPRO"]);
+        Assert.Equal("18/04/27", datos["FAPAR"]);
+        Assert.Equal("0", datos["LECHE"]);
+        Assert.Equal("WINDSTAR", f.UltimoToro);
+    }
+
+    [Fact]
     public async Task La_ficha_de_un_animal_con_datos_rotos_se_arma_igual()
     {
         var animal = _e.AnimalImportado("100", json: "{esto no es json");

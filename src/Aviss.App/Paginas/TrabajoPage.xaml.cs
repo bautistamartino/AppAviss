@@ -20,11 +20,12 @@ public partial class TrabajoPage : ContentPage
 		_vm.PropertyChanged += AlCambiarViewModel;
 	}
 
-	// Al abrir o cerrar la capa de eventos se le quita el foco a "Caravana a mano": si no, su teclado numérico queda abierto
-	// y tapa los botones de la capa. Es solo de pantalla.
+	// Al abrir o cerrar la capa de eventos, o al abrirse el aviso "Leyó otra vaca" (spec 009), se le quita el foco a "Caravana a mano":
+	// si no, su teclado numérico queda abierto (por ejemplo tras una búsqueda a mano) y tapa los botones de la capa. Es solo de pantalla.
 	private async void AlCambiarViewModel(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
 	{
-		if (e.PropertyName != nameof(TrabajoViewModel.HayEventos)) return;
+		if (e.PropertyName != nameof(TrabajoViewModel.HayEventos)
+			&& e.PropertyName != nameof(TrabajoViewModel.HayConfirmarReemplazo)) return;
 		try
 		{
 			CampoBusqueda.Unfocus();
@@ -33,6 +34,18 @@ public partial class TrabajoPage : ContentPage
 		catch (Exception)
 		{
 		}
+	}
+
+	// Botón Atrás de Android (spec 009, RF-4): con el aviso "Leyó otra vaca" abierto equivale a "Cancelar lectura", que es la salida
+	// que no descarta nada. Con cualquier otro cuadro o sin cuadro, Atrás se comporta como siempre (devolver false = lo maneja el sistema).
+	protected override bool OnBackButtonPressed()
+	{
+		if (_vm.HayConfirmarReemplazo)
+		{
+			_vm.CancelarLecturaCommand.Execute(null);
+			return true;
+		}
+		return base.OnBackButtonPressed();
 	}
 
 	protected override async void OnAppearing()
