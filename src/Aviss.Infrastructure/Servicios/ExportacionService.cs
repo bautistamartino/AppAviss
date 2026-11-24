@@ -77,7 +77,7 @@ internal sealed class ExportacionService : IExportacionService
         var ultima = await proveedor.GetRequiredService<IExportacionRepository>().ObtenerUltimaAsync(rodeoId, ct);
 
         return Resultado.Ok(new ResumenExportacionDto(
-            rodeoId, datos.TotalVacas, datos.VacasConEvento, datos.VacasSinEvento, datos.VacasCvetCeroConRegistro, datos.Jornada,
+            rodeoId, datos.TotalVacas, datos.VacasConEvento, datos.VacasSinEvento, datos.Jornada,
             ultima is null ? null : new UltimaExportacionDto(ultima.FechaUtc, ultima.ArchivoNombre, ultima.Formato, ultima.CantidadVacasConEvento),
             datos.VacasFueraDelArchivoConEvento));
     }

@@ -46,7 +46,7 @@ public class FakeCampoService : ICampoService
     public Task<ListaEventosDto> ListarEventosAsync(CancellationToken ct = default)
         => Task.FromResult(new ListaEventosDto(
             Estados.Where(e => e.EsPrincipal).ToList(),
-            [ArmadorListaEventos.EventoRechazo, .. Estados.Where(e => !e.EsPrincipal)],
+            [ArmadorListaEventos.EventoRechazo, .. Estados.Where(e => !e.EsPrincipal && !(e.ClaveEstandar is { } c && ArmadorListaEventos.ClavesOcultasEnOtroEvento.Contains(c)))],
             ResultadosAborto));
 
     /// <summary>Los resultados del aborto que ofrece el fake (por defecto los cinco; un test puede sacar los de un estado desactivado).</summary>
@@ -94,7 +94,11 @@ public class FakeCampoService : ICampoService
     {
         LecturasProcesadas.Add(comando);
         if (OnProcesarLectura is not null) return Task.FromResult(OnProcesarLectura(comando));
-        var r = Lecturas.TryGetValue(comando.Codigo, out var dto) ? dto : Datos.NoEncontrada(comando.Codigo);
+        // Spec 009: como el servicio real, con la bandera y una vaca que se marcaría y entra en tacto pregunta en vez de marcar.
+        if (comando.HayFichaConTactoAbierta && Lecturas.TryGetValue(comando.Codigo, out var marcable)
+            && marcable is { Tipo: TipoResultadoLectura.Marcada, Ficha: { } fichaMarcable })
+            return Task.FromResult(Resultado.Ok(Datos.RequiereDecision(fichaMarcable.AnimalId, marcable.Caravana ?? comando.Codigo, fichaMarcable)));
+        var r =Lecturas.TryGetValue(comando.Codigo, out var dto) ? dto : Datos.NoEncontrada(comando.Codigo);
         return Task.FromResult(Resultado.Ok(r));
     }
 
@@ -171,6 +175,15 @@ public class FakeCampoService : ICampoService
         return Task.FromResult(OnResetear?.Invoke(rodeoId) ?? Resultado.Ok(Guid.NewGuid()));
     }
 
+    public List<(Guid Id, string Nombre)> Renombrados { get; } = [];
+    public Func<Guid, string, Resultado>? OnRenombrarEstablecimiento { get; set; }
+
+    public Task<Resultado> RenombrarEstablecimientoAsync(Guid establecimientoId, string nombre, CancellationToken ct = default)
+    {
+        Renombrados.Add((establecimientoId, nombre));
+        return Task.FromResult(OnRenombrarEstablecimiento?.Invoke(establecimientoId, nombre) ?? Resultado.Ok());
+    }
+
     public virtual Task<IReadOnlyList<MovimientoDto>> ListarMovimientosAsync(Guid rodeoId, CancellationToken ct = default)
     {
         ConsultasDeMovimientos++;
@@ -207,6 +220,10 @@ public static class Datos
 
     public static ResultadoLecturaDto Marcada(Guid animalId, string caravana, Guid? marcaId = null, int manga = 1, int contador = 1)
         => new(TipoResultadoLectura.Marcada, caravana, animalId, caravana, Ficha(animalId, caravana), marcaId ?? Guid.NewGuid(), manga, contador, null, null, false);
+
+    /// <summary>Spec 009: la vaca se encontró y entra en tacto pero no se marcó (había una ficha con tacto abierta): trae la ficha y nada más.</summary>
+    public static ResultadoLecturaDto RequiereDecision(Guid animalId, string caravana, FichaAnimalDto? ficha = null)
+        => new(TipoResultadoLectura.RequiereDecision, caravana, animalId, caravana, ficha ?? Ficha(animalId, caravana), null, null, null, null, null, false);
 
     /// <summary>Una vaca con CVET 0: queda marcada y suma al conteo, pero sin ficha.</summary>
     public static ResultadoLecturaDto SinTacto(Guid animalId, string caravana, Guid? marcaId = null, int manga = 1, int contador = 1)

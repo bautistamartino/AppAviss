@@ -2,7 +2,7 @@
 
 Spec: [spec.md](spec.md)
 
-> **Ajuste 2026-11-24:** columna de evento `Evento1` (provisoria); SCTIM = hora del registro; CVET 0 con registro sale vacía y el resumen lo cuenta; la exportación es por rodeo importado (último vigente por vaca, sin acumular entre rodeos). El resto del plan no cambia: donde dice `EVENTO` leer `Evento1`, y las preguntas 5, 7 y 8 ya están resueltas.
+> **Ajuste 2026-11-24:** columna de evento `Evento1` (provisoria); SCTIM = hora del registro; CVET 0 con registro vigente sale como cualquier otra vaca (revisado el mismo día, ver pregunta 8 de la spec); la exportación es por rodeo importado (último vigente por vaca, sin acumular entre rodeos). El resto del plan no cambia: donde dice `EVENTO` leer `Evento1`, y las preguntas 5, 7 y 8 ya están resueltas.
 >
 > **Ajuste 2026-11-24 (2):** solo se exporta el tacto de la **jornada** del rodeo (día local del registro vigente más reciente); no hay lógica ni preguntas sobre segundos tactos. En `ConsultaExportacion` el filtro por jornada se aplica sobre los registros ya traídos (`JornadaDeTacto`); el resumen muestra la fecha de la jornada. La pregunta 10 está resuelta.
 >
@@ -55,7 +55,7 @@ Sin consultar vaca por vaca (20.000 vacas: nada de N+1). Dentro de **una sola tr
 Más el catálogo de estados (nombre y `ClaveEstandar`). Con eso:
 - **Nombre del evento:** tacto con `EventoId` → nombre de ese evento; tacto sin `EventoId` → nombre del estado nuevo; rechazo con `EventoId` → nombre de ese evento; rechazo sin `EventoId` → "Rechazo" (constante única, la misma que usa la ficha).
 - **Resultado del aborto:** tacto de Aborto → `ReglasResultadoAborto.DesdeClaveEstado(clave del estado nuevo)` y su etiqueta (`Vacía OK`, `Inseminada`, `Seca`, `Fresca`); rechazo con `DiasAborto` → `Rechazo`. Se reutiliza la regla de la spec 005; no se vuelve a escribir.
-- Las vacas con CVET 0 no entran en el diccionario (RF-11); se cuentan aparte para el resumen (pregunta 8).
+- Las vacas con CVET 0 no se tratan aparte: si tienen registro vigente en la jornada entran en el diccionario como cualquier otra y, si no, quedan fuera y salen vacías (RF-11, decisión 2026-11-24).
 - El diccionario resultante es por **clave de caravana** (`Caravana.Clave`, la misma regla de unicidad de la base y de la importación).
 
 ### Cómo se arma el archivo (`ExportadorDairyComp`)
@@ -85,7 +85,7 @@ Se reabre el archivo generado con `PerfilDairyComp.Leer` (sirve para los dos for
 
 **`ExportarPage` + `ExportarViewModel`**, ruta `Exportar`, botón "Exportar" nuevo en `InicioPage` (debajo de "Importar rodeo", 72 de alto, texto 24).
 - **Estado 1, lista:** rodeos activos agrupados por establecimiento, cada fila con el nombre y la cantidad de vacas. Botón grande "Volver".
-- **Estado 2, resumen** (al tocar un rodeo): "N de M vacas con evento", "Sin evento: K", si hay: "Con CVET 0 y registro guardado: J (salen vacías)" y "Última exportación: dd/mm/aaaa HH:mm, N vacas". Debajo, dos botones grandes: **"Generar CSV"** y **"Generar Excel (.xls)"** (el formato se elige acá, al final; ninguno viene elegido) y "Volver".
+- **Estado 2, resumen** (al tocar un rodeo): "N de M vacas con evento", "Sin evento: K" y "Última exportación: dd/mm/aaaa HH:mm, N vacas". Debajo, dos botones grandes: **"Generar CSV"** y **"Generar Excel (.xls)"** (el formato se elige acá, al final; ninguno viene elegido) y "Volver".
 - **Estado 3, generando:** indicador de actividad y botones deshabilitados; si se vuelve atrás se cancela y no se guarda nada.
 - **Estado 4, resultado:** nombre del archivo, "Guardado en Descargas", cantidades, botones "Compartir" y "Listo". Los errores se muestran con el mensaje fijo y un "Reintentar".
 - Vertical 800x1340, botones de 72 dp, alto contraste, sin escritura. Regla de testeo del proyecto: `ExportarViewModel` va en `src/Aviss.App/ViewModels/` (sin tipos de MAUI) y se prueba enlazado desde `Aviss.Application.Tests` con fakes en `ViewModels/Soporte/` (`FakeExportacionService`, `FakeEntregaArchivo`).
@@ -126,13 +126,13 @@ Tests primero. Las muestras son `tests/muestras/dairy-comp-226-vacas.xls` y `tes
 
 | RF | Test (proyecto › clase › caso) |
 |---|---|
-| RF-1, RF-2 | Infrastructure.Tests › `ExportacionServiceTests` › lista solo rodeos activos por establecimiento; resumen con vacas con y sin evento, con CVET 0 y registro, y última exportación |
+| RF-1, RF-2 | Infrastructure.Tests › `ExportacionServiceTests` › lista solo rodeos activos por establecimiento; resumen con vacas con y sin evento, la de CVET 0 tactada a propósito incluida, y última exportación |
 | RF-3, RF-28 | Application.Tests › `ExportarViewModelTests` › formato sin elegir no genera; los dos botones; volver; cancelar al generar; errores con mensaje fijo |
 | RF-4, RF-5 | Excel.Tests › `ExportadorDairyComp*Tests` › mismas filas y columnas con la muestra de 226 (.xls) y la de 282 (CSV) en los cuatro cruces; el arreglo de bytes del original en la base queda igual (hash antes y después) |
 | RF-6, RF-7 | Domain.Tests › `FormatoColumnasExportacionTests` › fecha y hora en zonas distintas, `0905`, `0010`, medianoche local, cambio de horario de verano |
 | RF-8 | Application.Tests › `ArmadorValoresExportacionTests` › nombre (no código) de cada evento, evento renombrado, evento creado a mano, Rechazo fijo |
 | RF-9, RF-10 | Application.Tests › `ArmadorValoresExportacionTests` › días de preñez solo en fecha previa; días de aborto 0 y 400; los cinco resultados; Aborto con Rechazo |
-| RF-11 | Application.Tests › `ArmadorValoresExportacionTests` y Excel.Tests › vacas sin registro, CVET 0, fila excluida, ID repetido y fila `Total` con columnas nuevas vacías |
+| RF-11 | Application.Tests › `ArmadorValoresExportacionTests` y Excel.Tests › vacas sin registro (CVET 0 sin registro incluida), fila excluida, ID repetido y fila `Total` con columnas nuevas vacías |
 | RF-12 | Application.Tests › `JornadaDeTactoTests` › registros de un día anterior no salen, día local con zona y cerca de la medianoche; `SelectorRegistroExportableTests` › anulado ignorado; corregido con "Editar"; empate por orden de guardado; Infrastructure.Tests › `ConsultaExportacionTests` con tactos, rechazos y anulaciones reales |
 | RF-13 | Excel.Tests › columna `RPRO` idéntica celda por celda en los cuatro cruces |
 | RF-14 | Excel.Tests › original con columna `scdat` en minúscula rechaza sin generar; Infrastructure.Tests › `ExportacionServiceTests` › no registra nada |
@@ -157,6 +157,6 @@ Tests primero. Las muestras son `tests/muestras/dairy-comp-226-vacas.xls` y `tes
 - **Memoria:** 25 MB de original más el generado más el validado en memoria a la vez; en tablets chicas hay que medirlo en el cierre (RF-26).
 - **Android:** `MediaStore.Downloads` y el compartir se comportan distinto según el fabricante; se prueba en la tablet real (SM-X110) y en el emulador. Si no hay tablet, queda como pendiente de verificación manual.
 - **SQLite con un solo escritor:** la constancia espera si hay un tacto guardándose; es una escritura chica y se serializa con la misma regla que las demás.
-- **CVET 0 con registro guardado** sale vacío (decisión del responsable) y el dato queda solo en la base; por eso el resumen lo cuenta (pregunta 8).
+- **CVET 0 con registro guardado** sale como cualquier otra vaca (decisión del responsable del 2026-11-24, tras la spec 009; antes salía vacía); el resumen ya no tiene una línea aparte (pregunta 8).
 - **Alcance por jornada:** la "jornada" se toma como el día local del registro más reciente del rodeo (no el día en que se exporta), para que exportar pasada la medianoche no deje el archivo vacío. Es una interpretación de la decisión del 2026-11-24; la pantalla muestra la fecha de la jornada en el resumen.
 - **Advertencias de dependencias NPOI** (NU1902/NU1903): ya anotadas en `MEMORY.md`; la exportación no suma paquetes.

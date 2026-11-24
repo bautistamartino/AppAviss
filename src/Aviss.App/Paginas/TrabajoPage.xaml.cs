@@ -18,13 +18,21 @@ public partial class TrabajoPage : ContentPage
 		InitializeComponent();
 		BindingContext = _vm = viewModel;
 		_vm.PropertyChanged += AlCambiarViewModel;
+		ScrollDatos.PropertyChanged += AlCambiarVisibilidadDeLista;
+		ScrollHistorial.PropertyChanged += AlCambiarVisibilidadDeLista;
 	}
 
-	// Al abrir o cerrar la capa de eventos se le quita el foco a "Caravana a mano": si no, su teclado numérico queda abierto
-	// y tapa los botones de la capa. Es solo de pantalla.
+	// Al abrir o cerrar la capa de eventos, o al abrirse el aviso "Leyó otra vaca" (spec 009), se le quita el foco a "Caravana a mano":
+	// si no, su teclado numérico queda abierto (por ejemplo tras una búsqueda a mano) y tapa los botones de la capa. Es solo de pantalla.
 	private async void AlCambiarViewModel(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
 	{
-		if (e.PropertyName != nameof(TrabajoViewModel.HayEventos)) return;
+		if (e.PropertyName == nameof(TrabajoViewModel.Ficha))
+		{
+			ReiniciarScrollSiCambioLaVaca();
+			return;
+		}
+		if (e.PropertyName != nameof(TrabajoViewModel.HayEventos)
+			&& e.PropertyName != nameof(TrabajoViewModel.HayConfirmarReemplazo)) return;
 		try
 		{
 			CampoBusqueda.Unfocus();
@@ -33,6 +41,58 @@ public partial class TrabajoPage : ContentPage
 		catch (Exception)
 		{
 		}
+	}
+
+	// Las listas de Datos e Historial deben abrir desde arriba. El ScrollView conserva el desplazamiento de la ficha anterior,
+	// así que al cambiar de vaca (o al cerrar y volver a abrir la ficha) se vuelve a 0 sin animación. Si la ficha se
+	// refresca para la MISMA vaca (por ejemplo tras guardar un tacto) no se toca el scroll del usuario.
+	// Solo una de las dos listas está visible; la otra queda "pendiente" y se reinicia cuando se muestra.
+	private string? _caravanaMostrada;
+	private bool _pendienteDatos, _pendienteHistorial;
+
+	private void ReiniciarScrollSiCambioLaVaca()
+	{
+		var caravana = _vm.Ficha?.Caravana;
+		if (caravana is null) { _caravanaMostrada = null; return; }   // ficha cerrada: la próxima apertura reinicia
+		if (caravana == _caravanaMostrada) return;
+		_caravanaMostrada = caravana;
+		_pendienteDatos = _pendienteHistorial = true;
+		AplicarScrollPendiente();
+	}
+
+	private void AplicarScrollPendiente()
+	{
+		// Dispatcher: el layout de la lista nueva tiene que estar armado antes de volver al tope.
+		Dispatcher.Dispatch(async () =>
+		{
+			try
+			{
+				if (_pendienteDatos && ScrollDatos.IsVisible) { _pendienteDatos = false; await ScrollDatos.ScrollToAsync(0, 0, false); }
+				if (_pendienteHistorial && ScrollHistorial.IsVisible) { _pendienteHistorial = false; await ScrollHistorial.ScrollToAsync(0, 0, false); }
+			}
+			catch (Exception)
+			{
+				// Es solo estética: si no se puede volver arriba, no pasa nada.
+			}
+		});
+	}
+
+	// Cuando la pestaña que estaba oculta pasa a verse, se aplica el reinicio que quedó pendiente.
+	private void AlCambiarVisibilidadDeLista(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+	{
+		if (e.PropertyName == nameof(IsVisible) && (_pendienteDatos || _pendienteHistorial)) AplicarScrollPendiente();
+	}
+
+	// Botón Atrás de Android (spec 009, RF-4): con el aviso "Leyó otra vaca" abierto equivale a "Cancelar lectura", que es la salida
+	// que no descarta nada. Con cualquier otro cuadro o sin cuadro, Atrás se comporta como siempre (devolver false = lo maneja el sistema).
+	protected override bool OnBackButtonPressed()
+	{
+		if (_vm.HayConfirmarReemplazo)
+		{
+			_vm.CancelarLecturaCommand.Execute(null);
+			return true;
+		}
+		return base.OnBackButtonPressed();
 	}
 
 	protected override async void OnAppearing()

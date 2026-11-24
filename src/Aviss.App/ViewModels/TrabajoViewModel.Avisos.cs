@@ -42,7 +42,7 @@ public sealed partial class TrabajoViewModel
     private static string DescribirRegistro(UltimoRegistroDto u) => u.Tipo switch
     {
         TipoRegistroCampo.Tacto => string.IsNullOrEmpty(u.EstadoNombre) ? "Tacto" : $"Tacto {u.EstadoNombre}",
-        TipoRegistroCampo.Rechazo => (string.IsNullOrWhiteSpace(u.EstadoNombre) ? "Rechazo" : u.EstadoNombre) + (string.IsNullOrWhiteSpace(u.Observaciones) ? "" : $" · {u.Observaciones}"),
+        TipoRegistroCampo.Rechazo => (string.IsNullOrWhiteSpace(u.EstadoNombre) ? EventosCampo.NombreRechazo : u.EstadoNombre) + (string.IsNullOrWhiteSpace(u.Observaciones) ? "" : $" · {u.Observaciones}"),
         _ => "Marca de pasada"
     };
 
@@ -64,12 +64,15 @@ public sealed partial class TrabajoViewModel
         catch (Exception) { MensajeError = MensajeFalla; }
     }
 
-    /// <summary>"Seguir": cierra el aviso y espera la siguiente lectura.</summary>
+    /// <summary>
+    /// "Seguir": cierra el aviso y espera la siguiente lectura. Si había una ficha abierta, la deja como estaba (spec 009, RF-8.4):
+    /// cerrarla en silencio perdería el evento y la observación que se venían cargando.
+    /// </summary>
     [RelayCommand]
     private async Task SeguirAsync()
     {
         if (Cuadro != CuadroTrabajo.Aviso) return;
-        CerrarFichaInterno();
+        if (Etapa != EtapaTrabajo.Ficha) CerrarFichaInterno();
         await CambiarCuadroAsync(CuadroTrabajo.Ninguno);
     }
 

@@ -27,7 +27,6 @@ public static class MensajesCampo
         CodigoError.FechaAnteriorAlUltimoRegistro =>
             "La hora de la tablet es anterior al último registro de este animal. " + AvisoDeHora,
         CodigoError.VacaYaEnEspera => "Esa vaca ya está en espera.",
-        CodigoError.VacaNoEntraEnTacto => "Esa vaca no entra en tacto (CVET 0): no se puede poner en espera.",
         CodigoError.EsperaNoPendiente => "Esa vaca no tiene una espera pendiente.",
         CodigoError.VacaEnEspera => "Está en espera: primero resolvela o saltala.",
         CodigoError.RechazoYaAnulado => "Ese rechazo ya se había deshecho.",

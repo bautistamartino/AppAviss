@@ -155,10 +155,10 @@
                         <Label Text="{Binding UltimoGuardado, StringFormat='Último: {0}'}" Style="{StaticResource TextoCampo}" FontSize="28"
                                FontAttributes="Bold" HorizontalTextAlignment="Center" />
                     </Border>
-                    <!-- Tras una vaca con CVET 0 (que no entra en tacto): un botón para mirar su ficha, por si se quiere saber algo de ella. -->
+                    <!-- Tras una vaca con CVET 0 (que no entra en tacto): un botón para abrir su ficha completa, por si se la quiere tactar igual. -->
                     <Button Text="{Binding TextoVerFichaSinTacto}" Style="{StaticResource BotonCampoSecundario}" FontSize="20" HeightRequest="56"
                             IsVisible="{Binding HayVerFichaSinTacto}" Command="{Binding VerFichaSinTactoCommand}"
-                            SemanticProperties.Hint="Abre la ficha de la última vaca que no entró en tacto, solo para mirar" />
+                            SemanticProperties.Hint="Abre la ficha de la última vaca que no entró en tacto" />
                 </VerticalStackLayout>
 
                 <!-- Ficha de la vaca, como en el Daily: título con el ID y el CVET, Evento y Observación lado a lado, pestañas
@@ -166,10 +166,10 @@
                 <Grid RowDefinitions="Auto,Auto,*,Auto" IsVisible="{Binding HayFicha}">
 
                     <!-- El ID y el CVET (el motivo del tacto) están en la barra de arriba de la pantalla, que se ve siempre. Una vaca con
-                         CVET 0 abierta con "Ver ficha" lo avisa en rojo. -->
+                         CVET 0 abierta con "Ver ficha" lo avisa con un cartel informativo (spec 009, RF-15). -->
                     <VerticalStackLayout Grid.Row="0">
-                        <Border IsVisible="{Binding NoEntraEnTacto}" BackgroundColor="{StaticResource CampoPeligro}" StrokeThickness="0" Padding="14,6">
-                            <Label Text="No entra en tacto (CVET 0)" TextColor="White" FontSize="20" FontAttributes="Bold" />
+                        <Border IsVisible="{Binding MostrarCartelCvetCero}" BackgroundColor="{StaticResource CampoSecundario}" StrokeThickness="0" Padding="14,6">
+                            <Label Text="{Binding TextoCartelCvetCero}" TextColor="White" FontSize="20" FontAttributes="Bold" />
                         </Border>
                         <!-- Cartel de la vaca que viene de la espera (RF-3): acá "Saltar" la saca de la espera sin guardar nada. -->
                         <Border IsVisible="{Binding EsEsperaAbierta}" BackgroundColor="{StaticResource CampoAlerta}" StrokeThickness="0" Padding="14,6">
@@ -183,7 +183,7 @@
                     </VerticalStackLayout>
 
                     <!-- Evento y Observación: tocar cada casillero abre su lista o su texto. Nada se guarda hasta "Entrar". -->
-                    <VerticalStackLayout Grid.Row="1" Spacing="4" Padding="10,8,10,4" IsVisible="{Binding PuedeAgregarEventos}">
+                    <VerticalStackLayout Grid.Row="1" Spacing="4" Padding="10,8,10,4">
                         <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
                             <Label Grid.Column="0" Text="Evento" Style="{StaticResource TextoCampo}" FontSize="16" FontAttributes="Bold" TextColor="{StaticResource Gray600}" />
                             <Label Grid.Column="1" Text="Observación" Style="{StaticResource TextoCampo}" FontSize="16" FontAttributes="Bold" TextColor="{StaticResource Gray600}" />
@@ -194,7 +194,7 @@
                                     Command="{Binding AbrirEventosCommand}"
                                     SemanticProperties.Hint="Elegir el evento de esta vaca" />
                             <Button Grid.Column="1" Text="{Binding TextoCasilleroObservacion}" Style="{StaticResource BotonCampoSecundario}" FontSize="18"
-                                    HeightRequest="56" MinimumWidthRequest="0" Padding="8,0" LineBreakMode="TailTruncation"
+                                    HeightRequest="68" MinimumWidthRequest="0" Padding="8,0" LineBreakMode="TailTruncation"
                                     Command="{Binding AbrirObservacionCommand}"
                                     SemanticProperties.Hint="Opcional: escribir una observación" />
                         </Grid>
@@ -222,7 +222,7 @@
                         </Grid>
 
                         <!-- Datos: una tabla "dato → valor" con renglones separados. Trae todas las columnas del Excel (DCC, DDUC, LECHE...). -->
-                        <ScrollView Grid.Row="1" IsVisible="{Binding HayDatos}">
+                        <ScrollView x:Name="ScrollDatos" Grid.Row="1" IsVisible="{Binding HayDatos}">
                             <VerticalStackLayout BindableLayout.ItemsSource="{Binding FilasDatos}" Padding="10,0">
                                 <BindableLayout.ItemTemplate>
                                     <DataTemplate x:DataType="dto:CampoFichaDto">
@@ -241,7 +241,7 @@
                         </ScrollView>
 
                         <!-- Historial cronológico (RF-14). -->
-                        <ScrollView Grid.Row="1" IsVisible="{Binding MostrarHistorial}">
+                        <ScrollView x:Name="ScrollHistorial" Grid.Row="1" IsVisible="{Binding MostrarHistorial}">
                             <VerticalStackLayout BindableLayout.ItemsSource="{Binding Ficha.Historial}" Spacing="10" Padding="14,10">
                                 <BindableLayout.ItemTemplate>
                                     <DataTemplate x:DataType="dto:EventoFichaDto">
@@ -272,7 +272,7 @@
                                 Padding="4,0" IsVisible="{Binding PuedePonerEnEspera}" Command="{Binding PonerEnEsperaCommand}"
                                 SemanticProperties.Hint="Dejar esta vaca en espera para atenderla después" />
                         <Button Grid.Column="2" Text="Entrar" Style="{StaticResource BotonCampo}" BackgroundColor="{StaticResource CampoExito}" FontSize="22"
-                                HeightRequest="56" IsVisible="{Binding PuedeAgregarEventos}" Command="{Binding EntrarCommand}"
+                                HeightRequest="56" Command="{Binding EntrarCommand}"
                                 SemanticProperties.Hint="Guardar el evento elegido para esta vaca" />
                     </Grid>
                 </Grid>
@@ -370,6 +370,40 @@
             </Border>
         </Grid>
 
+
+        <!-- "Leyó otra vaca" (spec 009, RF-2): con una ficha abierta, el bastón leyó otra vaca que entra en tacto. La nueva todavía NO
+             se marcó: el veterinario elige con tres botones grandes, pensados para una mano. Atrás de Android = Cancelar lectura. -->
+        <Grid IsVisible="{Binding HayConfirmarReemplazo}" BackgroundColor="{StaticResource CampoVelo}" Padding="14">
+            <Grid.GestureRecognizers><TapGestureRecognizer /></Grid.GestureRecognizers>
+            <ScrollView VerticalOptions="Center">
+            <Border BackgroundColor="White" StrokeThickness="6" Stroke="{StaticResource CampoAlerta}" Padding="18,16"
+                    HorizontalOptions="Fill">
+                <VerticalStackLayout Spacing="12">
+                    <Label Text="Leyó otra vaca" Style="{StaticResource TituloCuadro}" FontSize="30" HorizontalTextAlignment="Center" />
+                    <Label Text="Ficha abierta" Style="{StaticResource TextoCampo}" FontSize="20" HorizontalTextAlignment="Center" />
+                    <Label Text="{Binding ReemplazoCaravanaActual}" Style="{StaticResource CaravanaGrande}" FontSize="44"
+                           HorizontalTextAlignment="Center" LineBreakMode="TailTruncation" />
+                    <Label Text="Vaca recién leída (todavía no se marcó)" Style="{StaticResource TextoCampo}" FontSize="20" HorizontalTextAlignment="Center" />
+                    <Label Text="{Binding ReemplazoCaravanaNueva}" Style="{StaticResource CaravanaGrande}" FontSize="44"
+                           HorizontalTextAlignment="Center" LineBreakMode="TailTruncation" />
+                    <Border IsVisible="{Binding HayReemplazoConEventoSinGuardar}" BackgroundColor="{StaticResource CampoAlerta}" StrokeThickness="0" Padding="14,10">
+                        <Label Text="{Binding TextoReemplazoAdvertencia}" TextColor="Black" FontSize="20" FontAttributes="Bold" />
+                    </Border>
+                    <Border IsVisible="{Binding HayMensajeCuadro}" BackgroundColor="{StaticResource CampoPeligro}" StrokeThickness="0" Padding="16,10">
+                        <Label Text="{Binding MensajeCuadro}" TextColor="White" FontSize="22" FontAttributes="Bold" />
+                    </Border>
+                    <Grid RowDefinitions="Auto,Auto,Auto" RowSpacing="10" Margin="0,8,0,0">
+                        <Button Grid.Row="0" Text="Poner en espera y abrir la nueva" Style="{StaticResource BotonCampo}"
+                                Command="{Binding PonerEnEsperaYAbrirNuevaCommand}" />
+                        <Button Grid.Row="1" Text="Cancelar lectura" Style="{StaticResource BotonCampoSecundario}"
+                                Command="{Binding CancelarLecturaCommand}" />
+                        <Button Grid.Row="2" Text="Saltar la actual y abrir la nueva" Style="{StaticResource BotonCampoPeligro}"
+                                Command="{Binding SaltarYAbrirNuevaCommand}" />
+                    </Grid>
+                </VerticalStackLayout>
+            </Border>
+            </ScrollView>
+        </Grid>
 
         <!-- Verificación de "Finalizar manga" / "Terminar el tacto" (RF-6): contador y caravanas -->
         <Grid IsVisible="{Binding HayVerificacion}" BackgroundColor="{StaticResource CampoVelo}" Padding="14">

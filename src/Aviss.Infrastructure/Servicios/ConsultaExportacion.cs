@@ -59,8 +59,8 @@ public sealed class ConsultaExportacion : IConsultaExportacion
         }
         foreach (var r in lectura.Rechazos)
         {
-            // Rechazo sin evento = el "Rechazo" fijo de la aplicación (el mismo nombre que usa la ficha).
-            var nombre = r.EventoId is null ? ArmadorListaEventos.EventoRechazo.Nombre : NombreDe(r.EventoId);
+            // Rechazo sin evento = el Rechazo fijo. El archivo de vuelta dice "RECHAZO", igual que la pantalla (decisión del 2026-11-24; un solo lugar: EventosCampo.NombreRechazo).
+            var nombre = r.EventoId is null ? EventosCampo.NombreRechazo : NombreDe(r.EventoId);
             // Un Aborto cuyo resultado fue Rechazo guarda sus días en el rechazo: ahí el resultado es siempre Rechazo.
             ResultadoAborto? resultado = r.DiasAborto is not null ? ResultadoAborto.Rechazo : null;
             registros.Add(new RegistroExportable(infoAnimal[r.AnimalId].Clave, TipoRegistroExportable.Rechazo, r.FechaHoraUtc,
@@ -70,14 +70,12 @@ public sealed class ConsultaExportacion : IConsultaExportacion
         var zona = _zona.Zona;
         var jornada = JornadaDeTacto.Filtrar(registros, zona);
 
-        var cvetCero = infoAnimal.Values.Where(a => !a.EntraEnTacto).Select(a => a.Clave).ToHashSet();
         var valores = new Dictionary<string, ValoresExportacion>();
-        var cvetCeroConRegistro = 0;
         foreach (var porVaca in jornada.Registros.GroupBy(r => r.CaravanaClave))
         {
             var elegido = SelectorRegistroExportable.Elegir(porVaca);
             if (elegido is null) continue;
-            if (cvetCero.Contains(porVaca.Key)) { cvetCeroConRegistro++; continue; }   // CVET 0: sale vacía y se cuenta (RF-11)
+            // Una vaca de CVET 0 tactada a propósito (se puede abrir su ficha) sale como cualquier otra (decisión 2026-11-24).
             valores[porVaca.Key] = ArmadorValoresExportacion.Armar(elegido, zona);
         }
 
@@ -86,7 +84,7 @@ public sealed class ConsultaExportacion : IConsultaExportacion
         var clavesDelArchivo = lectura.Animales.Where(a => a.Origen == OrigenAnimal.Importado).Select(a => infoAnimal[a.Id].Clave).ToHashSet();
         var conEventoEnElArchivo = valores.Keys.Count(clavesDelArchivo.Contains);
 
-        return new DatosExportacion(valores, jornada.Dia, clavesDelArchivo.Count, conEventoEnElArchivo, cvetCeroConRegistro,
+        return new DatosExportacion(valores, jornada.Dia, clavesDelArchivo.Count, conEventoEnElArchivo,
             valores.Count - conEventoEnElArchivo);
     }
 

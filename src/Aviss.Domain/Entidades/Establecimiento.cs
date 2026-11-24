@@ -21,6 +21,15 @@ public sealed class Establecimiento : EntidadEditable
 
     private Establecimiento(DateTime ahoraUtc) : base(ahoraUtc) { }
 
+    /// <summary>Cambia el nombre (mismas reglas que al crear: obligatorio, sin espacios de más). No toca nada más.</summary>
+    public void Renombrar(string? nombre, DateTime ahoraUtc)
+    {
+        // Primero se valida: si el nombre no sirve, la entidad queda como estaba.
+        var limpio = Validar.TextoObligatorio(nombre, "El nombre del establecimiento");
+        Nombre = limpio;
+        Tocar(ahoraUtc);
+    }
+
     public void DarDeBaja(DateTime ahoraUtc) { Activo = false; Tocar(ahoraUtc); }
     public void Reactivar(DateTime ahoraUtc) { Activo = true; Tocar(ahoraUtc); }
 }

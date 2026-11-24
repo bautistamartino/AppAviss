@@ -93,7 +93,8 @@ stateDiagram-v2
         Esperando --> Ficha: lectura/búsqueda de vaca no procesada (marca guardada)
         Esperando --> Aviso: lectura de vaca ya procesada hoy
         Esperando --> NoEncontrada: caravana inexistente
-        Ficha --> Ficha: lectura de OTRA vaca (reemplaza la ficha)
+        Ficha --> ConfirmarReemplazo: lectura de OTRA vaca que entra en tacto (modificado por la 009: se pregunta antes de marcar; ver spec 009)
+        ConfirmarReemplazo --> Ficha: elegir 1, 2 (cancelar) o 3
         Ficha --> Esperando: tacto guardado / cerrar ficha / desmarcar
         Ficha --> Aviso: lectura de vaca ya procesada
         Aviso --> Esperando: Seguir

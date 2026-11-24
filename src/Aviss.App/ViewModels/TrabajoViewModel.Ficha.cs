@@ -69,11 +69,14 @@ public sealed partial class TrabajoViewModel
     }
 
 
-    /// <summary>La ficha abierta es de una vaca con CVET 0 (se abrió con "Ver ficha"): no se puede tactar.</summary>
-    public bool NoEntraEnTacto => HayFicha && !Ficha!.EntraEnTacto;
+    /// <summary>
+    /// La ficha abierta es de una vaca con CVET 0 (se abrió con "Ver ficha"): se muestra un cartel solo informativo (spec 009, RF-15).
+    /// No bloquea nada: la ficha es completa (Evento, Observación, Saltar, En espera y Entrar), porque en el campo el veterinario puede
+    /// decidir tactarla igual.
+    /// </summary>
+    public bool MostrarCartelCvetCero => HayFicha && !Ficha!.EntraEnTacto;
 
-    /// <summary>Solo una vaca que entra en tacto muestra "Agregar evento" y "Agregar observación".</summary>
-    public bool PuedeAgregarEventos => HayFicha && Ficha!.EntraEnTacto;
+    public string TextoCartelCvetCero => "CVET 0: no estaba en la lista de tacto";
 
     /// <summary>
     /// El selector de eventos de dos niveles (spec 005): principales y "Otro evento". Lo muestra la capa <see cref="CuadroTrabajo.Eventos"/>.
@@ -109,7 +112,7 @@ public sealed partial class TrabajoViewModel
 
     public string TextoVerFichaSinTacto => _ultimaSinTactoId is null ? "" : $"Ver ficha de {_ultimaSinTactoCaravana}";
 
-    /// <summary>Abre la ficha de esa vaca solo para mirar: no la vuelve a marcar y, como no entra en tacto, no deja agregar eventos.</summary>
+    /// <summary>Abre la ficha completa de esa vaca (spec 009, RF-15): no la vuelve a marcar, pero se puede tactar o poner en espera igual.</summary>
     [RelayCommand]
     private async Task VerFichaSinTactoAsync()
     {
@@ -158,7 +161,7 @@ public sealed partial class TrabajoViewModel
     [ObservableProperty]
     private string _textoObservacion = "";
 
-    private bool PuedeAbrirCuadroDeFicha => Ficha is { EntraEnTacto: true } && Etapa == EtapaTrabajo.Ficha && Cuadro == CuadroTrabajo.Ninguno;
+    private bool PuedeAbrirCuadroDeFicha => Ficha is not null && Etapa == EtapaTrabajo.Ficha && Cuadro == CuadroTrabajo.Ninguno;
 
     /// <summary>El casillero "Evento": abre todas las opciones; elegir una la deja en el casillero (se guarda con "Entrar").</summary>
     [RelayCommand]
@@ -303,8 +306,8 @@ public sealed partial class TrabajoViewModel
     [RelayCommand]
     private async Task ElegirEventoAsync(EventoCampoDto? estado)
     {
-        // Solo con una ficha de una vaca que entra en tacto y sin ningún cuadro encima (salvo la lista, desde donde se elige).
-        if (estado is null || Ficha is not { EntraEnTacto: true } || Etapa != EtapaTrabajo.Ficha
+        // Solo con una ficha abierta (también la de CVET 0, spec 009 RF-15) y sin ningún cuadro encima (salvo la lista, desde donde se elige).
+        if (estado is null || Ficha is null || Etapa != EtapaTrabajo.Ficha
             || Cuadro is not (CuadroTrabajo.Ninguno or CuadroTrabajo.Eventos)) return;
 
         // Los datos los armó el selector; un evento sin pasos no necesita ninguno. Un evento con pasos sin sus datos completos no se elige.
@@ -317,14 +320,14 @@ public sealed partial class TrabajoViewModel
         if (Cuadro == CuadroTrabajo.Eventos) await CambiarCuadroAsync(CuadroTrabajo.Ninguno);
     }
 
-    /// <summary>Se puede tocar "Entrar": ficha de una vaca que entra en tacto, sin cuadros encima y con un evento elegido.</summary>
-    private bool PuedeEntrar => Ficha is { EntraEnTacto: true } && Etapa == EtapaTrabajo.Ficha && Cuadro == CuadroTrabajo.Ninguno && EventoElegido is not null;
+    /// <summary>Se puede tocar "Entrar": con una ficha abierta (también la de CVET 0), sin cuadros encima y con un evento elegido.</summary>
+    private bool PuedeEntrar => Ficha is not null && Etapa == EtapaTrabajo.Ficha && Cuadro == CuadroTrabajo.Ninguno && EventoElegido is not null;
 
     /// <summary>"Entrar": guarda el tacto con el evento elegido y la observación (si hay).</summary>
     [RelayCommand(CanExecute = nameof(PuedeEntrar))]
     private async Task EntrarAsync()
     {
-        if (Ficha is not { EntraEnTacto: true } ficha || EventoElegido is not { } estado || Etapa != EtapaTrabajo.Ficha || Cuadro != CuadroTrabajo.Ninguno) return;
+        if (Ficha is not { } ficha || EventoElegido is not { } estado || Etapa != EtapaTrabajo.Ficha || Cuadro != CuadroTrabajo.Ninguno) return;
 
         try
         {

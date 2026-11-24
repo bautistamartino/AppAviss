@@ -14,7 +14,7 @@ public class MensajesCampoTests
         CodigoError.CierreAutomaticoNoSeDeshace, CodigoError.CierreDeOtroDia, CodigoError.HayOtraMangaAbierta,
         CodigoError.FechaAnteriorAlUltimoRegistro,
         // spec 004
-        CodigoError.VacaYaEnEspera, CodigoError.VacaNoEntraEnTacto, CodigoError.EsperaNoPendiente, CodigoError.VacaEnEspera,
+        CodigoError.VacaYaEnEspera, CodigoError.EsperaNoPendiente, CodigoError.VacaEnEspera,
         CodigoError.RechazoYaAnulado, CodigoError.RechazoNoEsElUltimo
     ];
 

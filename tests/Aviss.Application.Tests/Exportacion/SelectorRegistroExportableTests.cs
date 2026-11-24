@@ -45,7 +45,7 @@ public class SelectorRegistroExportableTests
     public void Compara_tactos_y_rechazos_juntos()
     {
         var tacto = R.Reg(orden: 1, evento: "VACIA");
-        var rechazo = R.Reg(orden: 2, evento: "Rechazo", tipo: TipoRegistroExportable.Rechazo);
+        var rechazo = R.Reg(orden: 2, evento: "RECHAZO", tipo: TipoRegistroExportable.Rechazo);
         Assert.Same(rechazo, SelectorRegistroExportable.Elegir([tacto, rechazo]));
     }
 }

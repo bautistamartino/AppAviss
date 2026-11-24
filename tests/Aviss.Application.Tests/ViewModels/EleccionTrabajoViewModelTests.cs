@@ -275,6 +275,137 @@ public class EleccionTrabajoViewModelTests
         Assert.False(b.Vm.HayMensajeInfo);
     }
 
+    // ------------------------------------------------------------------ editar el nombre de un establecimiento
+
+    private static async Task<(Banco Banco, EstablecimientoParaTrabajar Establecimiento)> BancoParaRenombrarAsync()
+    {
+        var b = new Banco();
+        var norte = Guid.NewGuid();
+        var sur = Guid.NewGuid();
+        b.Campo.Rodeos = [Datos.Rodeo("Tambo Norte", "A", norte, Guid.NewGuid()), Datos.Rodeo("Tambo Norte", "B", norte, Guid.NewGuid()),
+                          Datos.Rodeo("Tambo Sur", "C", sur, Guid.NewGuid())];
+        await b.Vm.CargarAsync();
+        return (b, b.Vm.Establecimientos.First(e => e.Id == norte));
+    }
+
+    private static Func<Guid, string, Resultado> RenombrarEnLaLista(Banco b) => (id, nombre) =>
+    {
+        b.Campo.Rodeos = [.. b.Campo.Rodeos.Select(r => r.EstablecimientoId == id ? r with { EstablecimientoNombre = nombre.Trim() } : r)];
+        return Resultado.Ok();
+    };
+
+    [Fact]
+    public async Task Pedir_editar_abre_la_capa_con_el_nombre_actual_y_no_guarda_nada()
+    {
+        var (b, est) = await BancoParaRenombrarAsync();
+
+        b.Vm.PedirEditarEstablecimientoCommand.Execute(est);
+
+        Assert.True(b.Vm.HayEdicionEstablecimiento);
+        Assert.Equal("Tambo Norte", b.Vm.NombreEditado);
+        Assert.Empty(b.Campo.Renombrados);
+    }
+
+    [Fact]
+    public async Task Guardar_renombra_cierra_la_capa_y_refresca_la_lista()
+    {
+        var (b, est) = await BancoParaRenombrarAsync();
+        b.Campo.OnRenombrarEstablecimiento = RenombrarEnLaLista(b);
+        b.Vm.PedirEditarEstablecimientoCommand.Execute(est);
+        b.Vm.NombreEditado = "Tambo Nuevo";
+
+        await b.Vm.GuardarEdicionEstablecimientoCommand.ExecuteAsync(null);
+
+        Assert.Equal([(est.Id, "Tambo Nuevo")], b.Campo.Renombrados);
+        Assert.False(b.Vm.HayEdicionEstablecimiento);
+        Assert.Contains(b.Vm.Establecimientos, e => e.Id == est.Id && e.Nombre == "Tambo Nuevo");
+        Assert.DoesNotContain(b.Vm.Establecimientos, e => e.Nombre == "Tambo Norte");
+        Assert.False(b.Vm.HayMensajeErrorEdicion);
+    }
+
+    [Fact]
+    public async Task Despues_de_renombrar_se_mantiene_la_eleccion_de_establecimiento_y_rodeo()
+    {
+        var (b, est) = await BancoParaRenombrarAsync();
+        b.Campo.OnRenombrarEstablecimiento = RenombrarEnLaLista(b);
+        b.Vm.EstablecimientoSeleccionado = est;
+        var rodeoElegido = b.Vm.Rodeos.First(r => r.RodeoNombre == "B");
+        b.Vm.RodeoSeleccionado = rodeoElegido;
+        b.Vm.PedirEditarEstablecimientoCommand.Execute(est);
+        b.Vm.NombreEditado = "Tambo Nuevo";
+
+        await b.Vm.GuardarEdicionEstablecimientoCommand.ExecuteAsync(null);
+
+        Assert.Equal(est.Id, b.Vm.EstablecimientoSeleccionado?.Id);
+        Assert.Equal("Tambo Nuevo", b.Vm.EstablecimientoSeleccionado?.Nombre);
+        Assert.Equal(rodeoElegido.RodeoId, b.Vm.RodeoSeleccionado?.RodeoId);
+        Assert.True(b.Vm.PuedeEmpezar);
+    }
+
+    [Fact]
+    public async Task Renombrar_otro_establecimiento_no_cambia_la_eleccion_actual()
+    {
+        var (b, norte) = await BancoParaRenombrarAsync();
+        b.Campo.OnRenombrarEstablecimiento = RenombrarEnLaLista(b);
+        var sur = b.Vm.Establecimientos.First(e => e.Nombre == "Tambo Sur");
+        b.Vm.EstablecimientoSeleccionado = norte;
+        b.Vm.RodeoSeleccionado = b.Vm.Rodeos.First(r => r.RodeoNombre == "A");
+        b.Vm.PedirEditarEstablecimientoCommand.Execute(sur);
+        b.Vm.NombreEditado = "Tambo Sur 2";
+
+        await b.Vm.GuardarEdicionEstablecimientoCommand.ExecuteAsync(null);
+
+        Assert.Equal(norte.Id, b.Vm.EstablecimientoSeleccionado?.Id);
+        Assert.Equal("A", b.Vm.RodeoSeleccionado?.RodeoNombre);
+    }
+
+    [Fact]
+    public async Task Si_el_nombre_esta_repetido_o_es_invalido_la_capa_queda_abierta_con_el_mensaje()
+    {
+        var (b, est) = await BancoParaRenombrarAsync();
+        b.Campo.OnRenombrarEstablecimiento = (_, _) => Resultado.Error(CodigoError.Duplicado, "Ya hay un establecimiento con ese nombre.");
+        b.Vm.PedirEditarEstablecimientoCommand.Execute(est);
+        b.Vm.NombreEditado = "Tambo Sur";
+
+        await b.Vm.GuardarEdicionEstablecimientoCommand.ExecuteAsync(null);
+
+        Assert.True(b.Vm.HayEdicionEstablecimiento);
+        Assert.Equal("Ya hay un establecimiento con ese nombre.", b.Vm.MensajeErrorEdicion);
+        Assert.True(b.Vm.HayMensajeErrorEdicion);
+        Assert.Equal("Tambo Sur", b.Vm.NombreEditado);   // lo escrito no se pierde
+    }
+
+    [Fact]
+    public async Task Cancelar_cierra_la_capa_sin_guardar_ni_dejar_mensajes()
+    {
+        var (b, est) = await BancoParaRenombrarAsync();
+        b.Campo.OnRenombrarEstablecimiento = (_, _) => Resultado.Error(CodigoError.Duplicado, "Repetido.");
+        b.Vm.PedirEditarEstablecimientoCommand.Execute(est);
+        await b.Vm.GuardarEdicionEstablecimientoCommand.ExecuteAsync(null);
+
+        b.Vm.CancelarEdicionEstablecimientoCommand.Execute(null);
+
+        Assert.False(b.Vm.HayEdicionEstablecimiento);
+        Assert.False(b.Vm.HayMensajeErrorEdicion);
+        // Al volver a abrirla no queda el error anterior.
+        b.Vm.PedirEditarEstablecimientoCommand.Execute(est);
+        Assert.False(b.Vm.HayMensajeErrorEdicion);
+    }
+
+    [Fact]
+    public async Task Una_falla_real_al_renombrar_muestra_el_mensaje_fijo_y_deja_la_capa_abierta()
+    {
+        var (b, est) = await BancoParaRenombrarAsync();
+        b.Campo.OnRenombrarEstablecimiento = (_, _) => throw new InvalidOperationException("falla");
+        b.Vm.PedirEditarEstablecimientoCommand.Execute(est);
+        b.Vm.NombreEditado = "Otro";
+
+        await b.Vm.GuardarEdicionEstablecimientoCommand.ExecuteAsync(null);
+
+        Assert.True(b.Vm.HayEdicionEstablecimiento);
+        Assert.Equal(EleccionTrabajoViewModel.MensajeFalla, b.Vm.MensajeErrorEdicion);
+    }
+
     // La fachada que siempre falla (disco, base): el ViewModel no debe caerse.
     private sealed class FalloCampo : FakeCampoService
     {

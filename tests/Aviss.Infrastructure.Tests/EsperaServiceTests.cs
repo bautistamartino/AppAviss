@@ -51,16 +51,17 @@ public sealed class EsperaServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task Una_vaca_con_CVET_0_no_se_puede_poner_en_espera_y_no_se_guarda_nada()
+    public async Task Una_vaca_con_CVET_0_tambien_se_puede_poner_en_espera()
     {
+        // Spec 009, RF-15: el veterinario puede decidir en el campo tactar una vaca de CVET 0 y, entonces, también dejarla en espera.
         var animal = _e.AnimalImportado("100", json: CvetCero);
 
         var r = await PonerAsync(animal);
 
-        Assert.False(r.EsCorrecto);
-        Assert.Equal(CodigoError.VacaNoEntraEnTacto, r.Codigo);
-        Assert.Equal(0, _e.Cuenta("Espera"));
-        Assert.Equal(0, _e.Cuenta("Historial", "Accion = 'EsperaCreada'"));
+        Assert.True(r.EsCorrecto, r.Mensaje);
+        Assert.Equal("Pendiente", Estado(r.Valor));
+        Assert.Equal(1, _e.Cuenta("Espera"));
+        Assert.Equal(1, _e.Cuenta("Historial", "Accion = 'EsperaCreada'"));
     }
 
     [Fact]

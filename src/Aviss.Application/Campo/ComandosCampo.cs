@@ -2,8 +2,13 @@ namespace Aviss.Application.Campo;
 
 // Comandos del flujo de campo (spec 003). La hora la toma el servicio del reloj.
 
-/// <summary>Una lectura del bastón o una búsqueda manual: el código es la caravana (o, si no coincide, el identificador electrónico).</summary>
-public sealed record ProcesarLecturaCommand(Guid RodeoId, string Codigo);
+/// <summary>
+/// Una lectura del bastón o una búsqueda manual: el código es la caravana (o, si no coincide, el identificador electrónico).
+/// <see cref="HayFichaConTactoAbierta"/> (spec 009, RF-1): la pantalla tiene una ficha con tacto abierta. Con la bandera,
+/// una vaca que se marcaría y entra en tacto NO se marca: el servicio devuelve <c>RequiereDecision</c> para que la
+/// pantalla pregunte antes. Por omisión es <c>false</c>: todo se comporta como antes.
+/// </summary>
+public sealed record ProcesarLecturaCommand(Guid RodeoId, string Codigo, bool HayFichaConTactoAbierta = false);
 
 /// <summary><see cref="CantidadReal"/> nula = "Coincide" (la cantidad confirmada es la que contó Aviss).</summary>
 public sealed record FinalizarMangaCommand(Guid RodeoId, int? CantidadReal);
@@ -40,4 +45,7 @@ public static class EventosCampo
 {
     /// <summary>El evento "Rechazo": un Guid fijo y conocido (no es una fila del catálogo, spec 004 decisión 1).</summary>
     public static readonly Guid Rechazo = new("5EC4A200-0000-0000-0000-000000000001");
+
+    /// <summary>Cómo se muestra el Rechazo fijo en la lista de "Otro evento", el casillero, el historial, los movimientos y los avisos (decisión del 2026-11-24).</summary>
+    public const string NombreRechazo = "RECHAZO";
 }

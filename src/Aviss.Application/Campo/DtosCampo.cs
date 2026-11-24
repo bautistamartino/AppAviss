@@ -23,7 +23,12 @@ public enum TipoResultadoLectura
     /// <summary>No existe en el rodeo: se ofrece buscar a mano; no se guardó nada.</summary>
     NoEncontrada,
     /// <summary>La vaca está en espera (spec 004, RF-5): se devuelve su ficha, sin marcarla ni sumarla al conteo.</summary>
-    EnEspera
+    EnEspera,
+    /// <summary>
+    /// Spec 009 (RF-1): la vaca se encontró, entra en tacto, no pasó hoy y la validación salió bien, pero había una ficha con tacto
+    /// abierta (<c>HayFichaConTactoAbierta</c>): NO se guardó nada. Trae la caravana y la ficha; sin marca, manga ni contador.
+    /// </summary>
+    RequiereDecision
 }
 
 /// <summary>Cómo se presenta el aviso de una vaca ya procesada (lo decide <see cref="ReglasAviso"/>).</summary>

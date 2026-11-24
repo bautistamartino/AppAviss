@@ -121,8 +121,8 @@ public sealed partial class TrabajoViewModel
 
     // ---- Poner en espera (RF-1)
 
-    /// <summary>La ficha abierta es de una vaca que entra en tacto, sin cuadros encima y que todavía no está en espera: se ve el botón "En espera".</summary>
-    public bool PuedePonerEnEspera => Ficha is { EntraEnTacto: true, EnEspera: false } && Etapa == EtapaTrabajo.Ficha && Cuadro == CuadroTrabajo.Ninguno;
+    /// <summary>La ficha abierta (también la de CVET 0, spec 009 RF-15), sin cuadros encima y que todavía no está en espera: se ve el botón "En espera".</summary>
+    public bool PuedePonerEnEspera => Ficha is { EnEspera: false } && Etapa == EtapaTrabajo.Ficha && Cuadro == CuadroTrabajo.Ninguno;
 
     /// <summary>La ficha abierta viene de una espera: se ve el cartel "en espera" y Saltar saltea la espera (RF-3).</summary>
     public bool EsEsperaAbierta => HayFicha && Ficha!.EnEspera;

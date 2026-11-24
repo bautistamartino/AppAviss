@@ -63,6 +63,19 @@ public class SelectorEventosViewModelTests
     }
 
     [Fact]
+    public void Si_el_estado_de_la_vaca_no_esta_en_ninguna_lista_no_se_resalta_nada()
+    {
+        // FRESCA, INSEMIN y SECA siguen activos pero no se muestran en "Otro evento" (decisión del 2026-11-24): su id no está
+        // en las listas, así que "Otro evento" no se marca y ningún botón queda resaltado por error.
+        var s = Selector();
+
+        s.Abrir(Guid.NewGuid());
+
+        Assert.False(s.OtroEventoResaltado);
+        Assert.Null(s.Buscar(s.Resaltado));
+    }
+
+    [Fact]
     public void Un_evento_de_Otro_evento_resalta_el_boton_Otro_evento()
     {
         var s = Selector();

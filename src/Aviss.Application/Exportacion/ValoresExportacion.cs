@@ -7,7 +7,7 @@ namespace Aviss.Application.Exportacion;
 /// </summary>
 public sealed record ValoresExportacion(string Fecha, string Hora, string Evento, string DiasPreniez, string DiasAborto, string ResultadoAborto)
 {
-    /// <summary>Todas las columnas nuevas en blanco: vaca que no pasó, CVET 0, fila excluida o fila Total.</summary>
+    /// <summary>Todas las columnas nuevas en blanco: vaca que no pasó, fila excluida o fila Total.</summary>
     public static readonly ValoresExportacion Vacios = new("", "", "", "", "", "");
 
     /// <summary>True si no lleva ningún valor.</summary>

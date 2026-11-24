@@ -10,12 +10,10 @@ public class ReglasEsperaTests
     private static readonly DateTime Ahora = new(2026, 11, 21, 12, 0, 0, DateTimeKind.Utc);
 
     [Theory]
-    [InlineData(true, false, true)]   // entra en tacto y no está en espera: se puede
-    [InlineData(false, false, false)] // CVET 0: no
-    [InlineData(true, true, false)]   // ya en espera: no
-    [InlineData(false, true, false)]
-    public void Poner_en_espera_exige_que_entre_en_tacto_y_que_no_este_ya(bool entra, bool yaEnEspera, bool esperado)
-        => Assert.Equal(esperado, ReglasEspera.PuedePonerseEnEspera(entra, yaEnEspera));
+    [InlineData(false, true)]    // no está en espera: se puede (también una vaca con CVET 0, spec 009 RF-15)
+    [InlineData(true, false)]    // ya en espera: no
+    public void Poner_en_espera_exige_solo_que_no_este_ya_en_espera(bool yaEnEspera, bool esperado)
+        => Assert.Equal(esperado, ReglasEspera.PuedePonerseEnEspera(yaEnEspera));
 
     [Fact]
     public void Una_vaca_en_espera_no_se_puede_desmarcar()

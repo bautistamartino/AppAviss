@@ -74,7 +74,7 @@ public class TrabajoViewModelEsperaTests
     }
 
     [Fact]
-    public async Task Con_CVET_0_no_hay_boton_ni_se_puede_poner_en_espera()
+    public async Task Con_CVET_0_la_ficha_abierta_con_Ver_ficha_tambien_se_puede_poner_en_espera()
     {
         var b = new Banco();
         var animal = Guid.NewGuid();
@@ -85,9 +85,10 @@ public class TrabajoViewModelEsperaTests
         await b.Vm.VerFichaSinTactoCommand.ExecuteAsync(null);
 
         Assert.True(b.Vm.HayFicha);
-        Assert.False(b.Vm.PuedePonerEnEspera);
+        Assert.True(b.Vm.PuedePonerEnEspera);   // spec 009, RF-15: se la puede decidir tactar igual, entonces también dejarla en espera
         await b.Vm.PonerEnEsperaCommand.ExecuteAsync(null);
-        Assert.Empty(b.Campo.EsperasPuestas);
+        Assert.Equal(animal, Assert.Single(b.Campo.EsperasPuestas).AnimalId);
+        Assert.False(b.Vm.HayFicha);
     }
 
     [Fact]
@@ -451,7 +452,7 @@ public class TrabajoViewModelEsperaTests
         await b.Vm.IniciarAsync();
 
         Assert.Equal(["PREÑADA"], b.Vm.Selector.Principales.Select(e => e.Nombre));
-        Assert.Equal(["Rechazo"], b.Vm.Selector.Otros.Select(e => e.Nombre));
+        Assert.Equal(["RECHAZO"], b.Vm.Selector.Otros.Select(e => e.Nombre));
         Assert.Equal(EventosCampo.Rechazo, b.Vm.Selector.Otros[0].Id);
     }
 
@@ -462,7 +463,7 @@ public class TrabajoViewModelEsperaTests
         b.Campo.Estados = [];
         await b.Vm.IniciarAsync();
 
-        Assert.Equal(["Rechazo"], b.Vm.Selector.Otros.Select(e => e.Nombre));
+        Assert.Equal(["RECHAZO"], b.Vm.Selector.Otros.Select(e => e.Nombre));
         Assert.False(b.Vm.Selector.HayPrincipales);
         Assert.Equal([EventosCampo.Rechazo], b.Vm.Selector.Otros.Select(e => e.Id));
     }
@@ -480,7 +481,7 @@ public class TrabajoViewModelEsperaTests
 
         await b.Vm.CrearEventoCommand.ExecuteAsync(null);
 
-        Assert.Equal(["Rechazo", "ABORTO"], b.Vm.Selector.Otros.Select(e => e.Nombre));
+        Assert.Equal(["RECHAZO", "ABORTO"], b.Vm.Selector.Otros.Select(e => e.Nombre));
     }
 
     [Fact]
@@ -500,7 +501,7 @@ public class TrabajoViewModelEsperaTests
         Assert.Equal((animal, "Pata"), (cmd.AnimalId, cmd.Observaciones));
         Assert.Empty(b.Campo.Tactos);
         Assert.False(b.Vm.HayFicha);
-        Assert.Equal("1001: Rechazo", b.Vm.UltimoGuardado);
+        Assert.Equal("1001: RECHAZO", b.Vm.UltimoGuardado);
         Assert.Equal((TipoDeshacer.Rechazo, rechazoId), (b.Vm.AvisoDeshacer!.Tipo, b.Vm.AvisoDeshacer.Id));
     }
 
@@ -579,7 +580,7 @@ public class TrabajoViewModelEsperaTests
 
         await b.Vm.EncolarLecturaAsync("1001");
 
-        Assert.Contains("Rechazo · Pata", b.Vm.AvisoDetalle);
+        Assert.Contains("RECHAZO · Pata", b.Vm.AvisoDetalle);
         await b.Vm.CorregirCommand.ExecuteAsync(null);
         await b.Vm.ConfirmarCorregirCommand.ExecuteAsync(null);
         var cmd = Assert.Single(b.Campo.Deshaceres);

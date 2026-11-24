@@ -17,9 +17,9 @@ public class TrabajoViewModelPasosTests
     private static readonly EventoCampoDto Aborto = new(Guid.Parse("66666666-0000-0000-0000-000000000006"), "Aborto", true, true,
         [PasoEvento.DiasAborto, PasoEvento.ResultadoAborto], null, "ABORTO");
     private static readonly EventoCampoDto NoInsem = new(Guid.Parse("66666666-0000-0000-0000-000000000007"), "NOINSEM", true, true);
-    private static readonly EventoCampoDto Insemin = new(Guid.Parse("66666666-0000-0000-0000-000000000008"), "INSEMIN", true, false);
-    private static readonly EventoCampoDto Seca = new(Guid.Parse("66666666-0000-0000-0000-000000000009"), "SECA", true, false);
-    private static readonly EventoCampoDto Fresca = new(Guid.Parse("66666666-0000-0000-0000-00000000000a"), "FRESCA", true, false);
+    private static readonly EventoCampoDto Insemin = new(Guid.Parse("66666666-0000-0000-0000-000000000008"), "INSEMIN", true, false, [], null, "INSEMIN");
+    private static readonly EventoCampoDto Seca = new(Guid.Parse("66666666-0000-0000-0000-000000000009"), "SECA", true, false, [], null, "SECA");
+    private static readonly EventoCampoDto Fresca = new(Guid.Parse("66666666-0000-0000-0000-00000000000a"), "FRESCA", true, false, [], null, "FRESCA");
 
     private sealed class Banco
     {
@@ -72,7 +72,7 @@ public class TrabajoViewModelPasosTests
 
         Assert.Equal(["Revisar Nuevamente", "OK", "VACIA", "Preñada fecha correcta", "Preñada fecha previa", "Aborto", "NOINSEM"],
             b.Vm.Selector.Principales.Select(e => e.Nombre));
-        Assert.Equal(["Rechazo", "INSEMIN", "SECA", "FRESCA"], b.Vm.Selector.Otros.Select(e => e.Nombre));
+        Assert.Equal(["RECHAZO"], b.Vm.Selector.Otros.Select(e => e.Nombre));
     }
 
     [Fact]
@@ -192,7 +192,9 @@ public class TrabajoViewModelPasosTests
         Assert.Equal("1001", b.Vm.Ficha!.Caravana);
 
         await b.Vm.CerrarCuadroAgregarCommand.ExecuteAsync(null);
-        Assert.Equal("2002", b.Vm.Ficha!.Caravana);
+        // Spec 009: la lectura guardada se procesa al cerrar el cuadro; con la ficha de la 1001 abierta, pregunta antes de reemplazarla.
+        Assert.Equal(CuadroTrabajo.ConfirmarReemplazo, b.Vm.Cuadro);
+        Assert.Equal("1001", b.Vm.Ficha!.Caravana);
     }
 
     [Theory]
@@ -297,7 +299,7 @@ public class TrabajoViewModelPasosTests
     [InlineData("INSEMIN")]
     [InlineData("SECA")]
     [InlineData("FRESCA")]
-    public async Task Una_vaca_en_INSEMIN_SECA_o_FRESCA_abre_con_Otro_evento_resaltado(string nombre)
+    public async Task Una_vaca_en_INSEMIN_SECA_o_FRESCA_abre_sin_resaltar_nada(string nombre)
     {
         var b = new Banco();
         var estado = new[] { Insemin, Seca, Fresca }.First(e => e.Nombre == nombre);
@@ -305,8 +307,9 @@ public class TrabajoViewModelPasosTests
 
         await b.Vm.AbrirEventosCommand.ExecuteAsync(null);
 
-        Assert.True(b.Vm.Selector.OtroEventoResaltado);
-        Assert.Equal(estado.Id, b.Vm.Selector.Resaltado);
+        // Esos tres no están en ninguna lista (decisión del 2026-11-24): ni "Otro evento" ni un principal quedan marcados.
+        Assert.False(b.Vm.Selector.OtroEventoResaltado);
+        Assert.Null(b.Vm.Selector.Buscar(b.Vm.Selector.Resaltado));
         Assert.False(b.Vm.Selector.MostrandoOtros);
     }
 

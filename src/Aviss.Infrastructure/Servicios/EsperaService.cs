@@ -46,14 +46,10 @@ internal sealed class EsperaService
             if (!establecimiento.Activo)
                 return Resultado.Error<Guid>(CodigoError.EstablecimientoDeBaja, "El establecimiento está dado de baja y no admite esperas.");
 
-            // RF-1: solo una vaca que entra en tacto (CVET distinto de 0) y que todavía no está en espera.
-            var entra = ReglasCvet.EntraEnTacto(ConstructorFicha.LeerCvet(animal.DatosOriginalesJson));
-            var yaEnEspera = await _esperas.ObtenerPendienteAsync(animal.Id, ct) is not null;
-            if (!ReglasEspera.PuedePonerseEnEspera(entra, yaEnEspera))
-                return yaEnEspera
-                    ? Resultado.Error<Guid>(CodigoError.VacaYaEnEspera, MensajesCampo.Para(CodigoError.VacaYaEnEspera))
-                    : Resultado.Error<Guid>(CodigoError.VacaNoEntraEnTacto, MensajesCampo.Para(CodigoError.VacaNoEntraEnTacto));
-
+            // RF-1: solo una vaca que todavía no está en espera. El CVET no cuenta (spec 009, RF-15): una vaca de CVET 0 abierta con
+            // "Ver ficha" también se puede dejar en espera.
+            if (!ReglasEspera.PuedePonerseEnEspera(await _esperas.ObtenerPendienteAsync(animal.Id, ct) is not null))
+                return Resultado.Error<Guid>(CodigoError.VacaYaEnEspera, MensajesCampo.Para(CodigoError.VacaYaEnEspera));
             try
             {
                 var ahora = _reloj.UtcAhora;
