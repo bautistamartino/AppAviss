@@ -25,7 +25,7 @@ Regla de verificación: tras cada tarea se corren **solo los proyectos de `tests
   - RF: RF-1 a RF-9, RF-16, RF-17, RF-18
   - Hecho cuando: `dotnet build` en verde; pasa `Aviss.Application.Tests` (sin Rendimiento).
 
-- [ ] **T4** — Exportación: la columna `Evento2`
+- [x] **T4** — Exportación: la columna `Evento2`
   - Qué hace: `ColumnasExportacion.Evento2` (provisoria, justo después de `Evento1`), `ValoresExportacion`, `RegistroExportable.NombreEvento2`, `ArmadorValoresExportacion`, `ConsultaExportacion` (Evento 2 de tactos y rechazos vigentes de la jornada); comprobar con los tests que `PlanColumnasExportacion`, `EscritorCsv`, `EscritorXls` y `ValidadorExportacion` la toman sin cambios (corregir donde haya orden o cantidad fija); `Evento2` repetida rechaza y `Evento 2` con espacio no; muestras de `tests/muestras/` y tests de la spec 007 ajustados a una columna más, con un caso de dos eventos.
   - Tests primero: `Application.Tests` › `ArmadorValoresExportacionTests`; `Infrastructure.Tests` › `ConsultaExportacionDosEventosTests`; `Excel.Tests` del exportador y validador en los **cuatro cruces** (CSV a CSV con las líneas originales byte por byte), original con `Evento2` rechazado, `Total` y filas excluidas vacías. El rendimiento de `ExportacionRendimientoTests` va en la T5.
   - Proyectos de tests que toca: `Aviss.Application.Tests`, `Aviss.Infrastructure.Tests`, `Aviss.Excel.Tests`.

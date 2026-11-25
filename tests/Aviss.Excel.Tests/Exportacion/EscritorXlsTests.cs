@@ -24,8 +24,8 @@ public class EscritorXlsTests
 
         // Las columnas nuevas empiezan después de la última original (FAPAR es la 11.a: índices 0 a 10).
         var encabezados = hoja.GetRow(0);
-        Assert.Equal(["SCDAT", "SCTIM", "Evento1", "DIASPRE", "DIASABO", "RESABO"],
-            Enumerable.Range(11, 6).Select(c => encabezados.GetCell(c).StringCellValue));
+        Assert.Equal(["SCDAT", "SCTIM", "Evento1", "Evento2", "DIASPRE", "DIASABO", "RESABO"],
+            Enumerable.Range(11, 7).Select(c => encabezados.GetCell(c).StringCellValue));
 
         // Fila de la vaca 10000 (la primera de datos): "Preñada fecha previa" con 215 días.
         var fila = hoja.GetRow(1);
@@ -34,15 +34,16 @@ public class EscritorXlsTests
         Assert.Equal(CellType.String, fila.GetCell(12).CellType);
         Assert.Equal("0905", fila.GetCell(12).StringCellValue);       // el cero de adelante se conserva
         Assert.Equal("Preñada fecha previa", fila.GetCell(13).StringCellValue);
-        Assert.Equal(CellType.Numeric, fila.GetCell(14).CellType);
-        Assert.Equal(215, fila.GetCell(14).NumericCellValue);
-        Assert.Null(fila.GetCell(15));                                // sin días de aborto: ni siquiera hay celda
-        Assert.Null(fila.GetCell(16));
+        Assert.Equal(CellType.Numeric, fila.GetCell(15).CellType);
+        Assert.Equal(215, fila.GetCell(15).NumericCellValue);
+        Assert.Null(fila.GetCell(14));                                // sin Evento 2: ni siquiera hay celda
+        Assert.Null(fila.GetCell(16));                                // sin días de aborto: tampoco
+        Assert.Null(fila.GetCell(17));
 
         // La vaca con Aborto lleva días de aborto (número) y el resultado (texto).
         var aborto = hoja.GetRow(2);
-        Assert.Equal(120, aborto.GetCell(15).NumericCellValue);
-        Assert.Equal("Vacía OK", aborto.GetCell(16).StringCellValue);
+        Assert.Equal(120, aborto.GetCell(16).NumericCellValue);
+        Assert.Equal("Vacía OK", aborto.GetCell(17).StringCellValue);
     }
 
     [Fact]

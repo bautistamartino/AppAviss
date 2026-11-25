@@ -16,7 +16,7 @@ namespace Aviss.Excel.Tests.Exportacion;
 /// </summary>
 public class ReemplazoScdatSctimTests
 {
-    private static readonly string[] Sufijo = ["Evento1", "DIASPRE", "DIASABO", "RESABO"];
+    private static readonly string[] Sufijo = ["Evento1", "Evento2", "DIASPRE", "DIASABO", "RESABO"];
 
     // 1001 sin tacto, 1002 con tacto ("Preñada fecha previa"), 1003 es CVET 0 pero se tactó a propósito, 1004 sin tacto.
     private static Dictionary<string, ValoresExportacion> Valores() => new()
@@ -175,7 +175,7 @@ public class ReemplazoScdatSctimTests
 
         Assert.Equal(["SCDAT"], generado.ColumnasCreadas);
         var b = LeerOk(generado.Contenido!);
-        Assert.Equal(["ID", "SCTIM", "CVET", "RPRO", "SCDAT", "Evento1", "DIASPRE", "DIASABO", "RESABO"], b.Encabezados);
+        Assert.Equal(["ID", "SCTIM", "CVET", "RPRO", "SCDAT", "Evento1", "Evento2", "DIASPRE", "DIASABO", "RESABO"], b.Encabezados);
         Assert.Equal("0800", T(b, 0, "SCTIM"));
         Assert.Equal("1530", T(b, 1, "SCTIM"));
         Assert.Equal("24/11/2026", T(b, 1, "SCDAT"));
@@ -184,6 +184,8 @@ public class ReemplazoScdatSctimTests
 
     [Theory]
     [InlineData("Evento1")]
+    [InlineData("Evento2")]
+    [InlineData("EVENTO2")]
     [InlineData("diaspre")]
     [InlineData("DIASABO")]
     [InlineData("resabo")]
@@ -213,9 +215,9 @@ public class ReemplazoScdatSctimTests
         var generado = GenerarOk(original, FormatoExportacion.Csv, Valores());
 
         Assert.Equal(
-            "\"ID\";\"CVET\";\"RPRO\";\"SCDAT\";\"SCTIM\";\"LECHE\";\"Evento1\";\"DIASPRE\";\"DIASABO\";\"RESABO\";\r\n" +
-            " 1001 ;1    ;INSEMIN ;10/11/2026;0800;12,5 ;;;;;\r\n" +
-            " 1002 ;1    ;VACIA   ;24/11/2026;0905;30 ;Preñada fecha previa;215;;;\r\n",
+            "\"ID\";\"CVET\";\"RPRO\";\"SCDAT\";\"SCTIM\";\"LECHE\";\"Evento1\";\"Evento2\";\"DIASPRE\";\"DIASABO\";\"RESABO\";\r\n" +
+            " 1001 ;1    ;INSEMIN ;10/11/2026;0800;12,5 ;;;;;;\r\n" +
+            " 1002 ;1    ;VACIA   ;24/11/2026;0905;30 ;Preñada fecha previa;;215;;;\r\n",
             Encoding.UTF8.GetString(generado.Contenido!));   // original solo ASCII: se lee como UTF-8, igual que la app
     }
 
@@ -228,9 +230,9 @@ public class ReemplazoScdatSctimTests
         var generado = GenerarOk(original, FormatoExportacion.Csv, Valores());
 
         Assert.Equal(
-            "ID;CVET;RPRO;SCDAT;SCTIM;LECHE;Evento1;DIASPRE;DIASABO;RESABO\n" +
-            "1001;1;INSEMIN;10/11/2026;0800;25;;;;\n" +
-            "1002;1;VACIA;24/11/2026;0905;;Preñada fecha previa;215;;\n",
+            "ID;CVET;RPRO;SCDAT;SCTIM;LECHE;Evento1;Evento2;DIASPRE;DIASABO;RESABO\n" +
+            "1001;1;INSEMIN;10/11/2026;0800;25;;;;;\n" +
+            "1002;1;VACIA;24/11/2026;0905;;Preñada fecha previa;;215;;\n",
             Encoding.UTF8.GetString(generado.Contenido!));
         Assert.True(new ExportadorDairyComp().Validar(original, generado.Contenido!, FormatoExportacion.Csv, Valores()).EsValido);
     }
@@ -249,7 +251,7 @@ public class ReemplazoScdatSctimTests
         Assert.Equal("0800", hoja.GetRow(1).GetCell(4).StringCellValue);
         Assert.Equal(CellType.Numeric, hoja.GetRow(1).GetCell(5).CellType);          // LECHE sigue numérica
         Assert.Equal("Evento1", hoja.GetRow(0).GetCell(6).StringCellValue);          // las nuevas empiezan después de LECHE
-        Assert.Equal(10, hoja.GetRow(0).LastCellNum);                                // 6 originales + 4 nuevas, sin duplicar
+        Assert.Equal(11, hoja.GetRow(0).LastCellNum);                                // 6 originales + 5 nuevas, sin duplicar
     }
 
     // ---- Validador ----

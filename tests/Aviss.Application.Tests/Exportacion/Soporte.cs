@@ -11,6 +11,6 @@ internal static class R
 
     public static RegistroExportable Reg(
         string caravana = "100", DateTime? fecha = null, long orden = 1, string evento = "OK", TipoRegistroExportable tipo = TipoRegistroExportable.Tacto,
-        int? diasPreniez = null, int? diasAborto = null, ResultadoAborto? resultado = null)
-        => new(caravana, tipo, fecha ?? Utc(2026, 11, 5), orden, evento, diasPreniez, diasAborto, resultado);
+        int? diasPreniez = null, int? diasAborto = null, ResultadoAborto? resultado = null, string evento2 = "")
+        => new(caravana, tipo, fecha ?? Utc(2026, 11, 5), orden, evento, diasPreniez, diasAborto, resultado, evento2);
 }

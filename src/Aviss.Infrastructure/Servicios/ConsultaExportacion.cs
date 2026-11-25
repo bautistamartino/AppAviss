@@ -29,8 +29,8 @@ public sealed class ConsultaExportacion : IConsultaExportacion
 
     // Lo que se lee de la base, sin tipos anónimos para poder pasarlo entre métodos.
     private sealed record AnimalLeido(Guid Id, string NumeroCaravana, string? DatosOriginalesJson, OrigenAnimal Origen);
-    private sealed record TactoLeido(Guid AnimalId, DateTime FechaHoraUtc, long OrdenInsercion, Guid? EstadoNuevoId, Guid? EventoId, int? DiasPreniezInformados, int? DiasAborto);
-    private sealed record RechazoLeido(Guid AnimalId, DateTime FechaHoraUtc, long OrdenInsercion, Guid? EventoId, int? DiasAborto);
+    private sealed record TactoLeido(Guid AnimalId, DateTime FechaHoraUtc, long OrdenInsercion, Guid? EstadoNuevoId, Guid? EventoId, Guid? Evento2Id, int? DiasPreniezInformados, int? DiasAborto);
+    private sealed record RechazoLeido(Guid AnimalId, DateTime FechaHoraUtc, long OrdenInsercion, Guid? EventoId, Guid? Evento2Id, int? DiasAborto);
     private sealed record EstadoLeido(Guid Id, string Nombre, string? ClaveEstandar);
     private sealed record Lectura(List<AnimalLeido> Animales, List<TactoLeido> Tactos, List<RechazoLeido> Rechazos, Dictionary<Guid, EstadoLeido> Estados);
 
@@ -55,7 +55,7 @@ public sealed class ConsultaExportacion : IConsultaExportacion
             if (t.DiasAborto is not null && t.EstadoNuevoId is Guid final && estados.TryGetValue(final, out var estadoFinal))
                 resultado = ReglasResultadoAborto.DesdeClaveEstado(estadoFinal.ClaveEstandar);
             registros.Add(new RegistroExportable(infoAnimal[t.AnimalId].Clave, TipoRegistroExportable.Tacto, t.FechaHoraUtc,
-                t.OrdenInsercion, NombreDe(t.EventoId ?? t.EstadoNuevoId), t.DiasPreniezInformados, t.DiasAborto, resultado));
+                t.OrdenInsercion, NombreDe(t.EventoId ?? t.EstadoNuevoId), t.DiasPreniezInformados, t.DiasAborto, resultado, NombreDe(t.Evento2Id)));
         }
         foreach (var r in lectura.Rechazos)
         {
@@ -64,7 +64,7 @@ public sealed class ConsultaExportacion : IConsultaExportacion
             // Un Aborto cuyo resultado fue Rechazo guarda sus días en el rechazo: ahí el resultado es siempre Rechazo.
             ResultadoAborto? resultado = r.DiasAborto is not null ? ResultadoAborto.Rechazo : null;
             registros.Add(new RegistroExportable(infoAnimal[r.AnimalId].Clave, TipoRegistroExportable.Rechazo, r.FechaHoraUtc,
-                r.OrdenInsercion, nombre, null, r.DiasAborto, resultado));
+                r.OrdenInsercion, nombre, null, r.DiasAborto, resultado, NombreDe(r.Evento2Id)));
         }
 
         var zona = _zona.Zona;
@@ -132,13 +132,13 @@ public sealed class ConsultaExportacion : IConsultaExportacion
         var tactos = await (from t in _db.Tactos.AsNoTracking()
                             join a in _db.Animales on t.AnimalId equals a.Id
                             where a.RodeoId == rodeoId && !a.Anulado && t.Tipo == TipoTacto.Normal && !t.Anulado
-                            select new TactoLeido(t.AnimalId, t.FechaHoraUtc, t.OrdenInsercion, t.EstadoNuevoId, t.EventoId, t.DiasPreniezInformados, t.DiasAborto))
+                            select new TactoLeido(t.AnimalId, t.FechaHoraUtc, t.OrdenInsercion, t.EstadoNuevoId, t.EventoId, t.Evento2Id, t.DiasPreniezInformados, t.DiasAborto))
             .ToListAsync(ct);
 
         var rechazos = await (from r in _db.Rechazos.AsNoTracking()
                               join a in _db.Animales on r.AnimalId equals a.Id
                               where a.RodeoId == rodeoId && !a.Anulado && !r.Anulado
-                              select new RechazoLeido(r.AnimalId, r.FechaHoraUtc, r.OrdenInsercion, r.EventoId, r.DiasAborto))
+                              select new RechazoLeido(r.AnimalId, r.FechaHoraUtc, r.OrdenInsercion, r.EventoId, r.Evento2Id, r.DiasAborto))
             .ToListAsync(ct);
 
         var estados = (await _db.Estados.AsNoTracking()

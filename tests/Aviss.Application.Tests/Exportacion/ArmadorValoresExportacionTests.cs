@@ -87,7 +87,30 @@ public class ArmadorValoresExportacionTests
         var v = ArmadorValoresExportacion.Armar(R.Reg(evento: "Aborto", diasAborto: 7, resultado: ResultadoAborto.Seca), TimeZoneInfo.Utc);
         var enOrden = v.EnOrden();
         Assert.Equal(ColumnasExportacion.Todas.Count, enOrden.Count);
-        Assert.Equal(["05/11/26", "12:00", "Aborto", "", "7", "Seca"], enOrden);
+        Assert.Equal(["05/11/26", "12:00", "Aborto", "", "", "7", "Seca"], enOrden);
+    }
+
+    [Fact]
+    public void El_Evento_2_sale_por_su_nombre_y_no_toca_los_dias_ni_el_resultado()
+    {
+        var v = ArmadorValoresExportacion.Armar(R.Reg(evento: "OK", evento2: "PROSTAG", fecha: R.Utc(2026, 11, 5, 12, 5)), Fija(-3));
+
+        Assert.Equal("OK", v.Evento);
+        Assert.Equal("PROSTAG", v.Evento2);
+        Assert.Equal("05/11/26", v.Fecha);   // el mismo SCDAT y SCTIM del registro
+        Assert.Equal("09:05", v.Hora);
+        Assert.Equal(["05/11/26", "09:05", "OK", "PROSTAG", "", "", ""], v.EnOrden());
+    }
+
+    [Fact]
+    public void Sin_Evento_2_la_columna_sale_vacia()
+        => Assert.Equal("", ArmadorValoresExportacion.Armar(R.Reg(evento: "OK"), TimeZoneInfo.Utc).Evento2);
+
+    [Fact]
+    public void Un_Aborto_o_una_fecha_previa_dejan_Evento2_vacio_porque_no_admiten_segundo_evento()
+    {
+        Assert.Equal("", ArmadorValoresExportacion.Armar(R.Reg(evento: "Aborto", diasAborto: 5, resultado: ResultadoAborto.Seca), TimeZoneInfo.Utc).Evento2);
+        Assert.Equal("", ArmadorValoresExportacion.Armar(R.Reg(evento: "Preñada fecha previa", diasPreniez: 100), TimeZoneInfo.Utc).Evento2);
     }
 
     [Fact]
@@ -101,7 +124,7 @@ public class ArmadorValoresExportacionTests
     [Fact]
     public void Las_columnas_nuevas_tienen_nombres_unicos_y_viven_en_un_solo_lugar()
     {
-        Assert.Equal(["SCDAT", "SCTIM", "Evento1", "DIASPRE", "DIASABO", "RESABO"], ColumnasExportacion.Todas.Select(c => c.Nombre));
+        Assert.Equal(["SCDAT", "SCTIM", "Evento1", "Evento2", "DIASPRE", "DIASABO", "RESABO"], ColumnasExportacion.Todas.Select(c => c.Nombre));
         Assert.Equal(ColumnasExportacion.Todas.Count, ColumnasExportacion.Todas.Select(c => c.Nombre.ToUpperInvariant()).Distinct().Count());
     }
 

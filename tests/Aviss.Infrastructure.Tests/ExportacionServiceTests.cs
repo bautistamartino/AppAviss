@@ -384,6 +384,19 @@ public sealed class ExportacionServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task Un_original_que_ya_trae_Evento2_se_rechaza_con_el_mensaje_de_columna_repetida()
+    {
+        var (rodeo, _) = RodeoConTrabajo(EscenarioExportacion.CsvConColumna("EVENTO2", Pasada, SinPasar, CvetCero, Anulada));
+
+        var r = await _e.Servicio.ExportarAsync(rodeo, FormatoExportacion.Csv);
+
+        Assert.Equal(CodigoError.ColumnaDuplicada, r.Codigo);
+        Assert.Equal(MensajesExportacion.ColumnaDuplicada("Evento2"), r.Mensaje);
+        Assert.Empty(_e.Entrega.Guardados);
+        Assert.Equal(0, _e.Cuenta("Exportacion"));
+    }
+
+    [Fact]
     public async Task Un_original_con_una_columna_nueva_ya_existente_se_rechaza_sin_registrar_nada()
     {
         var (rodeo, _) = RodeoConTrabajo(EscenarioExportacion.CsvConColumna("evento1", Pasada, SinPasar, CvetCero, Anulada));   // SCDAT/SCTIM ya no chocan: se reemplazan
