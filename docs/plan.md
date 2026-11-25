@@ -31,6 +31,14 @@ Cada ítem es una spec o un paso chico. Se marca con `[x]` cuando está terminad
 
 > **Renumeración (hecha):** la 004 es En Espera y Rechazo, la 005 eventos del catálogo, la 006 saca al veterinario, la exportación pasa a ser la **007** y el bastón la **008**. Las referencias a "spec 004" (exportación) y "spec 005" (bastón) en `MEMORY.md` y en las specs 001 a 003 corresponden a la numeración vieja.
 
+## Etapa 7 — Aviss de escritorio (idea, 2026-11-24; arranca después de cerrar la tablet)
+- [ ] 7.0 Descubrimiento sin código: relevar qué funciones de Dairy Comp usan hoy el padre del responsable y los tambos, y ordenarlas por valor. Resultado en `docs/escritorio/`.
+- Objetivo: reemplazar de a poco a Dairy Comp con una app propia, hecha a la medida del negocio de Aviss. Al ser la misma app, la compatibilidad con la tablet queda garantizada (se reemplaza el puente por Excel).
+- Se avanza función por función, no todo junto. Primero lo que ya genera la tablet (tactos), después módulos nuevos.
+- Consecuencia: la fuente de verdad pasa a ser Aviss, así que hay que decidir cómo viajan los datos entre la PC y las tablets (sincronización) y cómo se migran los tambos desde Dairy Comp (el importador de Excel sirve para eso).
+- Más datos y más sensibles que en la tablet: antes de escribir código definir backups, cifrado en disco, accesos y qué se guarda (constitución, sección de seguridad).
+- Interfaz candidata: Avalonia (o WPF si es solo Windows); `Domain`, `Application`, `Infrastructure` y `Excel` se reutilizan.
+
 ## Etapa 6 — Producto
 - [ ] 6.1 Varios tambos pulidos (sin veterinarios: spec 006), backups, empaquetado, firma y distribución a las tablets.
   - Distribución: APK firmado por sideload para las primeras tablets (keystore fuera del repo y con backup); Google Play con pista privada cuando haya clientes externos.
