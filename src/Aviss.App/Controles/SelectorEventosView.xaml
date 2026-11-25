@@ -25,6 +25,9 @@
         <!-- La lista (principales u "Otro evento") se ve solo si no hay un paso abierto encima (RF-27). -->
         <VerticalStackLayout Spacing="12" IsVisible="{Binding MostrandoLista}">
 
+        <!-- Modo segundo evento (spec 011, RF-3): si no queda ningún evento para combinar, lo dice (desde "Otro evento" se puede crear uno). -->
+        <Label Text="{Binding TextoListaVacia}" IsVisible="{Binding ListaSegundoVacia}" Style="{StaticResource TextoCampo}" FontSize="20" FontAttributes="Bold" />
+
         <!-- Nivel 1: 7 principales + "Otro evento" = 8 botones de 60 dp con 8 de separación (536 dp): entran sin desplazar con tope 560; si hay más, la barra se ve siempre. -->
         <ScrollView MaximumHeightRequest="560" VerticalScrollBarVisibility="Always" IsVisible="{Binding MostrandoPrincipales}">
             <VerticalStackLayout Spacing="8">
