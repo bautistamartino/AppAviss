@@ -295,7 +295,7 @@
                         <Button Grid.Column="0" Text="Saltar" Style="{StaticResource BotonCampoSecundario}" FontSize="20" HeightRequest="56" MinimumWidthRequest="0"
                                 Command="{Binding CerrarFichaCommand}"
                                 SemanticProperties.Hint="Cerrar la ficha sin guardar nada" />
-                        <!-- "En espera" (RF-1): deja la vaca para después, sin guardar tacto. Solo si entra en tacto y no viene ya de la espera. -->
+                        <!-- "En espera" (RF-1): deja la vaca para después, sin guardar tacto. También en una vaca que ya está en espera: solo cierra la ficha y la deja pendiente. -->
                         <Button Grid.Column="1" Text="En espera" Style="{StaticResource BotonCampoAlerta}" FontSize="20" HeightRequest="56" MinimumWidthRequest="0"
                                 Padding="4,0" IsVisible="{Binding PuedePonerEnEspera}" Command="{Binding PonerEnEsperaCommand}"
                                 SemanticProperties.Hint="Dejar esta vaca en espera para atenderla después" />

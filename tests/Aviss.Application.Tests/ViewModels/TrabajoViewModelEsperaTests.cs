@@ -128,15 +128,57 @@ public class TrabajoViewModelEsperaTests
     }
 
     [Fact]
-    public async Task Una_ficha_que_ya_viene_de_una_espera_no_ofrece_ponerla_en_espera_otra_vez()
+    public async Task Una_ficha_que_ya_viene_de_una_espera_tambien_ofrece_En_espera()
     {
+        // Modificado 2026-11-25: se puede tocar "En espera" de nuevo para dejarla pendiente y seguir con otra.
         var b = new Banco();
         await b.Vm.IniciarAsync();
         b.VacaEnEspera("7712");
         await b.Vm.EncolarLecturaAsync("7712");
 
         Assert.True(b.Vm.EsEsperaAbierta);
-        Assert.False(b.Vm.PuedePonerEnEspera);
+        Assert.True(b.Vm.PuedePonerEnEspera);
+    }
+
+    [Fact]
+    public async Task En_espera_sobre_una_vaca_ya_en_espera_solo_cierra_la_ficha_sin_guardar_nada()
+    {
+        var b = new Banco();
+        await b.Vm.IniciarAsync();
+        var desde = new DateTime(2026, 11, 25, 13, 0, 0, DateTimeKind.Utc);
+        var animal = b.VacaEnEspera("7712", desde);
+        await b.Vm.EncolarLecturaAsync("7712");
+        await b.Vm.ElegirEventoCommand.ExecuteAsync(Prenada);
+        b.Vm.ObservacionPendiente = "algo";
+        var confirmaciones = b.Avisos.Confirmaciones;
+
+        await b.Vm.PonerEnEsperaCommand.ExecuteAsync(null);
+
+        Assert.False(b.Vm.HayFicha);
+        Assert.Null(b.Vm.MensajeError);
+        Assert.Empty(b.Campo.EsperasPuestas);   // no se llama al servicio: no se crea otra espera
+        Assert.Empty(b.Campo.Tactos);
+        Assert.Null(b.Vm.EventoElegido);
+        Assert.Equal("", b.Vm.ObservacionPendiente);
+        Assert.Equal(confirmaciones + 1, b.Avisos.Confirmaciones);
+        Assert.Equal("7712: sigue en espera", b.Vm.UltimoGuardado);
+        var item = Assert.Single(b.Vm.Esperas);   // la espera original sigue, con la misma hora
+        Assert.Equal(animal, item.AnimalId);
+        Assert.Equal(desde, item.Dto.FechaHoraUtc);
+    }
+
+    [Fact]
+    public async Task Saltar_sobre_una_espera_abierta_sigue_salteandola()
+    {
+        var b = new Banco();
+        await b.Vm.IniciarAsync();
+        var animal = b.VacaEnEspera("7712");
+        await b.Vm.EncolarLecturaAsync("7712");
+
+        await b.Vm.CerrarFichaCommand.ExecuteAsync(null);
+
+        Assert.False(b.Vm.HayFicha);
+        Assert.Equal(animal, Assert.Single(b.Campo.EsperasSalteadas).AnimalId);
     }
 
     // ------------------------------------------------------------------ botonera y lista (RF-2)
