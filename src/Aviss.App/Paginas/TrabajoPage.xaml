@@ -117,18 +117,18 @@
             <VerticalStackLayout Grid.Row="1" Spacing="0">
                 <!-- Cartel del bastón (spec 008, RF-12 y RF-13): 72 dp, a todo el ancho, mientras no esté conectado. Tocar el cartel
                      hace lo que dice su segunda línea (reconectar, elegir, dar el permiso, abrir los ajustes); "Cambiar bastón" va aparte. -->
-                <Grid IsVisible="{Binding HayAvisoBaston}" ColumnDefinitions="*,Auto" HeightRequest="72"
+                <Grid IsVisible="{Binding HayAvisoBaston}" ColumnDefinitions="*,Auto" MinimumHeightRequest="72"
                       BackgroundColor="{Binding ColorFondoBaston, Converter={StaticResource HexAColor}}">
                     <Grid.GestureRecognizers>
                         <TapGestureRecognizer Command="{Binding ReconectarBastonCommand}" />
                     </Grid.GestureRecognizers>
-                    <VerticalStackLayout Grid.Column="0" Padding="16,0" VerticalOptions="Center" Spacing="0"
+                    <VerticalStackLayout Grid.Column="0" Padding="16,6" VerticalOptions="Center" Spacing="0"
                                          SemanticProperties.Description="Estado del bastón. Tocá para actuar">
-                        <Label Text="{Binding TextoCartelBaston}" TextColor="White" FontSize="21" FontAttributes="Bold" LineBreakMode="TailTruncation" MaxLines="1" />
+                        <Label Text="{Binding TextoCartelBaston}" TextColor="White" FontSize="19" FontAttributes="Bold" LineBreakMode="WordWrap" MaxLines="2" />
                         <Label Text="{Binding TextoAccionBaston}" IsVisible="{Binding HayAccionBaston}" TextColor="White" FontSize="16"
                                LineBreakMode="TailTruncation" MaxLines="1" />
                     </VerticalStackLayout>
-                    <Button Grid.Column="1" Text="Cambiar bastón" BackgroundColor="White" TextColor="Black" FontSize="16" FontAttributes="Bold"
+                    <Button Grid.Column="1" Text="Cambiar" BackgroundColor="White" TextColor="Black" FontSize="16" FontAttributes="Bold"
                             HeightRequest="56" MinimumWidthRequest="0" Padding="12,0" CornerRadius="8" Margin="0,0,8,0" VerticalOptions="Center"
                             Command="{Binding CambiarBastonCommand}"
                             SemanticProperties.Hint="Elegir otro bastón de los emparejados" />
