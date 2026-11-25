@@ -117,14 +117,14 @@ public class ExportadorDairyCompTests
     [Fact]
     public void Un_original_que_ya_trae_una_columna_nueva_se_rechaza_sin_importar_las_mayusculas()
     {
-        var original = GeneradorMuestras.Construir(["ID", "RPRO", "scdat"], [["1001", "INSEMIN", "x"]]);
+        var original = GeneradorMuestras.Construir(["ID", "RPRO", "evento1"], [["1001", "INSEMIN", "x"]]);   // SCDAT/SCTIM ya no chocan: se reemplazan
 
         foreach (var formato in new[] { FormatoExportacion.Csv, FormatoExportacion.Xls })
         {
             var r = new ExportadorDairyComp().Generar(original, formato, new Dictionary<string, ValoresExportacion>());
             Assert.False(r.EsCorrecto);
             Assert.Equal(FalloGeneracion.ColumnaDuplicada, r.Fallo);
-            Assert.Equal("SCDAT", r.ColumnaDuplicada);   // nombra la columna nueva que chocó (RF-14), en xls y en csv
+            Assert.Equal("Evento1", r.ColumnaDuplicada);   // nombra la columna nueva que chocó (RF-14), en xls y en csv
             Assert.Null(r.Contenido);
         }
     }

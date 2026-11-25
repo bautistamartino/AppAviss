@@ -12,42 +12,65 @@ namespace Aviss.Excel.Exportacion;
 /// </summary>
 internal static class EscritorXls
 {
-    public static byte[] Escribir(ISheet hoja, LecturaExcel lectura, ValoresExportacion[] valoresPorFila)
+    public static byte[] Escribir(ISheet hoja, LecturaExcel lectura, ValoresExportacion[] valoresPorFila, PlanColumnasExportacion plan)
     {
         int filaEnc = PerfilDairyComp.FilaDeEncabezados(hoja);
         int columnaInicial = AnchoDeLaHoja(hoja);
-        var nuevas = ColumnasExportacion.Todas;
+        var nuevas = plan.Nuevas;
 
         // Encabezados: texto, con el mismo estilo que el último encabezado original (negrita, relleno...).
         var filaEncabezados = hoja.GetRow(filaEnc);
         var estilo = UltimaCeldaConContenido(filaEncabezados)?.CellStyle;
+
+        // Dónde está en la hoja cada columna que se reemplaza (SCDAT/SCTIM que el original ya trae), por su encabezado.
+        var textosEncabezado = Enumerable.Range(0, columnaInicial)
+            .Select(c => PerfilDairyComp.Convertir(filaEncabezados.GetCell(c)) is { } celdaEnc ? celdaEnc.Texto : "")
+            .ToList();
+        var columnasReemplazo = plan.Reemplazos
+            .Select(r => (r.Columna, r.PosValores, Hoja: PlanColumnasExportacion.BuscarPosicion(textosEncabezado, r.NombreOriginal!)))
+            .ToList();
+
         for (int j = 0; j < nuevas.Count; j++)
         {
             var celda = filaEncabezados.CreateCell(columnaInicial + j);
-            celda.SetCellValue(nuevas[j].Nombre);
+            celda.SetCellValue(nuevas[j].Columna.Nombre);
             if (estilo is not null) celda.CellStyle = estilo;
         }
 
-        // Valores: las filas sin valores no reciben ninguna celda (quedan en blanco).
+        // Valores: las filas sin valores no reciben ninguna celda nueva (quedan en blanco) ni se tocan sus SCDAT/SCTIM.
         for (int k = 0; k < lectura.Filas.Count; k++)
         {
             var valores = valoresPorFila[k].EnOrden();
             var fila = hoja.GetRow(lectura.Filas[k].NumeroFila - 1);
+
+            // Reemplazo: solo en filas con tacto. Se pisa el valor de la celda (o se crea si la fila no la tenía).
+            if (!valoresPorFila[k].EsVacio)
+                foreach (var (columna, pos, enHoja) in columnasReemplazo)
+                {
+                    if (valores[pos].Length == 0) continue;
+                    EscribirValor(fila.GetCell(enHoja) ?? fila.CreateCell(enHoja), columna, valores[pos]);
+                }
+
             for (int j = 0; j < nuevas.Count; j++)
             {
-                if (valores[j].Length == 0) continue;
-                var celda = fila.CreateCell(columnaInicial + j);
-                if (nuevas[j].Tipo == TipoColumnaExportacion.Entero
-                    && int.TryParse(valores[j], NumberStyles.None, CultureInfo.InvariantCulture, out int entero))
-                    celda.SetCellValue(entero);
-                else
-                    celda.SetCellValue(valores[j]);
+                var texto = valores[nuevas[j].PosValores];
+                if (texto.Length == 0) continue;
+                EscribirValor(fila.CreateCell(columnaInicial + j), nuevas[j].Columna, texto);
             }
         }
 
         using var salida = new MemoryStream();
         hoja.Workbook.Write(salida, true);
         return salida.ToArray();
+    }
+
+    /// <summary>Texto para casi todo; entero para los días. Si la celda ya tenía otro tipo (por ejemplo una fecha numérica), pasa a texto.</summary>
+    private static void EscribirValor(ICell celda, ColumnaExportacion columna, string valor)
+    {
+        if (columna.Tipo == TipoColumnaExportacion.Entero && int.TryParse(valor, NumberStyles.None, CultureInfo.InvariantCulture, out int entero))
+            celda.SetCellValue(entero);
+        else
+            celda.SetCellValue(valor);
     }
 
     /// <summary>La primera columna libre: una más que la última celda con contenido de CUALQUIER fila (nunca se pisa nada).</summary>

@@ -15,6 +15,17 @@ public static class MensajesExportacion
     public static string ColumnaDuplicada(string columna)
         => $"El archivo original ya trae una columna llamada {columna}, que es una de las nuevas. No se generó nada.";
 
+    /// <summary>
+    /// Aviso (no error) cuando el original no traía SCDAT y/o SCTIM y se crearon como columnas nuevas. Solo nombra columnas fijas
+    /// de la app, nunca datos del archivo.
+    /// </summary>
+    public static string ColumnasCreadas(IReadOnlyList<string> columnas) => columnas.Count switch
+    {
+        0 => "",
+        1 => $"El archivo original no traía la columna {columnas[0]}: se creó nueva a la derecha. Revisá que Dairy Comp la tome al importar.",
+        _ => $"El archivo original no traía las columnas {string.Join(" y ", columnas)}: se crearon nuevas a la derecha. Revisá que Dairy Comp las tome al importar."
+    };
+
     public static string Para(FalloGuardado fallo) => fallo switch
     {
         FalloGuardado.SinEspacio => "No hay espacio suficiente en la tablet para guardar el archivo. No se guardó nada.",

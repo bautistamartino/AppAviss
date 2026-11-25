@@ -145,7 +145,7 @@ internal sealed class ExportacionService : IExportacionService
         var huella = Convert.ToHexString(SHA256.HashData(generado.Contenido!)).ToLowerInvariant();
         var constancia = await RegistrarConstanciaAsync(rodeoId, ahoraUtc, guardado.Archivo!.Nombre, formato, huella, generado.Filas, generado.FilasConValores);
 
-        return Resultado.Ok(new ExportacionEntregadaDto(guardado.Archivo, formato, generado.Filas, generado.FilasConValores, constancia));
+        return Resultado.Ok(new ExportacionEntregadaDto(guardado.Archivo, formato, generado.Filas, generado.FilasConValores, constancia, generado.ColumnasCreadas));
     }
 
     /// <summary>

@@ -76,7 +76,7 @@ public sealed partial class ExportarViewModel : ObservableObject
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(NombreArchivo), nameof(TextoLugar), nameof(TextoCantidades), nameof(AvisoConstanciaNoGuardada),
-        nameof(HayAvisoConstancia))]
+        nameof(HayAvisoConstancia), nameof(HayAvisoColumnasCreadas), nameof(AvisoColumnasCreadas))]
     private ExportacionEntregadaDto? _resultado;
 
     [ObservableProperty]
@@ -132,6 +132,11 @@ public sealed partial class ExportarViewModel : ObservableObject
     public string TextoCantidades => Resultado is null ? "" : $"{Resultado.Filas} filas, {Resultado.VacasConEvento} vacas con evento";
 
     public bool HayAvisoConstancia => Resultado is { ConstanciaGuardada: false };
+
+    /// <summary>True si el original no traía SCDAT y/o SCTIM y se crearon nuevas (el aviso nombra solo esas columnas fijas).</summary>
+    public bool HayAvisoColumnasCreadas => Resultado?.ColumnasCreadas is { Count: > 0 };
+
+    public string AvisoColumnasCreadas => Resultado?.ColumnasCreadas is { Count: > 0 } c ? MensajesExportacion.ColumnasCreadas(c) : "";
 
     public string AvisoConstanciaNoGuardada => HayAvisoConstancia ? MensajesExportacion.ConstanciaNoGuardada : "";
 

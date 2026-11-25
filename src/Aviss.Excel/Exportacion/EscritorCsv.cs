@@ -21,7 +21,7 @@ internal static class EscritorCsv
 {
     // ---- CSV a CSV ----
 
-    public static byte[]? DesdeTexto(byte[] original, CsvAnalizado csv, LecturaExcel lectura, ValoresExportacion[] valoresPorFila)
+    public static byte[]? DesdeTexto(byte[] original, CsvAnalizado csv, LecturaExcel lectura, ValoresExportacion[] valoresPorFila, PlanColumnasExportacion plan)
     {
         var codificacion = ConvencionCsvDairyComp.CodificacionEstricta(csv.Codificacion);
         var texto = csv.Texto;
@@ -41,6 +41,12 @@ internal static class EscritorCsv
             int anchoEncabezado = CamposReales(texto, registros[filaEncabezados], sep);
             bool encabezadosEntreComillas = texto[registros[filaEncabezados].Inicio] == '"';
 
+            // Dónde está, entre los campos del encabezado, cada columna que se REEMPLAZA (SCDAT/SCTIM que el original ya trae).
+            var camposEncabezado = registros[filaEncabezados].Campos;
+            var columnasReemplazo = plan.Reemplazos
+                .Select(r => (r.PosValores, Campo: PlanColumnasExportacion.BuscarPosicion(camposEncabezado, r.NombreOriginal!)))
+                .ToList();
+
             // Valores por número de registro (el mismo que el número de fila menos 1 de la lectura).
             var valoresPorRegistro = new Dictionary<int, ValoresExportacion>();
             for (int k = 0; k < lectura.Filas.Count; k++)
@@ -52,20 +58,29 @@ internal static class EscritorCsv
             {
                 var registro = registros[i];
                 List<string> nuevos;
+                Dictionary<int, string>? reemplazos = null;   // campo del registro -> texto nuevo (solo vacas con tacto)
                 if (i == filaEncabezados)
-                    nuevos = ColumnasExportacion.Todas
-                        .Select(c => encabezadosEntreComillas
-                            ? ConvencionCsvDairyComp.Entrecomillar(c.Nombre)
-                            : ConvencionCsvDairyComp.Campo(c.Nombre, sep))
+                    nuevos = plan.Nuevas
+                        .Select(n => encabezadosEntreComillas
+                            ? ConvencionCsvDairyComp.Entrecomillar(n.Columna.Nombre)
+                            : ConvencionCsvDairyComp.Campo(n.Columna.Nombre, sep))
                         .ToList();
                 else if (registro.Campos.All(c => c.Trim().Length == 0))
                     continue; // línea vacía (o solo separadores): la lectura la saltea, se deja como está
                 else
-                    nuevos = (valoresPorRegistro.TryGetValue(i, out var v) ? v : ValoresExportacion.Vacios)
-                        .EnOrden().Select(x => ConvencionCsvDairyComp.Campo(x, sep)).ToList();
+                {
+                    var valores = valoresPorRegistro.TryGetValue(i, out var v) ? v : ValoresExportacion.Vacios;
+                    var enOrden = valores.EnOrden();
+                    nuevos = plan.Nuevas.Select(n => ConvencionCsvDairyComp.Campo(enOrden[n.PosValores], sep)).ToList();
+                    if (!valores.EsVacio)
+                        foreach (var (pos, campo) in columnasReemplazo)
+                            if (enOrden[pos].Length > 0)
+                                (reemplazos ??= [])[campo] = ConvencionCsvDairyComp.Campo(enOrden[pos], sep);
+                }
 
-                salida.Append(texto, cursor, registro.Fin - cursor);
-                AgregarCampos(salida, texto, registro, sep, anchoEncabezado, nuevos);
+                salida.Append(texto, cursor, registro.Inicio - cursor);
+                AgregarConReemplazos(salida, texto, registro, sep, reemplazos);
+                AgregarCampos(salida, texto, registro, sep, anchoEncabezado, nuevos, reemplazos);
                 cursor = registro.Fin;
             }
             salida.Append(texto, cursor, texto.Length - cursor);
@@ -83,13 +98,15 @@ internal static class EscritorCsv
     /// ya termina en el separador (como las de Dairy Comp: <c>...;     0 ;</c>) cada campo va SEGUIDO de su separador, así no queda
     /// una columna vacía en el medio; si no termina en separador, cada campo va PRECEDIDO de uno.
     /// </summary>
-    private static void AgregarCampos(StringBuilder salida, string texto, RegistroCsv registro, char sep, int ancho, List<string> nuevos)
+    private static void AgregarCampos(
+        StringBuilder salida, string texto, RegistroCsv registro, char sep, int ancho, List<string> nuevos, Dictionary<int, string>? reemplazos)
     {
         bool terminaEnSeparador = TerminaEnSeparador(texto, registro, sep);
         int reales = CamposReales(texto, registro, sep);
 
         var campos = new List<string>();
-        for (int i = reales; i < ancho; i++) campos.Add("");
+        // Los campos que la fila no tenía hasta el ancho del encabezado: vacíos, salvo el que se reemplaza (fila corta con tacto).
+        for (int i = reales; i < ancho; i++) campos.Add(reemplazos is not null && reemplazos.TryGetValue(i, out var r) ? r : "");
         campos.AddRange(nuevos);
 
         foreach (var campo in campos)
@@ -97,6 +114,52 @@ internal static class EscritorCsv
             if (terminaEnSeparador) salida.Append(campo).Append(sep);
             else salida.Append(sep).Append(campo);
         }
+    }
+
+    /// <summary>
+    /// Copia el registro tal cual, salvo los campos con reemplazo (SCDAT/SCTIM de una vaca con tacto), que se sustituyen enteros.
+    /// Los campos que la fila no alcanza a tener los completa <see cref="AgregarCampos"/>.
+    /// </summary>
+    private static void AgregarConReemplazos(StringBuilder salida, string texto, RegistroCsv registro, char sep, Dictionary<int, string>? reemplazos)
+    {
+        if (reemplazos is null) { salida.Append(texto, registro.Inicio, registro.Fin - registro.Inicio); return; }
+
+        var posiciones = PosicionesDeCampos(texto, registro, sep);
+        int reales = CamposReales(texto, registro, sep);
+        int cursor = registro.Inicio;
+        foreach (var (campo, nuevo) in reemplazos.OrderBy(r => r.Key))
+        {
+            if (campo >= reales) continue; // el campo no existe en esta fila: lo agrega AgregarCampos
+            salida.Append(texto, cursor, posiciones[campo].Inicio - cursor).Append(nuevo);
+            cursor = posiciones[campo].Fin;
+        }
+        salida.Append(texto, cursor, registro.Fin - cursor);
+    }
+
+    /// <summary>Dónde empieza y termina cada campo del registro en el texto (mismas reglas de comillas que <c>LectorCsv.Separar</c>).</summary>
+    private static List<(int Inicio, int Fin)> PosicionesDeCampos(string texto, RegistroCsv registro, char sep)
+    {
+        var posiciones = new List<(int, int)>();
+        int inicio = registro.Inicio, contenido = 0;
+        bool entreComillas = false;
+        for (int i = registro.Inicio; i < registro.Fin; i++)
+        {
+            char c = texto[i];
+            if (entreComillas)
+            {
+                if (c == '"')
+                {
+                    if (i + 1 < texto.Length && texto[i + 1] == '"') { contenido++; i++; }
+                    else entreComillas = false;
+                }
+                else contenido++;
+            }
+            else if (c == '"' && contenido == 0) entreComillas = true;
+            else if (c == sep) { posiciones.Add((inicio, i)); inicio = i + 1; contenido = 0; }
+            else contenido++;
+        }
+        posiciones.Add((inicio, registro.Fin));
+        return posiciones;
     }
 
     private static bool TerminaEnSeparador(string texto, RegistroCsv r, char sep)
@@ -108,7 +171,7 @@ internal static class EscritorCsv
 
     // ---- .xls a CSV ----
 
-    public static byte[]? DesdeHoja(ISheet hoja, LecturaExcel lectura, ValoresExportacion[] valoresPorFila)
+    public static byte[]? DesdeHoja(ISheet hoja, LecturaExcel lectura, ValoresExportacion[] valoresPorFila, PlanColumnasExportacion plan)
     {
         const char sep = ConvencionCsvDairyComp.Separador;
         int filaEncabezados = PerfilDairyComp.FilaDeEncabezados(hoja);
@@ -118,6 +181,15 @@ internal static class EscritorCsv
         var valoresPorFilaDeHoja = new Dictionary<int, ValoresExportacion>();
         for (int k = 0; k < lectura.Filas.Count; k++)
             valoresPorFilaDeHoja[lectura.Filas[k].NumeroFila - 1] = valoresPorFila[k];
+
+        // Posición de cada columna que se REEMPLAZA (SCDAT/SCTIM que el original ya trae), por su encabezado.
+        var filaEnc = hoja.GetRow(filaEncabezados);
+        var textosEncabezado = Enumerable.Range(0, ancho)
+            .Select(c => PerfilDairyComp.Convertir(filaEnc.GetCell(c)) is { } celdaEnc ? celdaEnc.Texto : "")
+            .ToList();
+        var columnasReemplazo = plan.Reemplazos
+            .Select(r => (r.PosValores, Columna: PlanColumnasExportacion.BuscarPosicion(textosEncabezado, r.NombreOriginal!)))
+            .ToList();
 
         var salida = new StringBuilder();
         for (int i = 0; i <= hoja.LastRowNum; i++)
@@ -133,7 +205,7 @@ internal static class EscritorCsv
             if (i == filaEncabezados)
             {
                 foreach (var t in textos) salida.Append(t.Length == 0 ? "" : ConvencionCsvDairyComp.Entrecomillar(t)).Append(sep);
-                foreach (var c in ColumnasExportacion.Todas) salida.Append(ConvencionCsvDairyComp.Entrecomillar(c.Nombre)).Append(sep);
+                foreach (var n in plan.Nuevas) salida.Append(ConvencionCsvDairyComp.Entrecomillar(n.Columna.Nombre)).Append(sep);
             }
             else
             {
@@ -145,9 +217,16 @@ internal static class EscritorCsv
                     textos[1] = total.Groups[1].Value;
                 }
 
-                foreach (var t in textos) salida.Append(ConvencionCsvDairyComp.Campo(t)).Append(sep);
                 var valores = valoresPorFilaDeHoja.TryGetValue(i, out var v) ? v : ValoresExportacion.Vacios;
-                foreach (var x in valores.EnOrden()) salida.Append(ConvencionCsvDairyComp.Campo(x)).Append(sep);
+                var enOrden = valores.EnOrden();
+
+                // Reemplazo de SCDAT/SCTIM: solo en las vacas con tacto; las demás filas salen con lo que traían.
+                if (!valores.EsVacio)
+                    foreach (var (pos, columna) in columnasReemplazo)
+                        if (enOrden[pos].Length > 0) textos[columna] = enOrden[pos];
+
+                foreach (var t in textos) salida.Append(ConvencionCsvDairyComp.Campo(t)).Append(sep);
+                foreach (var n in plan.Nuevas) salida.Append(ConvencionCsvDairyComp.Campo(enOrden[n.PosValores])).Append(sep);
             }
             salida.Append(ConvencionCsvDairyComp.Salto);
         }
