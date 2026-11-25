@@ -177,7 +177,7 @@ public class TrabajoViewModelTests
         var (segunda, _) = b.Vaca("1002", contador: 2);
 
         await b.LeerAsync("1001");
-        await b.LeerAsync("1002");
+        await b.Vm.EncolarLecturaAsync("1002", esManual: true);   // la búsqueda a mano sigue preguntando (el bastón se ignora)
 
         // Spec 009: la ficha de la 1001 sigue abierta y la 1002 espera la decisión del veterinario (no se marcó).
         Assert.Equal(primera, b.Vm.Ficha!.AnimalId);
@@ -513,7 +513,7 @@ public class TrabajoViewModelTests
         b.Vm.VerHistorialCommand.Execute(null);
         Assert.True(b.Vm.MostrarHistorial);
 
-        await b.LeerAsync("1002");
+        await b.Vm.EncolarLecturaAsync("1002", esManual: true);   // a mano: el bastón con una ficha abierta se ignora
         await b.Vm.SaltarYAbrirNuevaCommand.ExecuteAsync(null);   // spec 009: con la ficha abierta se elige abrir la nueva
 
         Assert.Null(b.Vm.EventoElegido);

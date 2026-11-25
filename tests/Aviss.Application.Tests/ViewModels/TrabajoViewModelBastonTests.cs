@@ -264,7 +264,7 @@ public class TrabajoViewModelBastonTests
     }
 
     [Fact]
-    public async Task Con_una_ficha_abierta_leer_otra_vaca_con_el_baston_pregunta_como_la_spec_009()
+    public async Task Con_una_ficha_abierta_leer_otra_vaca_con_el_baston_se_ignora_y_avisa()
     {
         var b = new Banco();
         b.Vaca("1001", "1001");
@@ -273,9 +273,12 @@ public class TrabajoViewModelBastonTests
         await b.Vm.EncolarLecturaAsync("1001");
 
         b.Lector.Emitir("999000458013170");
-        await Esperas.HastaAsync(() => b.Vm.Cuadro == CuadroTrabajo.ConfirmarReemplazo);
+        await Esperas.HastaAsync(() => b.Vm.HayMensajeInfo);
 
-        Assert.NotEqual(otra, b.Vm.Ficha!.AnimalId);   // la ficha abierta sigue siendo la primera: no se marcó la otra vaca
+        // Spec 009 (modificada 2026-11-25): la ficha abierta sigue siendo la primera, no se marcó la otra vaca y no hay aviso de tres opciones.
+        Assert.NotEqual(otra, b.Vm.Ficha!.AnimalId);
+        Assert.Equal(CuadroTrabajo.Ninguno, b.Vm.Cuadro);
+        Assert.Equal(TrabajoViewModel.MensajeLecturaConFichaAbierta, b.Vm.MensajeInfo);
     }
 
     // ------------------------------------------------------------------ perder el bastón no toca nada (RF-14, RF-15)
