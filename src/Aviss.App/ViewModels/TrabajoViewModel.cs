@@ -519,6 +519,8 @@ public sealed partial class TrabajoViewModel : ObservableObject
         EventoElegido = null;
         EleccionElegida = null;
         LimpiarFila2();   // la segunda fila (spec 011) arranca cerrada en cada ficha y se descarta con ella
+        // El aviso "se quitó el evento 2" es de la ficha que se cierra (Saltar, Entrar, En espera): no tiene que quedar en pantalla.
+        if (MensajeInfo == MensajeSeQuitoEvento2) MensajeInfo = null;
         Selector.LimpiarEleccion();
         if (Etapa == EtapaTrabajo.Ficha) Etapa = EtapaTrabajo.Esperando;
     }

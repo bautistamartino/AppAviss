@@ -436,10 +436,14 @@ public sealed partial class TrabajoViewModel
     /// filas; esto decide a quién se le asigna lo que se elige o se escribe.
     /// </summary>
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(EsFila2Activa))]
+    [NotifyPropertyChangedFor(nameof(EsFila2Activa), nameof(TextoAyudaObservacion))]
     private int _filaActiva = 1;
 
     public bool EsFila2Activa => FilaActiva == 2;
+    /// <summary>La ayuda de la capa de observación: la de la fila 2 dice que va con el evento 2, que ya está elegido.</summary>
+    public string TextoAyudaObservacion => EsFila2Activa
+        ? "Opcional. Se guarda junto con el evento 2."
+        : "Opcional. Se guarda junto con el próximo evento que elijas.";
 
     public bool HayEvento2Elegido => Evento2Elegido is not null;
     public bool HayObservacion2Pendiente => Observacion2Pendiente.Length > 0;

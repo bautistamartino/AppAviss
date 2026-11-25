@@ -713,7 +713,7 @@
                             </DataTrigger>
                         </Label.Triggers>
                     </Label>
-                    <Label Text="Opcional. Se guarda junto con el próximo evento que elijas." Style="{StaticResource TextoCampo}" FontSize="16" />
+                    <Label Text="{Binding TextoAyudaObservacion}" Style="{StaticResource TextoCampo}" FontSize="16" />
                     <!-- Mismo cuadro para las dos filas; el tope de 300 caracteres lo pone el ViewModel (spec 011, RF-4 y RF-12). -->
                     <Editor Text="{Binding TextoObservacion}" Placeholder="Escribí la observación" MaxLength="{x:Static vm:TrabajoViewModel.MaximoObservacion}"
                             HeightRequest="140" FontSize="20" TextColor="Black" BackgroundColor="{StaticResource CampoClaro}"

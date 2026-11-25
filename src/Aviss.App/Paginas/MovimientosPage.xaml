@@ -131,12 +131,21 @@
                         <VerticalStackLayout Spacing="12">
                             <ctl:SelectorEventosView Selector="{Binding Selector}" />
 
-                            <Editor Text="{Binding ObservacionEditada}" Placeholder="Observación (opcional)" MaxLength="300" HeightRequest="90" FontSize="18"
-                                    TextColor="Black" BackgroundColor="{StaticResource CampoClaro}" AutoSize="Disabled" />
+                            <!-- Cada cuadro de observación lleva su rótulo chico (como "+ evento"): sin él no se sabe de cuál evento es cuál. Solo hay
+                                 rótulo "evento 1" cuando hay dos cuadros; con un solo evento queda el cuadro de siempre. -->
+                            <VerticalStackLayout Spacing="2">
+                                <Label Text="Observación del evento 1" Style="{StaticResource TextoCampo}" FontSize="13" FontAttributes="Bold"
+                                       TextColor="{StaticResource Gray600}" IsVisible="{Binding HayFila2Editada}" />
+                                <Editor Text="{Binding ObservacionEditada}" Placeholder="Observación (opcional)" MaxLength="300" HeightRequest="90" FontSize="18"
+                                        TextColor="Black" BackgroundColor="{StaticResource CampoClaro}" AutoSize="Disabled" />
+                            </VerticalStackLayout>
                             <!-- Observación propia del Evento 2 (spec 011, RF-4): solo con la fila 2 abierta. Mismo tope de 300. -->
-                            <Editor Text="{Binding Observacion2Editada}" Placeholder="Observación del evento 2 (opcional)" MaxLength="300" HeightRequest="90" FontSize="18"
-                                    IsVisible="{Binding HayFila2Editada}"
-                                    TextColor="Black" BackgroundColor="{StaticResource CampoClaro}" AutoSize="Disabled" />
+                            <VerticalStackLayout Spacing="2" IsVisible="{Binding HayFila2Editada}">
+                                <Label Text="Observación del evento 2" Style="{StaticResource TextoCampo}" FontSize="13" FontAttributes="Bold"
+                                       TextColor="{StaticResource Gray600}" />
+                                <Editor Text="{Binding Observacion2Editada}" Placeholder="Observación (opcional)" MaxLength="300" HeightRequest="90" FontSize="18"
+                                        TextColor="Black" BackgroundColor="{StaticResource CampoClaro}" AutoSize="Disabled" />
+                            </VerticalStackLayout>
 
                             <Border IsVisible="{Binding HayMensajeEdicion}" BackgroundColor="{StaticResource CampoPeligro}" StrokeThickness="0" Padding="12,8">
                                 <Label Text="{Binding MensajeEdicion}" TextColor="White" FontSize="18" FontAttributes="Bold" />
