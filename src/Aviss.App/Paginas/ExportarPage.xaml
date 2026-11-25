@@ -103,6 +103,9 @@
                     <Label Text="{Binding NombreArchivo}" Style="{StaticResource TextoCampo}" FontSize="24" FontAttributes="Bold" />
                     <Label Text="{Binding TextoLugar}" Style="{StaticResource TextoCampo}" FontSize="24" />
                     <Label Text="{Binding TextoCantidades}" Style="{StaticResource TextoCampo}" FontSize="22" />
+                    <Border IsVisible="{Binding HayAvisoColumnasCreadas}" BackgroundColor="{StaticResource CampoAlerta}" StrokeThickness="0" Padding="16,10">
+                        <Label Text="{Binding AvisoColumnasCreadas}" TextColor="Black" FontSize="20" FontAttributes="Bold" />
+                    </Border>
                     <Border IsVisible="{Binding HayAvisoConstancia}" BackgroundColor="{StaticResource CampoAlerta}" StrokeThickness="0" Padding="16,10">
                         <Label Text="{Binding AvisoConstanciaNoGuardada}" TextColor="Black" FontSize="20" FontAttributes="Bold" />
                     </Border>

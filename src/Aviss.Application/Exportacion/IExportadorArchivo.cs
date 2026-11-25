@@ -8,7 +8,7 @@ public enum FalloGeneracion
     /// <summary>El original guardado en el rodeo no se puede leer (dañado, sin ID o RPRO, etc.).</summary>
     OriginalIlegible,
 
-    /// <summary>El original ya trae una columna con el nombre de una de las nuevas (RF-14): no hay forma segura de elegir cuál manda.</summary>
+    /// <summary>El original ya trae una columna con el nombre de una de las nuevas que NO se reemplazan (RF-14; SCDAT y SCTIM no cuentan: se reemplazan): no hay forma segura de elegir cuál manda.</summary>
     ColumnaDuplicada,
 
     /// <summary>No se pudo escribir el archivo (por ejemplo, un texto con caracteres que la codificación del CSV original no admite).</summary>
@@ -24,12 +24,15 @@ public enum FalloGeneracion
 /// <param name="Filas">Filas de datos del original que quedan en el archivo (sin la fila Total).</param>
 /// <param name="FilasConValores">Cuántas de esas filas llevan al menos un valor en las columnas nuevas.</param>
 /// <param name="ColumnaDuplicada">Solo con <see cref="FalloGeneracion.ColumnaDuplicada"/>: el nombre de la columna NUEVA que ya existía (un nombre fijo de la app, nunca un dato del tambo).</param>
-public sealed record ResultadoGeneracionArchivo(byte[]? Contenido, string Extension, int Filas, int FilasConValores, FalloGeneracion? Fallo, string? ColumnaDuplicada = null)
+/// <param name="ColumnasCreadas">SCDAT y/o SCTIM que el original NO traía y hubo que crear a la derecha (nombres fijos de la app); vacío si no faltó ninguna. La pantalla lo avisa.</param>
+public sealed record ResultadoGeneracionArchivo(
+    byte[]? Contenido, string Extension, int Filas, int FilasConValores, FalloGeneracion? Fallo, string? ColumnaDuplicada = null,
+    IReadOnlyList<string>? ColumnasCreadas = null)
 {
     public bool EsCorrecto => Fallo is null && Contenido is not null;
 
-    public static ResultadoGeneracionArchivo Correcto(byte[] contenido, string extension, int filas, int filasConValores)
-        => new(contenido, extension, filas, filasConValores, null);
+    public static ResultadoGeneracionArchivo Correcto(byte[] contenido, string extension, int filas, int filasConValores, IReadOnlyList<string>? columnasCreadas = null)
+        => new(contenido, extension, filas, filasConValores, null, null, columnasCreadas ?? []);
 
     public static ResultadoGeneracionArchivo Fallido(FalloGeneracion fallo, string? columnaDuplicada = null) => new(null, "", 0, 0, fallo, columnaDuplicada);
 }
@@ -61,7 +64,7 @@ public sealed record ResultadoValidacionArchivo(DiferenciaExportacion? Diferenci
 }
 
 /// <summary>
-/// Genera el archivo de vuelta para Dairy Comp: el original más las columnas nuevas a la derecha (spec 007, RF-4 y RF-5), y lo
+/// Genera el archivo de vuelta para Dairy Comp: el original, con SCDAT/SCTIM reemplazadas si las trae, más las columnas nuevas a la derecha (spec 007, RF-4 y RF-5), y lo
 /// valida reabriéndolo (RF-18). Se implementa en <c>Aviss.Excel</c>; las dos operaciones usan CPU y no tocan la base ni el
 /// disco, así que el servicio las corre fuera del hilo de la pantalla.
 /// </summary>

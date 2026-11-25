@@ -20,10 +20,12 @@ public sealed record ResumenExportacionDto(
 
 /// <summary>
 /// Lo que devuelve una exportación bien hecha. <paramref name="ConstanciaGuardada"/> es falso si el archivo quedó guardado pero la
-/// constancia no se pudo registrar (nada de lo guardado se pierde, RF-22): la pantalla lo avisa.
+/// constancia no se pudo registrar (nada de lo guardado se pierde, RF-22): la pantalla lo avisa. <paramref name="ColumnasCreadas"/>
+/// son las SCDAT/SCTIM que el original no traía y se crearon (vacío o nulo si no faltó ninguna): la pantalla también lo avisa.
 /// </summary>
 public sealed record ExportacionEntregadaDto(
-    ArchivoGuardado Archivo, FormatoExportacion Formato, int Filas, int VacasConEvento, bool ConstanciaGuardada);
+    ArchivoGuardado Archivo, FormatoExportacion Formato, int Filas, int VacasConEvento, bool ConstanciaGuardada,
+    IReadOnlyList<string>? ColumnasCreadas = null);
 
 /// <summary>El caso de uso "Exportar" (spec 007): listar rodeos, resumen y generar y entregar el archivo de vuelta.</summary>
 public interface IExportacionService

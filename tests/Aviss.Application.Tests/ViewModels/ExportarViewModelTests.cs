@@ -297,6 +297,32 @@ public class ExportarViewModelTests
     }
 
     [Fact]
+    public async Task Si_se_crearon_SCDAT_o_SCTIM_porque_faltaban_se_avisa_con_un_texto_sin_datos_del_archivo()
+    {
+        var e = await new Entorno().EnResumenAsync();
+        e.Servicio.ResultadoExportar = () => Resultado.Ok(new ExportacionEntregadaDto(
+            new ArchivoGuardado("a.csv", "Descargas", "r"), FormatoExportacion.Csv, 5, 2, true, ["SCDAT", "SCTIM"]));
+
+        await e.Vm.GenerarCsvCommand.ExecuteAsync(null);
+
+        Assert.True(e.Vm.HayAvisoColumnasCreadas);
+        Assert.Equal(MensajesExportacion.ColumnasCreadas(["SCDAT", "SCTIM"]), e.Vm.AvisoColumnasCreadas);
+        Assert.Contains("SCDAT y SCTIM", e.Vm.AvisoColumnasCreadas);
+        Assert.False(e.Vm.HayAvisoConstancia);
+    }
+
+    [Fact]
+    public async Task Sin_columnas_creadas_no_hay_aviso()
+    {
+        var e = await new Entorno().EnResumenAsync();   // el resultado por defecto no trae columnas creadas
+
+        await e.Vm.GenerarCsvCommand.ExecuteAsync(null);
+
+        Assert.False(e.Vm.HayAvisoColumnasCreadas);
+        Assert.Equal("", e.Vm.AvisoColumnasCreadas);
+    }
+
+    [Fact]
     public async Task Si_no_quedo_la_constancia_se_avisa_pero_el_archivo_figura_guardado()
     {
         var e = await new Entorno().EnResumenAsync();

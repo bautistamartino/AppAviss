@@ -341,6 +341,20 @@ public sealed class ExportacionServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task Un_original_que_ya_trae_SCDAT_se_exporta_reemplazandola_y_avisa_que_creo_SCTIM()
+    {
+        // SCDAT ya no choca (regla del 2026-11-24): se reemplaza. El original no trae SCTIM: se crea y el resultado lo avisa.
+        var (rodeo, _) = RodeoConTrabajo(EscenarioExportacion.CsvConColumna("scdat", Pasada, SinPasar, CvetCero, Anulada));
+
+        var r = await _e.Servicio.ExportarAsync(rodeo, FormatoExportacion.Csv);
+
+        Assert.True(r.EsCorrecto, r.Mensaje);
+        Assert.Equal(["SCTIM"], r.Valor.ColumnasCreadas);
+        Assert.Single(_e.Entrega.Guardados);
+        Assert.Equal(1, _e.Cuenta("Exportacion"));
+    }
+
+    [Fact]
     public async Task Un_original_ilegible_no_genera_nada()
     {
         var (rodeo, _) = RodeoConTrabajo(new byte[] { 0, 1, 2, 3, 4 });
@@ -372,14 +386,14 @@ public sealed class ExportacionServiceTests : IDisposable
     [Fact]
     public async Task Un_original_con_una_columna_nueva_ya_existente_se_rechaza_sin_registrar_nada()
     {
-        var (rodeo, _) = RodeoConTrabajo(EscenarioExportacion.CsvConColumna("scdat", Pasada, SinPasar, CvetCero, Anulada));
+        var (rodeo, _) = RodeoConTrabajo(EscenarioExportacion.CsvConColumna("evento1", Pasada, SinPasar, CvetCero, Anulada));   // SCDAT/SCTIM ya no chocan: se reemplazan
 
         var r = await _e.Servicio.ExportarAsync(rodeo, FormatoExportacion.Csv);
 
         Assert.Equal(CodigoError.ColumnaDuplicada, r.Codigo);
-        Assert.Equal(MensajesExportacion.ColumnaDuplicada("SCDAT"), r.Mensaje);   // nombra la columna que chocó (RF-14), no datos del tambo
+        Assert.Equal(MensajesExportacion.ColumnaDuplicada("Evento1"), r.Mensaje);   // nombra la columna que chocó (RF-14), no datos del tambo
         Assert.DoesNotContain("CVET", r.Mensaje!);
-        Assert.DoesNotContain("SCTIM", r.Mensaje!);
+        Assert.DoesNotContain("SCDAT", r.Mensaje!);
         SinDatosDelTambo(r);
         Assert.Empty(_e.Entrega.Guardados);
         Assert.Equal(0, _e.Cuenta("Exportacion"));

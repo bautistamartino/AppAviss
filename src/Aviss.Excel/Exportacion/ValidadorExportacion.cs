@@ -10,8 +10,8 @@ namespace Aviss.Excel.Exportacion;
 /// original y contra los valores esperados. Cualquier diferencia devuelve solo su categoría, nunca un valor del archivo.
 /// <list type="bullet">
 /// <item>Misma cantidad de filas y misma fila Total declarada.</item>
-/// <item>Encabezados: los originales, en el mismo orden, seguidos de las columnas nuevas.</item>
-/// <item>Cada celda original igual. Si el formato no cambió se compara también el tipo (texto, número, fecha); si cambió (de .xls a CSV
+/// <item>Encabezados: los originales, en el mismo orden, seguidos de las columnas nuevas (SCDAT/SCTIM solo si el original no las traía).</item>
+/// <item>Cada celda original igual, salvo SCDAT/SCTIM de las vacas con tacto, que tienen que valer el dato del día (regla del 2026-11-24). Si el formato no cambió se compara también el tipo (texto, número, fecha); si cambió (de .xls a CSV
 /// o al revés) se compara el valor: los espacios de los bordes y <c>5</c> contra <c>5.0</c> no cuentan como diferencia, porque el CSV
 /// no guarda tipos.</item>
 /// <item>Cada columna nueva con el valor esperado de esa vaca (vacío si no tiene registro).</item>
@@ -31,9 +31,10 @@ internal static class ValidadorExportacion
         var a = lecturaOriginal.Lectura!;
         var b = lecturaGenerada.Lectura!;
 
-        // Encabezados: originales + nuevos, exactamente.
-        var esperados = a.Encabezados.Concat(ColumnasExportacion.Todas.Select(c => c.Nombre)).ToList();
-        if (!b.Encabezados.SequenceEqual(esperados, StringComparer.Ordinal))
+        // Encabezados: los originales (SCDAT/SCTIM, si venían, siguen en su lugar y no se repiten) + las columnas que de verdad son
+        // nuevas, que incluyen SCDAT/SCTIM cuando el original no las traía.
+        var plan = PlanColumnasExportacion.Crear(a.Encabezados);
+        if (plan.Choque is not null || !b.Encabezados.SequenceEqual(plan.EncabezadosEsperados(a.Encabezados), StringComparer.Ordinal))
             return Invalido(DiferenciaExportacion.ColumnasDistintas);
 
         if (a.Filas.Count != b.Filas.Count || a.TotalDeclarado != b.TotalDeclarado)
@@ -44,19 +45,31 @@ internal static class ValidadorExportacion
 
         for (int k = 0; k < a.Filas.Count; k++)
         {
+            var textos = valoresEsperados[k].EnOrden();
+            bool conTacto = !valoresEsperados[k].EsVacio;
+
             foreach (var encabezado in a.Encabezados)
             {
+                // SCDAT/SCTIM originales: en una vaca con tacto tienen que valer el dato del día; en las demás, lo que traían.
+                var reemplazo = conTacto ? plan.Reemplazos.FirstOrDefault(r => r.NombreOriginal == encabezado) : null;
+                if (reemplazo is not null && textos[reemplazo.PosValores].Length > 0)
+                {
+                    b.Filas[k].Celdas.TryGetValue(encabezado, out var celdaReemplazada);
+                    if (!string.Equals(TextoONada(celdaReemplazada), textos[reemplazo.PosValores], StringComparison.Ordinal))
+                        return Invalido(DiferenciaExportacion.ValorNuevoIncorrecto);
+                    continue;
+                }
+
                 a.Filas[k].Celdas.TryGetValue(encabezado, out var celdaA);
                 b.Filas[k].Celdas.TryGetValue(encabezado, out var celdaB);
                 if (!CeldasIguales(celdaA, celdaB, mismoFormato))
                     return Invalido(DiferenciaExportacion.ValorOriginalCambiado);
             }
 
-            var textos = valoresEsperados[k].EnOrden();
-            for (int j = 0; j < ColumnasExportacion.Todas.Count; j++)
+            foreach (var nueva in plan.Nuevas)
             {
-                b.Filas[k].Celdas.TryGetValue(ColumnasExportacion.Todas[j].Nombre, out var celdaNueva);
-                if (!string.Equals(TextoONada(celdaNueva), textos[j], StringComparison.Ordinal))
+                b.Filas[k].Celdas.TryGetValue(nueva.Columna.Nombre, out var celdaNueva);
+                if (!string.Equals(TextoONada(celdaNueva), textos[nueva.PosValores], StringComparison.Ordinal))
                     return Invalido(DiferenciaExportacion.ValorNuevoIncorrecto);
             }
         }
