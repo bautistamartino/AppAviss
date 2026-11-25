@@ -42,6 +42,9 @@ public sealed class AvisosAndroid : IAvisosCampo
     }
 
 
+    /// <summary>Se perdió la conexión con el bastón (spec 008, RF-14): una sola vibración corta, sin sonido (en la manga el sonido ya significa otras cosas).</summary>
+    public void BastonPerdido() => Vibrar(milisegundos: 200);
+
     private static void Vibrar(long milisegundos)
     {
         try

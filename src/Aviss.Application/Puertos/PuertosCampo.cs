@@ -17,18 +17,44 @@ public sealed record TagRead(string Codigo, DateTime FechaHoraUtc);
 public enum EstadoConexionRfid { Desconectado, Conectando, Conectado }
 
 /// <summary>
-/// El lector de caravanas. El simulador de esta spec y el bastón real de la spec posterior implementan lo mismo, así
+/// Por qué no hay bastón conectado (spec 008). <c>Ninguno</c> cuando está conectado, buscando o es un lector que no
+/// tiene este concepto (el simulador).
+/// </summary>
+public enum MotivoSinBaston { Ninguno, NoElegido, SinPermiso, BluetoothApagado, SinBluetooth, NoEmparejado, NoResponde }
+
+/// <summary>
+/// El lector de caravanas. El simulador de esta spec y el bastón real de la spec 008 implementan lo mismo, así
 /// que cambiar uno por otro no toca el flujo de trabajo (RF-31).
 /// </summary>
 public interface IRfidReader
 {
     EstadoConexionRfid Estado { get; }
 
+    /// <summary>Por qué está sin bastón (solo tiene sentido con <see cref="Estado"/> en Desconectado).</summary>
+    MotivoSinBaston Motivo { get; }
+
+    /// <summary>Se dispara cuando cambia <see cref="Estado"/> o <see cref="Motivo"/>. Puede venir de cualquier hilo.</summary>
+    event Action? EstadoCambiado;
+
     /// <summary>Las lecturas a medida que llegan. Termina cuando se cancela el token.</summary>
     IAsyncEnumerable<TagRead> Lecturas(CancellationToken ct);
 
+    /// <summary>Empieza a conectar y vuelve enseguida (la conexión sigue en segundo plano). Idempotente.</summary>
     Task ConectarAsync(CancellationToken ct = default);
     Task DesconectarAsync(CancellationToken ct = default);
+
+    /// <summary>Reintenta ya, saltando la espera entre ciclos (botón "Tocá para reconectar").</summary>
+    Task ReconectarAhoraAsync(CancellationToken ct = default);
+}
+
+/// <summary>El bastón que la tablet recuerda (nombre y dirección Bluetooth). No identifica a ningún veterinario (spec 006).</summary>
+public sealed record BastonRecordado(string Nombre, string Direccion);
+
+/// <summary>Preferencia de la tablet: qué bastón emparejado se usa. Fuera de la base, como la de mangas.</summary>
+public interface IPreferenciasBaston
+{
+    BastonRecordado? Obtener();
+    void Guardar(BastonRecordado baston);
 }
 
 /// <summary>Solo existe en la compilación de desarrollo: permite "leer" una caravana desde la pantalla (RF-31).</summary>
@@ -85,6 +111,9 @@ public interface IAvisosCampo
 
     /// <summary>La manga llegó a su cantidad y se cerró sola: un aviso corto y positivo, distinto de la chicharra.</summary>
     void MangaCompleta();
+
+    /// <summary>Se perdió la conexión con el bastón (spec 008, RF-14): una vibración corta, sin sonido.</summary>
+    void BastonPerdido();
 }
 
 /// <summary>Mantener la pantalla encendida mientras se trabaja (RF-3).</summary>

@@ -11,6 +11,9 @@ public sealed class FakeLector : IRfidReader, ISimuladorLecturas
 {
     private readonly Channel<TagRead> _canal = Channel.CreateUnbounded<TagRead>();
     public EstadoConexionRfid Estado { get; private set; }
+    public MotivoSinBaston Motivo { get; private set; }
+    public event Action? EstadoCambiado;
+    public int Reconexiones { get; private set; }
     public int Conexiones { get; private set; }
     public int Desconexiones { get; private set; }
     public List<string> Emitidos { get; } = [];
@@ -25,6 +28,8 @@ public sealed class FakeLector : IRfidReader, ISimuladorLecturas
     {
         Conexiones++;
         Estado = EstadoConexionRfid.Conectado;
+        Motivo = MotivoSinBaston.Ninguno;
+        EstadoCambiado?.Invoke();
         return Task.CompletedTask;
     }
 
@@ -32,7 +37,22 @@ public sealed class FakeLector : IRfidReader, ISimuladorLecturas
     {
         Desconexiones++;
         Estado = EstadoConexionRfid.Desconectado;
+        EstadoCambiado?.Invoke();
         return Task.CompletedTask;
+    }
+
+    public Task ReconectarAhoraAsync(CancellationToken ct = default)
+    {
+        Reconexiones++;
+        return Task.CompletedTask;
+    }
+
+    /// <summary>Para los tests: deja el lector en el estado y motivo indicados y avisa del cambio.</summary>
+    public void Poner(EstadoConexionRfid estado, MotivoSinBaston motivo = MotivoSinBaston.Ninguno)
+    {
+        Estado = estado;
+        Motivo = motivo;
+        EstadoCambiado?.Invoke();
     }
 
     public async IAsyncEnumerable<TagRead> Lecturas([System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken ct)
@@ -65,10 +85,12 @@ public sealed class FakeAvisos : IAvisosCampo
     public int Repetidos { get; private set; }
     public int SinTactos { get; private set; }
     public int MangasCompletas { get; private set; }
+    public int BastonesPerdidos { get; private set; }
     public void Confirmacion() => Confirmaciones++;
     public void Repetido() => Repetidos++;
     public void SinTacto() => SinTactos++;
     public void MangaCompleta() => MangasCompletas++;
+    public void BastonPerdido() => BastonesPerdidos++;
 }
 
 public sealed class FakePantalla : IPantalla

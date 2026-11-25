@@ -4,7 +4,7 @@ Spec: [spec.md](spec.md) · Plan: [plan.md](plan.md)
 
 Regla de verificación: tras cada tarea se corren **solo los proyectos de tests que la tarea toca** (con `--filter "Categoria!=Rendimiento"`; en esta PC, `-c Release` si Windows bloquea Debug) y `dotnet build` de la solución. La suite completa y los tests de rendimiento se corren **una sola vez, en la T5**. Cada tarea deja la solución compilando y se commitea al terminar (rama `spec/008-lector-baston`, que sale de `main` con el spike ya mergeado). **Máximo 5 tareas** (constitución §10). Antes de empezar la T1, la spec debe figurar como `aprobada` (las cuatro preguntas abiertas tienen recomendación). Todos los tests usan EID inventados con prefijo `999`: nunca los reales del bastón o del archivo del padre.
 
-- [ ] **T1** — Reglas puras y puertos del lector
+- [x] **T1** — Reglas puras y puertos del lector
   - Qué hace: `IRfidReader` suma `Motivo`, `EstadoCambiado` y `ReconectarAhoraAsync`; `MotivoSinBaston`, `IPreferenciasBaston`/`BastonRecordado`, `IAvisosCampo.BastonPerdido` (y sus fakes y `AvisosAndroid` con una vibración corta); `FakeRfidReader`, `LectorNoDisponible` y `FakeLector` actualizados; `AcumuladorLineas` pasa a `Aviss.Rfid` (con los `using` del spike y de sus tests); `InterpreteLineaBaston`, `FiltroRepetidas`, `PoliticaReintentos` y `OpcionesLectorBaston` (3 s, 8 s, 1-2-4-8-15 s); puertos `IEnlaceSerieBaston`, `IConexionSerie`, `IBluetoothBaston`, `MetodoSocket`, `ErrorEnlace`.
   - Tests primero: `Rfid.Tests › InterpreteLineaBastonTests`, `FiltroRepetidasTests`, `PoliticaReintentosTests`; los 36 tests del spike y los de `FakeRfidReader` siguen verdes con el acumulador movido.
   - RF: RF-8 (política), RF-10, RF-18, RF-20, RF-21
