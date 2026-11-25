@@ -212,8 +212,10 @@ public class TrabajoViewModelEventosTests
         Assert.Equal("1001", b.Vm.Ficha!.Caravana);   // todavía no se procesó
 
         await b.Vm.CerrarCuadroAgregarCommand.ExecuteAsync(null);
-        // Spec 009: la lectura guardada se procesa al cerrar el cuadro; con la ficha de la 1001 abierta, pregunta antes de reemplazarla.
-        Assert.Equal(CuadroTrabajo.ConfirmarReemplazo, b.Vm.Cuadro);
+        // Spec 009 (modificada 2026-11-25): la lectura guardada se procesa al cerrar el cuadro; con la ficha de la 1001 abierta se ignora
+        // y solo se avisa (no pregunta, no abre la 2002).
+        Assert.Equal(CuadroTrabajo.Ninguno, b.Vm.Cuadro);
+        Assert.Equal(TrabajoViewModel.MensajeLecturaConFichaAbierta, b.Vm.MensajeInfo);
         Assert.Equal("1001", b.Vm.Ficha!.Caravana);
     }
 
@@ -230,8 +232,9 @@ public class TrabajoViewModelEventosTests
         Assert.Equal("1001", b.Vm.Ficha!.Caravana);
 
         await b.Vm.CerrarCuadroAgregarCommand.ExecuteAsync(null);
-        // Spec 009: la lectura guardada se procesa al cerrar el cuadro; con la ficha de la 1001 abierta, pregunta antes de reemplazarla.
-        Assert.Equal(CuadroTrabajo.ConfirmarReemplazo, b.Vm.Cuadro);
+        // Spec 009 (modificada 2026-11-25): igual que arriba: se ignora y se avisa.
+        Assert.Equal(CuadroTrabajo.Ninguno, b.Vm.Cuadro);
+        Assert.Equal(TrabajoViewModel.MensajeLecturaConFichaAbierta, b.Vm.MensajeInfo);
         Assert.Equal("1001", b.Vm.Ficha!.Caravana);
     }
 

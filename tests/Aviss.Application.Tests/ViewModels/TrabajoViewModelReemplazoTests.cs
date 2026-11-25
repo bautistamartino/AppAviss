@@ -54,7 +54,7 @@ public class TrabajoViewModelReemplazoTests
         {
             var animal = Vaca(caravana, contador: 1);
             Campo.Estado = Datos.EstadoTrabajo(manga: 1, abierta: true, contador: 1, procesadas: 1);
-            await Vm.EncolarLecturaAsync(caravana);
+            await Vm.EncolarLecturaAsync(caravana, esManual: true);
             return animal;
         }
 
@@ -63,7 +63,7 @@ public class TrabajoViewModelReemplazoTests
         {
             var actual = await FichaAbiertaAsync("1001");
             var nueva = Vaca("1002", contador: 2);
-            await Vm.EncolarLecturaAsync("1002");
+            await Vm.EncolarLecturaAsync("1002", esManual: true);
             return (actual, nueva);
         }
 
@@ -99,7 +99,7 @@ public class TrabajoViewModelReemplazoTests
         await b.FichaAbiertaAsync("1001");
         b.Vaca("1002", cvet: "PRE");
 
-        await b.Vm.EncolarLecturaAsync("1002");
+        await b.Vm.EncolarLecturaAsync("1002", esManual: true);
 
         Assert.Equal("1001 · CVET PRE", b.Vm.ReemplazoCaravanaActual);
         Assert.Equal("1002 · CVET PRE", b.Vm.ReemplazoCaravanaNueva);
@@ -114,7 +114,7 @@ public class TrabajoViewModelReemplazoTests
 
         await b.Vm.CancelarLecturaCommand.ExecuteAsync(null);
         await b.Vm.ElegirEventoCommand.ExecuteAsync(Prenada);
-        await b.Vm.EncolarLecturaAsync("1002");
+        await b.Vm.EncolarLecturaAsync("1002", esManual: true);
 
         Assert.Equal(CuadroTrabajo.ConfirmarReemplazo, b.Vm.Cuadro);
         Assert.True(b.Vm.HayReemplazoConEventoSinGuardar);
@@ -129,7 +129,7 @@ public class TrabajoViewModelReemplazoTests
         b.Vm.ObservacionPendiente = "renguea";
         b.Vaca("1002");
 
-        await b.Vm.EncolarLecturaAsync("1002");
+        await b.Vm.EncolarLecturaAsync("1002", esManual: true);
 
         Assert.True(b.Vm.HayReemplazoConEventoSinGuardar);
     }
@@ -186,7 +186,7 @@ public class TrabajoViewModelReemplazoTests
         await b.Vm.CancelarLecturaCommand.ExecuteAsync(null);   // (cierra el aviso para poder elegir el evento)
         await b.Vm.ElegirEventoCommand.ExecuteAsync(Prenada);
         b.Vm.ObservacionPendiente = "renguea";
-        await b.Vm.EncolarLecturaAsync("1002");
+        await b.Vm.EncolarLecturaAsync("1002", esManual: true);
         var procesadasAntes = b.Campo.LecturasProcesadas.Count;
         var confirmacionesAntes = b.Avisos.Confirmaciones;
 
@@ -234,7 +234,7 @@ public class TrabajoViewModelReemplazoTests
         await b.FichaAbiertaAsync("1001");
         var enEspera = b.VacaEnEspera("7712");
 
-        await b.Vm.EncolarLecturaAsync("7712");
+        await b.Vm.EncolarLecturaAsync("7712", esManual: true);
 
         Assert.Equal(CuadroTrabajo.ConfirmarReemplazo, b.Vm.Cuadro);
         Assert.NotEqual(enEspera, b.Vm.Ficha!.AnimalId);   // todavía no se abrió
@@ -248,7 +248,7 @@ public class TrabajoViewModelReemplazoTests
             var b = new Banco();
             var actual = await b.FichaAbiertaAsync("1001");
             var enEspera = b.VacaEnEspera("7712");
-            await b.Vm.EncolarLecturaAsync("7712");
+            await b.Vm.EncolarLecturaAsync("7712", esManual: true);
             var procesadas = b.Campo.LecturasProcesadas.Count;
 
             if (opcion == 1) await b.Vm.PonerEnEsperaYAbrirNuevaCommand.ExecuteAsync(null);
@@ -268,7 +268,7 @@ public class TrabajoViewModelReemplazoTests
         var b = new Banco();
         var actual = await b.FichaAbiertaAsync("1001");
         b.VacaEnEspera("7712");
-        await b.Vm.EncolarLecturaAsync("7712");
+        await b.Vm.EncolarLecturaAsync("7712", esManual: true);
 
         await b.Vm.CancelarLecturaCommand.ExecuteAsync(null);
 
@@ -283,7 +283,7 @@ public class TrabajoViewModelReemplazoTests
         var b = new Banco();
         var enEspera = b.VacaEnEspera("7712");
 
-        await b.Vm.EncolarLecturaAsync("7712");
+        await b.Vm.EncolarLecturaAsync("7712", esManual: true);
 
         Assert.Equal(CuadroTrabajo.Ninguno, b.Vm.Cuadro);
         Assert.Equal(enEspera, b.Vm.Ficha!.AnimalId);
@@ -295,10 +295,10 @@ public class TrabajoViewModelReemplazoTests
     {
         var b = new Banco();
         var actual = b.VacaEnEspera("7712");
-        await b.Vm.EncolarLecturaAsync("7712");   // abre la ficha de la espera (sin ficha previa)
+        await b.Vm.EncolarLecturaAsync("7712", esManual: true);   // abre la ficha de la espera (sin ficha previa)
         b.Vaca("1002", contador: 2);
         b.ElServicioSumaAlMarcar();
-        await b.Vm.EncolarLecturaAsync("1002");
+        await b.Vm.EncolarLecturaAsync("1002", esManual: true);
         Assert.Equal(CuadroTrabajo.ConfirmarReemplazo, b.Vm.Cuadro);
         return (b, actual);
     }
@@ -336,7 +336,7 @@ public class TrabajoViewModelReemplazoTests
         var animal = await b.FichaAbiertaAsync("1001");
         b.Campo.Lecturas["1001"] = Datos.Repetido(animal, "1001");
 
-        await b.Vm.EncolarLecturaAsync("1001");
+        await b.Vm.EncolarLecturaAsync("1001", esManual: true);
 
         Assert.Equal(CuadroTrabajo.Ninguno, b.Vm.Cuadro);
         Assert.Equal(0, b.Avisos.Repetidos);
@@ -352,7 +352,7 @@ public class TrabajoViewModelReemplazoTests
         b.Campo.Lecturas["2224"] = Datos.SinTacto(Guid.NewGuid(), "2224", contador: 2);
         b.ElServicioSumaAlMarcar();
 
-        await b.Vm.EncolarLecturaAsync("2224");
+        await b.Vm.EncolarLecturaAsync("2224", esManual: true);
 
         Assert.Equal(CuadroTrabajo.Ninguno, b.Vm.Cuadro);   // no hay aviso de tres opciones
         Assert.Equal(actual, b.Vm.Ficha!.AnimalId);
@@ -368,7 +368,7 @@ public class TrabajoViewModelReemplazoTests
         var b = new Banco();
         var actual = await b.FichaAbiertaAsync("1001");
 
-        await b.Vm.EncolarLecturaAsync("9999");
+        await b.Vm.EncolarLecturaAsync("9999", esManual: true);
         Assert.Equal(CuadroTrabajo.NoEncontrada, b.Vm.Cuadro);
         await b.Vm.CerrarNoEncontradaCommand.ExecuteAsync(null);
 
@@ -382,7 +382,7 @@ public class TrabajoViewModelReemplazoTests
         var actual = await b.FichaAbiertaAsync("1001");
         b.Campo.Lecturas["2002"] = Datos.Repetido(Guid.NewGuid(), "2002");
 
-        await b.Vm.EncolarLecturaAsync("2002");
+        await b.Vm.EncolarLecturaAsync("2002", esManual: true);
         Assert.Equal(CuadroTrabajo.Aviso, b.Vm.Cuadro);   // no es el de tres opciones
         await b.Vm.SeguirCommand.ExecuteAsync(null);
 
@@ -396,7 +396,7 @@ public class TrabajoViewModelReemplazoTests
         var b = new Banco();
         b.Campo.Lecturas["2002"] = Datos.Repetido(Guid.NewGuid(), "2002");
 
-        await b.Vm.EncolarLecturaAsync("2002");
+        await b.Vm.EncolarLecturaAsync("2002", esManual: true);
         await b.Vm.SeguirCommand.ExecuteAsync(null);
 
         Assert.Equal(EtapaTrabajo.Esperando, b.Vm.Etapa);
@@ -410,12 +410,12 @@ public class TrabajoViewModelReemplazoTests
         var cero = Guid.NewGuid();
         b.Campo.Fichas[cero] = Datos.Ficha(cero, "2224", cvet: "0", entraEnTacto: false);
         b.Campo.Lecturas["2224"] = Datos.SinTacto(cero, "2224");
-        await b.Vm.EncolarLecturaAsync("2224");
+        await b.Vm.EncolarLecturaAsync("2224", esManual: true);
         await b.Vm.VerFichaSinTactoCommand.ExecuteAsync(null);
         Assert.True(b.Vm.MostrarCartelCvetCero);
         b.Vaca("1002");
 
-        await b.Vm.EncolarLecturaAsync("1002");
+        await b.Vm.EncolarLecturaAsync("1002", esManual: true);
 
         Assert.Equal(CuadroTrabajo.ConfirmarReemplazo, b.Vm.Cuadro);
         Assert.True(b.Campo.LecturasProcesadas[^1].HayFichaConTactoAbierta);   // la ficha de CVET 0 cuenta como ficha abierta
@@ -429,10 +429,10 @@ public class TrabajoViewModelReemplazoTests
         var cero = Guid.NewGuid();
         b.Campo.Fichas[cero] = Datos.Ficha(cero, "2224", cvet: "0", entraEnTacto: false);
         b.Campo.Lecturas["2224"] = Datos.SinTacto(cero, "2224");
-        await b.Vm.EncolarLecturaAsync("2224");
+        await b.Vm.EncolarLecturaAsync("2224", esManual: true);
         await b.Vm.VerFichaSinTactoCommand.ExecuteAsync(null);
         b.Vaca("1002");
-        await b.Vm.EncolarLecturaAsync("1002");
+        await b.Vm.EncolarLecturaAsync("1002", esManual: true);
 
         await b.Vm.PonerEnEsperaYAbrirNuevaCommand.ExecuteAsync(null);
 
@@ -450,9 +450,9 @@ public class TrabajoViewModelReemplazoTests
         b.Vaca("1003", contador: 3);
         b.Vaca("1004", contador: 3);
 
-        await b.Vm.EncolarLecturaAsync("1003");
-        await b.Vm.EncolarLecturaAsync("1004");
-        await b.Vm.EncolarLecturaAsync("1002");   // el bastón repite la del aviso: no reemplaza a la guardada
+        await b.Vm.EncolarLecturaAsync("1003", esManual: true);
+        await b.Vm.EncolarLecturaAsync("1004", esManual: true);
+        await b.Vm.EncolarLecturaAsync("1002", esManual: true);   // el bastón repite la del aviso: no reemplaza a la guardada
 
         Assert.Equal(["1001", "1002"], b.Campo.LecturasProcesadas.Select(l => l.Codigo));   // nada se procesó todavía
         Assert.Equal(CuadroTrabajo.ConfirmarReemplazo, b.Vm.Cuadro);
@@ -472,7 +472,7 @@ public class TrabajoViewModelReemplazoTests
         var b = new Banco();
         await b.AvisoAbiertoAsync();
         b.Vaca("1003", contador: 3);
-        await b.Vm.EncolarLecturaAsync("1003");
+        await b.Vm.EncolarLecturaAsync("1003", esManual: true);
         b.ElServicioSumaAlMarcar();
 
         await b.Vm.PonerEnEsperaYAbrirNuevaCommand.ExecuteAsync(null);
@@ -494,7 +494,7 @@ public class TrabajoViewModelReemplazoTests
         // Justo cuando el servicio marca a la 1002 (la actual ya se cerró y el cuadro todavía está abierto), el bastón la repite.
         b.Campo.OnProcesarLectura = cmd =>
         {
-            if (!cmd.HayFichaConTactoAbierta && cmd.Codigo == "1002") repetida = b.Vm.EncolarLecturaAsync("1002");
+            if (!cmd.HayFichaConTactoAbierta && cmd.Codigo == "1002") repetida = b.Vm.EncolarLecturaAsync("1002", esManual: true);
             return Resultado.Ok(b.Campo.Lecturas[cmd.Codigo]);
         };
 

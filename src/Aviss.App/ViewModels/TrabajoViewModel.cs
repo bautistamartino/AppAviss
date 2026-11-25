@@ -380,10 +380,25 @@ public sealed partial class TrabajoViewModel : ObservableObject
         return _cola.EncolarAsync(codigo.Trim(), esManual);
     }
 
+    /// <summary>Mensaje corto cuando el lector lee otra vaca con una ficha abierta (sin datos del animal leído).</summary>
+    public const string MensajeLecturaConFichaAbierta = "Terminá con esta vaca antes de leer otra";
+
     private async Task ProcesarLecturaAsync(Lectura lectura)
     {
         if (_sesion.Rodeo is not { } rodeo) return;
         if (Etapa == EtapaTrabajo.Terminado) return;   // el trabajo ya se terminó: no se marca nada
+
+        // Spec 009 (modificada 2026-11-25): con CUALQUIER ficha abierta (también la de una vaca con CVET 0 abierta con "Ver ficha"),
+        // una lectura del bastón o del simulador no hace nada con el animal: no abre otra ficha, no marca, no suena, no cuenta y
+        // no pregunta. Solo se avisa. La búsqueda a mano (EsManual) no entra acá: sigue como antes. También cubre la lectura que
+        // esperaba con un cuadro abierto: se procesa al cerrarlo y, si la ficha sigue ahí, se ignora igual.
+        if (Etapa == EtapaTrabajo.Ficha && !lectura.EsManual)
+        {
+            // El bastón repite la caravana de la vaca que se está tactando: eso se ignora sin cartel (como antes).
+            if (Ficha is { } abierta && string.Equals(abierta.Caravana, lectura.Codigo, StringComparison.OrdinalIgnoreCase)) return;
+            MensajeInfo = MensajeLecturaConFichaAbierta;
+            return;
+        }
 
         try
         {
@@ -392,8 +407,9 @@ public sealed partial class TrabajoViewModel : ObservableObject
             MensajeError = null;
             MensajeInfo = null;
 
-            // Con cualquier ficha abierta (también la de una vaca con CVET 0 abierta con "Ver ficha") el servicio no marca a una vaca
-            // nueva que entra en tacto: devuelve "RequiereDecision" y la pantalla pregunta antes (spec 009, RF-1).
+            // Con una ficha abierta, la BÚSQUEDA A MANO sí llega acá: el servicio no marca a una vaca nueva que entra en tacto y
+            // devuelve "RequiereDecision" para que la pantalla pregunte antes (spec 009, RF-1). Desde las lecturas del lector ese
+            // camino hoy no se dispara (ver arriba); el aviso de tres opciones queda vivo solo para la búsqueda manual.
             var hayFichaAbierta = Etapa == EtapaTrabajo.Ficha;
             var resultado = await EnCampoAsync(() => _campo.ProcesarLecturaAsync(new ProcesarLecturaCommand(rodeo.RodeoId, lectura.Codigo, hayFichaAbierta)));
             if (!resultado.EsCorrecto)
