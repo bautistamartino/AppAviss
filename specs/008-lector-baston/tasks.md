@@ -10,7 +10,7 @@ Regla de verificación: tras cada tarea se corren **solo los proyectos de tests 
   - RF: RF-8 (política), RF-10, RF-18, RF-20, RF-21
   - Hecho cuando: `dotnet build` en verde; pasan `Aviss.Rfid.Tests` y `Aviss.Application.Tests` (sin Rendimiento).
 
-- [ ] **T2** — `LectorBastonXrs2`: conexión, reconexión y lectura (con fakes)
+- [x] **T2** — `LectorBastonXrs2`: conexión, reconexión y lectura (con fakes)
   - Qué hace: el lector con su supervisor en segundo plano en `Aviss.Rfid` (estados y motivos, método recordado, timeout de 8 s por intento, espera creciente con tope, reconectar ya, apagado y prendido del bastón, permisos y Bluetooth apagado, `DesconectarAsync` que corta e inicia de cero, armado de líneas por conexión, filtro de repetidas, canal de lecturas, `Inyectar` para el simulador). Fakes en `tests/Aviss.Rfid.Tests/Soporte`: `FakeEnlaceSerie` (conecta, falla, no responde, entrega paquetes y se corta cuando el test lo pide), `FakeBluetoothBaston`, `FakePreferenciasBaston`, temporizador y reloj controlados a mano.
   - Tests primero: `Rfid.Tests › LectorBastonXrs2Tests` con una trama grabada inventada (`39 39 39 20 30 30 30 ... 0D 0A`, es decir `999 000...`): trama completa, partida en paquetes, varias líneas juntas, basura, repetida a menos y más de 3 s, pérdida y reconexión sin duplicar ni perder, bastón que se prende solo mientras se reintenta, la secuencia de estados sin parpadeo, sin datos de animales ni nombres en los mensajes.
   - RF: RF-2 (no elige solo), RF-4 a RF-12, RF-14, RF-16, RF-17, RF-19 a RF-22, RF-25, RF-26
