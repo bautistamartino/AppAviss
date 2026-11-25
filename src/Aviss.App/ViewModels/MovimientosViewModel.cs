@@ -188,12 +188,12 @@ public sealed partial class MovimientosViewModel : ObservableObject
     public SelectorEventosViewModel Selector { get; }
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HayEdicion), nameof(TituloEdicion))]
+    [NotifyPropertyChangedFor(nameof(HayEdicion), nameof(TituloEdicion), nameof(PuedeAgregarEvento2Editado))]
     [NotifyCanExecuteChangedFor(nameof(GuardarEdicionCommand))]
     private MovimientoItem? _editando;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(TextoEventoEditado))]
+    [NotifyPropertyChangedFor(nameof(TextoEventoEditado), nameof(PuedeAgregarEvento2Editado))]
     [NotifyCanExecuteChangedFor(nameof(GuardarEdicionCommand))]
     private EventoCampoDto? _eventoEditado;
 
@@ -204,6 +204,32 @@ public sealed partial class MovimientosViewModel : ObservableObject
 
     [ObservableProperty]
     private string _observacionEditada = "";
+
+    // ---- Segundo evento (spec 011, RF-16): el mismo registro puede traer un Evento 2 con su propia observación.
+
+    /// <summary>La edición muestra la fila del Evento 2 (el registro ya traía uno o se tocó "+ evento").</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(PuedeAgregarEvento2Editado), nameof(TextoEvento2Editado))]
+    [NotifyCanExecuteChangedFor(nameof(GuardarEdicionCommand))]
+    private bool _hayFila2Editada;
+
+    /// <summary>El Evento 2 elegido. Nulo con la fila abierta = falta elegirlo (o el que tenía el registro ya no está activo).</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(TextoEvento2Editado))]
+    [NotifyCanExecuteChangedFor(nameof(GuardarEdicionCommand))]
+    private EventoCampoDto? _evento2Editado;
+
+    [ObservableProperty]
+    private string _observacion2Editada = "";
+
+    /// <summary>El selector está eligiendo el Evento 2 (y no el Evento 1).</summary>
+    [ObservableProperty]
+    private bool _eligiendoEvento2;
+
+    /// <summary>Se ve "+ evento": el Evento 1 admite un segundo y todavía no hay fila 2.</summary>
+    public bool PuedeAgregarEvento2Editado => Editando is not null && EventoEditado?.AdmiteSegundo == true && !HayFila2Editada;
+
+    public string TextoEvento2Editado => Evento2Editado is { } e ? e.Nombre : "Elegí un evento";
 
     /// <summary>Un mensaje dentro de la edición (por ejemplo, el rechazo de la corrección).</summary>
     [ObservableProperty]
@@ -242,6 +268,12 @@ public sealed partial class MovimientosViewModel : ObservableObject
             EventoEditado = completo ? evento : null;
             EleccionEditada = completo ? eleccion : null;
             ObservacionEditada = item.Dto.Observaciones ?? "";
+            // El Evento 2 del registro, si tenía. Si ya no está activo no se elige ninguno: la fila queda abierta pidiendo elegir otro
+            // o quitarla (como el Evento 1 en la spec 005), y no se puede guardar así.
+            EligiendoEvento2 = false;
+            HayFila2Editada = dto.Evento2Id is not null;
+            Evento2Editado = Selector.Buscar(dto.Evento2Id) is { PuedeSerSegundo: true } e2 ? e2 : null;
+            Observacion2Editada = dto.Observaciones2 ?? "";
             Editando = item;
         }
         catch (Exception)
@@ -254,12 +286,79 @@ public sealed partial class MovimientosViewModel : ObservableObject
     private void ElegirEventoEditado(EventoCampoDto? estado)
     {
         if (estado is null) return;
+
+        // El selector estaba eligiendo el Evento 2: queda en la fila 2 y el selector vuelve a mostrar el Evento 1 (spec 011).
+        if (EligiendoEvento2)
+        {
+            if (EventoEditado is not { } evento1 || !estado.PuedeSerSegundo || estado.Id == evento1.Id) return;
+            Evento2Editado = estado;
+            MensajeEdicion = null;
+            VolverAEvento1();
+            return;
+        }
+
         // Los datos de los pasos los armó el selector; un evento con pasos incompletos no se elige.
         var eleccion = Selector.EleccionActual is { } e && e.EventoId == estado.Id ? e : new EleccionEvento(estado.Id);
         if (estado.TienePasos && !SelectorEventosViewModel.EstaCompleta(estado, eleccion)) return;
         EleccionEditada = eleccion;
         EventoEditado = estado;
         MensajeEdicion = null;
+
+        // RF-7: si el nuevo Evento 1 ya no admite un segundo, es igual al Evento 2 o lo deja no combinable, el Evento 2 se descarta con
+        // el mensaje fijo. El Evento 1 elegido no se pierde.
+        if (HayFila2Editada && (!estado.AdmiteSegundo || estado.Id == Evento2Editado?.Id || Evento2Editado?.PuedeSerSegundo == false))
+        {
+            var habiaAlgo = Evento2Editado is not null || Observacion2Editada.Length > 0;
+            DescartarFila2Editada();
+            if (habiaAlgo) MensajeEdicion = TrabajoViewModel.MensajeSeQuitoEvento2;
+        }
+    }
+
+    /// <summary>"+ evento": abre la fila 2 y deja al selector listo para elegir el Evento 2 (sin el Evento 1, solo combinables).</summary>
+    [RelayCommand]
+    private void AgregarEvento2Editado()
+    {
+        if (!PuedeAgregarEvento2Editado) return;
+        HayFila2Editada = true;
+        EditarEvento2();
+    }
+
+    /// <summary>Toca la fila 2: el selector pasa a elegir el Evento 2.</summary>
+    [RelayCommand]
+    private void EditarEvento2()
+    {
+        if (!HayFila2Editada || EventoEditado is not { } evento1) return;
+        EligiendoEvento2 = true;
+        MensajeEdicion = null;
+        Selector.AbrirSegundo(Evento2Editado?.Id, evento1.Id);
+    }
+
+    /// <summary>Toca la fila 1: el selector vuelve a elegir el Evento 1 (con todas las opciones).</summary>
+    [RelayCommand]
+    private void EditarEvento1() => VolverAEvento1();
+
+    private void VolverAEvento1()
+    {
+        EligiendoEvento2 = false;
+        Selector.Abrir(EventoEditado?.Id, EleccionEditada);
+    }
+
+    /// <summary>"Quitar": descarta el Evento 2 y su observación; el Evento 1 y la suya no se tocan.</summary>
+    [RelayCommand]
+    private void QuitarEvento2Editado()
+    {
+        if (!HayFila2Editada) return;
+        DescartarFila2Editada();
+        MensajeEdicion = null;
+    }
+
+    // Cierra la fila 2 y vuelve el selector al Evento 1 si estaba eligiendo el 2.
+    private void DescartarFila2Editada()
+    {
+        HayFila2Editada = false;
+        Evento2Editado = null;
+        Observacion2Editada = "";
+        if (EligiendoEvento2) VolverAEvento1();
     }
 
     [RelayCommand]
@@ -268,12 +367,17 @@ public sealed partial class MovimientosViewModel : ObservableObject
         Editando = null;
         EventoEditado = null;
         EleccionEditada = null;
-        Selector.LimpiarEleccion();   // un paso abierto no queda para la próxima edición
+        HayFila2Editada = false;
+        Evento2Editado = null;
+        Observacion2Editada = "";
+        EligiendoEvento2 = false;
+        Selector.LimpiarEleccion();   // un paso abierto (o el modo segundo) no queda para la próxima edición
         ObservacionEditada = "";
         MensajeEdicion = null;
     }
 
-    private bool PuedeGuardarEdicion => Editando is not null && EventoEditado is not null;
+    // Con la fila 2 abierta hace falta un Evento 2 elegido (o quitarla): no se guarda una fila vacía ni un evento que ya no está activo.
+    private bool PuedeGuardarEdicion => Editando is not null && EventoEditado is not null && (!HayFila2Editada || Evento2Editado is not null);
 
     /// <summary>Guarda la corrección. Si el servicio la rechaza, la edición sigue abierta con el motivo y no se cambió nada.</summary>
     [RelayCommand(CanExecute = nameof(PuedeGuardarEdicion))]
@@ -286,8 +390,15 @@ public sealed partial class MovimientosViewModel : ObservableObject
         try
         {
             var observacion = string.IsNullOrWhiteSpace(ObservacionEditada) ? null : ObservacionEditada.Trim();
+            // El Evento 2 viaja dentro de la elección (spec 011). Un evento sin pasos y sin segundo manda la elección vacía, como siempre.
+            var eleccion = evento.TienePasos ? EleccionEditada : null;
+            if (HayFila2Editada && Evento2Editado is { } evento2)
+            {
+                var obs2 = string.IsNullOrWhiteSpace(Observacion2Editada) ? null : Observacion2Editada.Trim();
+                eleccion = (eleccion ?? new EleccionEvento(evento.Id)) with { Segundo = new SegundoEventoElegido(evento2.Id, obs2) };
+            }
             var resultado = await _campo.CorregirRegistroAsync(new CorregirRegistroCommand(
-                item.Dto.RegistroId, evento.Id, observacion, evento.TienePasos ? EleccionEditada : null));
+                item.Dto.RegistroId, evento.Id, observacion, eleccion));
             if (!resultado.EsCorrecto)
             {
                 MensajeEdicion = resultado.Mensaje;

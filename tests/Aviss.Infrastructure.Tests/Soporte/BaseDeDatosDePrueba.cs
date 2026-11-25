@@ -165,18 +165,22 @@ public sealed class BaseDeDatosDePrueba : IDisposable
 
     public Guid Tacto(Guid animalId, Guid? estadoNuevoId, string tipo = "Normal", Guid? tactoAnuladoId = null,
         int? diasPrenez = null, DateTime? fechaHora = null, long? orden = null, bool anulado = false,
-        Guid? eventoId = null, int? diasPreniezInformados = null, int? diasAborto = null)
+        Guid? eventoId = null, int? diasPreniezInformados = null, int? diasAborto = null,
+        Guid? evento2Id = null, string? observaciones2 = null)
     {
         var id = Guid.NewGuid();
         // Las columnas de evento y días (spec 005, segunda vuelta) solo se nombran si se piden (base anterior a "EventosConPasos").
         var conEvento = eventoId is not null || diasPreniezInformados is not null || diasAborto is not null;
+        // Lo mismo con el evento 2 (spec 011): solo se nombra si se pide (base anterior a "DosEventosPorTacto").
+        var conEvento2 = evento2Id is not null || observaciones2 is not null;
         Ejecutar($@"INSERT INTO Tacto (Id, AnimalId, FechaHoraUtc, OrdenInsercion, EstadoNuevoId, DiasPrenez,
-                       Tipo, TactoAnuladoId, Anulado, CreadoEnUtc, ActualizadoEnUtc{(conEvento ? ", EventoId, DiasPreniezInformados, DiasAborto" : "")})
-                   VALUES ($id, $a, $fh, $o, $en, $d, $t, $ta, $an, $f, $f{(conEvento ? ", $ev, $dp, $da" : "")})",
+                       Tipo, TactoAnuladoId, Anulado, CreadoEnUtc, ActualizadoEnUtc{(conEvento ? ", EventoId, DiasPreniezInformados, DiasAborto" : "")}{(conEvento2 ? ", Evento2Id, Observaciones2" : "")})
+                   VALUES ($id, $a, $fh, $o, $en, $d, $t, $ta, $an, $f, $f{(conEvento ? ", $ev, $dp, $da" : "")}{(conEvento2 ? ", $ev2, $ob2" : "")})",
             ("$id", id), ("$a", animalId), ("$fh", Fecha(fechaHora ?? Reloj.UtcAhora)), ("$o", orden ?? ++_orden),
             ("$en", estadoNuevoId), ("$d", diasPrenez),
             ("$t", tipo), ("$ta", tactoAnuladoId), ("$an", anulado ? 1 : 0), ("$f", Fecha(Reloj.UtcAhora)),
-            ("$ev", eventoId), ("$dp", diasPreniezInformados), ("$da", diasAborto));
+            ("$ev", eventoId), ("$dp", diasPreniezInformados), ("$da", diasAborto),
+            ("$ev2", evento2Id), ("$ob2", observaciones2));
         return id;
     }
 
@@ -239,17 +243,20 @@ public sealed class BaseDeDatosDePrueba : IDisposable
     }
 
     public Guid Rechazo(Guid animalId, string? observaciones = null, DateTime? fechaHora = null,
-        long? orden = null, bool anulado = false, Guid? eventoId = null, int? diasAborto = null)
+        long? orden = null, bool anulado = false, Guid? eventoId = null, int? diasAborto = null,
+        Guid? evento2Id = null, string? observaciones2 = null)
     {
         var id = Guid.NewGuid();
-        var columnaEvento = (eventoId is null ? "" : ", EventoId") + (diasAborto is null ? "" : ", DiasAborto");
-        var valorEvento = (eventoId is null ? "" : ", $ev") + (diasAborto is null ? "" : ", $da");
+        var columnaEvento = (eventoId is null ? "" : ", EventoId") + (diasAborto is null ? "" : ", DiasAborto")
+            + (evento2Id is null ? "" : ", Evento2Id") + (observaciones2 is null ? "" : ", Observaciones2");
+        var valorEvento = (eventoId is null ? "" : ", $ev") + (diasAborto is null ? "" : ", $da")
+            + (evento2Id is null ? "" : ", $ev2") + (observaciones2 is null ? "" : ", $ob2");
         var parametros = new List<(string, object?)>
         {
             ("$id", id), ("$a", animalId), ("$fh", Fecha(fechaHora ?? Reloj.UtcAhora)), ("$o", orden ?? ++_orden),
             ("$ob", observaciones), ("$an", anulado ? 1 : 0),
             ("$ae", anulado ? Fecha(Reloj.UtcAhora) : null),
-            ("$f", Fecha(Reloj.UtcAhora)), ("$ev", eventoId), ("$da", diasAborto)
+            ("$f", Fecha(Reloj.UtcAhora)), ("$ev", eventoId), ("$da", diasAborto), ("$ev2", evento2Id), ("$ob2", observaciones2)
         };
         // $ev se manda siempre (un parámetro sin usar no molesta a SQLite); la columna solo se nombra si hay evento, así
         // el helper sigue sirviendo sobre una base anterior a "EventosDelCatalogo".

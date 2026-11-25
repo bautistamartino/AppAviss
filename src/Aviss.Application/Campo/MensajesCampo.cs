@@ -1,5 +1,6 @@
 using Aviss.Application.Comun;
 using Aviss.Domain.Enums;
+using Aviss.Domain.Reglas;
 
 namespace Aviss.Application.Campo;
 
@@ -63,6 +64,27 @@ public static class MensajesCampo
         MotivoNoReabrir.CierreAutomatico => (CodigoError.CierreAutomaticoNoSeDeshace, Para(CodigoError.CierreAutomaticoNoSeDeshace)),
         MotivoNoReabrir.CierreDeOtroDia => (CodigoError.CierreDeOtroDia, Para(CodigoError.CierreDeOtroDia)),
         MotivoNoReabrir.HayOtraMangaAbierta => (CodigoError.HayOtraMangaAbierta, Para(CodigoError.HayOtraMangaAbierta)),
+        _ => throw new ArgumentOutOfRangeException(nameof(motivo))
+    };
+
+    /// <summary>
+    /// Spec 011 (RF-12): por qué no se pudo guardar el segundo evento (o una observación demasiado larga). Se reutilizan los códigos
+    /// existentes (no se toca el enum); los mensajes no llevan caravanas ni nombres de tambos (RF-24).
+    /// </summary>
+    public static (CodigoError Codigo, string Mensaje) Para(MotivoSegundoEvento motivo) => motivo switch
+    {
+        MotivoSegundoEvento.SegundoIgualAlPrimero =>
+            (CodigoError.DatosInvalidos, "El evento 2 no puede ser el mismo que el evento 1."),
+        MotivoSegundoEvento.PrimeroNoAdmiteSegundo =>
+            (CodigoError.DatosInvalidos, "Ese evento no se combina con otro: sacá el evento 2."),
+        MotivoSegundoEvento.SegundoNoCombinable =>
+            (CodigoError.DatosInvalidos, "El evento 2 elegido no se puede combinar con otro evento."),
+        MotivoSegundoEvento.SegundoDeBaja =>
+            (CodigoError.EstadoDeBaja, "El evento 2 elegido está dado de baja."),
+        MotivoSegundoEvento.SegundoInexistente =>
+            (CodigoError.NoEncontrado, "El evento 2 elegido no existe."),
+        MotivoSegundoEvento.ObservacionLarga =>
+            (CodigoError.DatosInvalidos, $"La observación puede tener hasta {ReglasSegundoEvento.MaximoObservaciones} caracteres."),
         _ => throw new ArgumentOutOfRangeException(nameof(motivo))
     };
 }

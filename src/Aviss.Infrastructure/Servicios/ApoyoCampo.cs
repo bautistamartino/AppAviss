@@ -69,11 +69,11 @@ internal sealed class ArmadorFicha
         var tactos = (await _tactos.ListarPorAnimalAsync(animal.Id, ct))
             // Con eventos con pasos el título dice todo: "Tacto: Aborto, 45 días, Vacía OK" (RF-25, RF-30).
             .Select(t => new TactoParaFicha(t.FechaHoraUtc,
-                DescriptorEventos.Describir(catalogo, t.EventoId, t.EstadoNuevoId, t.DiasPreniezInformados, t.DiasAborto, false) ?? Nombre(t.EstadoNuevoId),
+                DescriptorEventos.Describir(catalogo, t.EventoId, t.EstadoNuevoId, t.DiasPreniezInformados, t.DiasAborto, false, t.Evento2Id) ?? Nombre(t.EstadoNuevoId),
                 t.Anulado));
         var rechazos = (await _rechazos.ListarPorAnimalAsync(animal.Id, ct))
             .Select(r => new RechazoParaFicha(r.Id, r.FechaHoraUtc, r.OrdenInsercion, r.Observaciones, r.Anulado, r.EventoId,
-                DescriptorEventos.Describir(catalogo, r.EventoId, null, null, r.DiasAborto, esRechazo: true)));
+                DescriptorEventos.Describir(catalogo, r.EventoId, null, null, r.DiasAborto, esRechazo: true, evento2Id: r.Evento2Id)));
         var armada = ConstructorFicha.Armar(animal.DatosOriginalesJson, tactos, _reloj.UtcAhora, _zona.Zona, rechazos);
         var enEspera = await _esperas.ObtenerPendienteAsync(animal.Id, ct) is not null;
 

@@ -193,6 +193,19 @@ internal sealed class TactoConfig : IEntityTypeConfiguration<Tacto>
         // Una anulación no copia datos del original (que los conserva).
         b.HasCheckConstraint("CK_Tacto_AnulacionSinEvento",
             "Tipo = 'Normal' OR (EventoId IS NULL AND DiasPreniezInformados IS NULL AND DiasAborto IS NULL)");
+
+        // Spec 011 (migración "DosEventosPorTacto", escrita a mano): el segundo evento del mismo tacto y su observación.
+        // El tope de 300 caracteres NO va en la base (se controla en pantalla y servicio, decisión del responsable).
+        b.Property(e => e.Evento2Id);
+        b.Property(e => e.Observaciones2);
+        b.HasOne<EstadoReproductivo>().WithMany().HasForeignKey(e => e.Evento2Id).OnDelete(DeleteBehavior.Restrict);
+        b.HasIndex(e => e.Evento2Id);
+        b.HasCheckConstraint("CK_Tacto_Observaciones2", "Observaciones2 IS NULL OR Evento2Id IS NOT NULL");
+        b.HasCheckConstraint("CK_Tacto_Evento2Distinto",
+            "Evento2Id IS NULL OR (Evento2Id IS NOT EstadoNuevoId AND Evento2Id IS NOT EventoId)");
+        b.HasCheckConstraint("CK_Tacto_Evento2SinDias",
+            "Evento2Id IS NULL OR (DiasPreniezInformados IS NULL AND DiasAborto IS NULL)");
+        b.HasCheckConstraint("CK_Tacto_AnulacionSinEvento2", "Tipo = 'Normal' OR Evento2Id IS NULL");
     }
 }
 
@@ -330,6 +343,16 @@ internal sealed class RechazoConfig : IEntityTypeConfiguration<Rechazo>
         b.HasCheckConstraint("CK_Rechazo_DiasAborto",
             $"DiasAborto IS NULL OR DiasAborto BETWEEN {RangosDias.Aborto.Minimo} AND {RangosDias.Aborto.Maximo}");
         b.HasCheckConstraint("CK_Rechazo_DiasConEvento", "DiasAborto IS NULL OR EventoId IS NOT NULL");
+
+        // Spec 011 (migración "DosEventosPorTacto"): el segundo evento. Sin tope de 300 en la base (pantalla y servicio).
+        b.Property(e => e.Evento2Id);
+        b.Property(e => e.Observaciones2);
+        b.HasOne<EstadoReproductivo>().WithMany().HasForeignKey(e => e.Evento2Id).OnDelete(DeleteBehavior.Restrict);
+        b.HasIndex(e => e.Evento2Id);
+        b.HasCheckConstraint("CK_Rechazo_Observaciones2", "Observaciones2 IS NULL OR Evento2Id IS NOT NULL");
+        // Solo con un evento común: no con el Rechazo fijo (EventoId nulo), ni con un Aborto (días), ni igual al Evento 1.
+        b.HasCheckConstraint("CK_Rechazo_Evento2ConEvento",
+            "Evento2Id IS NULL OR (EventoId IS NOT NULL AND DiasAborto IS NULL AND Evento2Id IS NOT EventoId)");
     }
 }
 

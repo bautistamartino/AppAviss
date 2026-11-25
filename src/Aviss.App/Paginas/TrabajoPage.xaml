@@ -209,8 +209,17 @@
                     <!-- Evento y Observación: tocar cada casillero abre su lista o su texto. Nada se guarda hasta "Entrar". -->
                     <VerticalStackLayout Grid.Row="1" Spacing="4" Padding="10,8,10,4">
                         <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
-                            <Label Grid.Column="0" Text="Evento" Style="{StaticResource TextoCampo}" FontSize="16" FontAttributes="Bold" TextColor="{StaticResource Gray600}" />
-                            <Label Grid.Column="1" Text="Observación" Style="{StaticResource TextoCampo}" FontSize="16" FontAttributes="Bold" TextColor="{StaticResource Gray600}" />
+                            <Label Grid.Column="0" Text="Evento" Style="{StaticResource TextoCampo}" FontSize="16" FontAttributes="Bold" TextColor="{StaticResource Gray600}"
+                                   VerticalOptions="Center" />
+                            <Label Grid.Column="1" Text="Observación" Style="{StaticResource TextoCampo}" FontSize="16" FontAttributes="Bold" TextColor="{StaticResource Gray600}"
+                                   VerticalOptions="Center" />
+                            <!-- "+ evento" (spec 011, RF-1): texto chico y compacto, en el renglón de los rótulos (a la derecha) para no sumar alto. Solo se ve
+                                 con un Evento 1 que admite un segundo y sin fila 2. Sin cifra mínima de dp: decisión del usuario, se prueba en la tablet. -->
+                            <Button Grid.Column="1" Text="{Binding TextoMasEvento}" HorizontalOptions="End" VerticalOptions="Center"
+                                    IsVisible="{Binding PuedeAgregarEvento2}" Command="{Binding AgregarEvento2Command}"
+                                    BackgroundColor="{StaticResource CampoClaro}" TextColor="Black" FontSize="13" FontAttributes="Bold"
+                                    HeightRequest="26" MinimumHeightRequest="0" MinimumWidthRequest="0" Padding="10,0" CornerRadius="6"
+                                    SemanticProperties.Hint="Agregar un segundo evento a esta vaca" />
                         </Grid>
                         <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
                             <Button Grid.Column="0" Text="{Binding TextoEventoElegido}" Style="{StaticResource BotonCampoSecundario}" FontSize="17"
@@ -222,6 +231,32 @@
                                     Command="{Binding AbrirObservacionCommand}"
                                     SemanticProperties.Hint="Opcional: escribir una observación" />
                         </Grid>
+
+                        <!-- Segunda fila (spec 011, RF-2): Evento 2 y su observación, con casilleros del mismo alto que los de arriba. Arranca cerrada en cada
+                             ficha. "Quitar" (chico, en el renglón de los rótulos) la cierra y descarta el Evento 2 y su observación. -->
+                        <VerticalStackLayout Spacing="4" IsVisible="{Binding HayFila2}">
+                            <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+                                <Label Grid.Column="0" Text="Evento 2" Style="{StaticResource TextoCampo}" FontSize="16" FontAttributes="Bold" TextColor="{StaticResource Gray600}"
+                                       VerticalOptions="Center" />
+                                <Label Grid.Column="1" Text="Observación" Style="{StaticResource TextoCampo}" FontSize="16" FontAttributes="Bold" TextColor="{StaticResource Gray600}"
+                                       VerticalOptions="Center" />
+                                <Button Grid.Column="1" Text="{Binding TextoQuitarEvento2}" HorizontalOptions="End" VerticalOptions="Center"
+                                        Command="{Binding QuitarEvento2Command}"
+                                        BackgroundColor="{StaticResource CampoClaro}" TextColor="Black" FontSize="13" FontAttributes="Bold"
+                                        HeightRequest="26" MinimumHeightRequest="0" MinimumWidthRequest="0" Padding="10,0" CornerRadius="6"
+                                        SemanticProperties.Hint="Quitar el segundo evento y su observación" />
+                            </Grid>
+                            <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+                                <Button Grid.Column="0" Text="{Binding TextoEvento2Elegido}" Style="{StaticResource BotonCampoSecundario}" FontSize="17"
+                                        HeightRequest="68" MinimumWidthRequest="0" Padding="8,2" LineBreakMode="WordWrap"
+                                        Command="{Binding AbrirEventos2Command}"
+                                        SemanticProperties.Hint="Elegir el segundo evento de esta vaca" />
+                                <Button Grid.Column="1" Text="{Binding TextoCasilleroObservacion2}" Style="{StaticResource BotonCampoSecundario}" FontSize="18"
+                                        HeightRequest="68" MinimumWidthRequest="0" Padding="8,0" LineBreakMode="TailTruncation"
+                                        Command="{Binding AbrirObservacion2Command}"
+                                        SemanticProperties.Hint="Opcional: escribir la observación del segundo evento" />
+                            </Grid>
+                        </VerticalStackLayout>
                     </VerticalStackLayout>
 
                     <!-- Pestañas y su contenido -->
@@ -613,9 +648,30 @@
             <Grid.GestureRecognizers><TapGestureRecognizer /></Grid.GestureRecognizers>
             <Border BackgroundColor="White" StrokeThickness="0" Padding="18,16" HorizontalOptions="Fill" VerticalOptions="Center">
                 <VerticalStackLayout Spacing="12">
-                    <Label Text="Elegí el evento" Style="{StaticResource TituloCuadro}" FontSize="26" />
+                    <!-- La misma capa sirve para las dos filas (FilaActiva): con la fila 2 el título y la observación mostrada son los del Evento 2. -->
+                    <Label Text="Elegí el evento" Style="{StaticResource TituloCuadro}" FontSize="26">
+                        <Label.Triggers>
+                            <DataTrigger TargetType="Label" Binding="{Binding EsFila2Activa}" Value="True">
+                                <Setter Property="Text" Value="Elegí el evento 2" />
+                            </DataTrigger>
+                        </Label.Triggers>
+                    </Label>
                     <Label Text="{Binding ObservacionPendiente, StringFormat='Se guarda con la observación: {0}'}" IsVisible="{Binding HayObservacionPendiente}"
-                           Style="{StaticResource TextoCampo}" FontSize="16" />
+                           Style="{StaticResource TextoCampo}" FontSize="16">
+                        <Label.Triggers>
+                            <DataTrigger TargetType="Label" Binding="{Binding EsFila2Activa}" Value="True">
+                                <Setter Property="IsVisible" Value="False" />
+                            </DataTrigger>
+                        </Label.Triggers>
+                    </Label>
+                    <Label Text="{Binding Observacion2Pendiente, StringFormat='Se guarda con la observación: {0}'}" IsVisible="{Binding HayObservacion2Pendiente}"
+                           Style="{StaticResource TextoCampo}" FontSize="16">
+                        <Label.Triggers>
+                            <DataTrigger TargetType="Label" Binding="{Binding EsFila2Activa}" Value="False">
+                                <Setter Property="IsVisible" Value="False" />
+                            </DataTrigger>
+                        </Label.Triggers>
+                    </Label>
                     <!-- Un mensaje (por ejemplo, "ya existe un evento con ese nombre") sobre la lista o el formulario. -->
                     <Border IsVisible="{Binding HayMensajeCuadro}" BackgroundColor="{StaticResource CampoPeligro}" StrokeThickness="0" Padding="12,8">
                         <Label Text="{Binding MensajeCuadro}" TextColor="White" FontSize="18" FontAttributes="Bold" />
@@ -650,9 +706,16 @@
             <Grid.GestureRecognizers><TapGestureRecognizer /></Grid.GestureRecognizers>
             <Border BackgroundColor="White" StrokeThickness="0" Padding="18,16" HorizontalOptions="Fill" VerticalOptions="Start" Margin="0,40,0,0">
                 <VerticalStackLayout Spacing="12">
-                    <Label Text="Agregar observación" Style="{StaticResource TituloCuadro}" FontSize="26" />
+                    <Label Text="Agregar observación" Style="{StaticResource TituloCuadro}" FontSize="26">
+                        <Label.Triggers>
+                            <DataTrigger TargetType="Label" Binding="{Binding EsFila2Activa}" Value="True">
+                                <Setter Property="Text" Value="Observación del evento 2" />
+                            </DataTrigger>
+                        </Label.Triggers>
+                    </Label>
                     <Label Text="Opcional. Se guarda junto con el próximo evento que elijas." Style="{StaticResource TextoCampo}" FontSize="16" />
-                    <Editor Text="{Binding TextoObservacion}" Placeholder="Escribí la observación" MaxLength="300"
+                    <!-- Mismo cuadro para las dos filas; el tope de 300 caracteres lo pone el ViewModel (spec 011, RF-4 y RF-12). -->
+                    <Editor Text="{Binding TextoObservacion}" Placeholder="Escribí la observación" MaxLength="{x:Static vm:TrabajoViewModel.MaximoObservacion}"
                             HeightRequest="140" FontSize="20" TextColor="Black" BackgroundColor="{StaticResource CampoClaro}"
                             AutoSize="Disabled" />
                     <Button Text="Guardar observación" Style="{StaticResource BotonCampo}" HeightRequest="56" FontSize="20"

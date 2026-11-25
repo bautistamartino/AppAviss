@@ -6,7 +6,7 @@ using Aviss.Domain.Reglas;
 namespace Aviss.Application.Exportacion;
 
 /// <summary>
-/// Convierte el registro elegido de una vaca en los seis valores de texto de las columnas nuevas (spec 007, RF-6 a RF-10). Qué columna
+/// Convierte el registro elegido de una vaca en los siete valores de texto de las columnas nuevas (spec 007, RF-6 a RF-10). Qué columna
 /// queda vacía lo dicen los datos del registro: los días de preñez solo existen en "Preñada fecha previa"; los días de aborto y el
 /// resultado solo en un Aborto con sus pasos. Todo lo demás sale en blanco.
 /// </summary>
@@ -25,6 +25,9 @@ public static class ArmadorValoresExportacion
             FormatoColumnasExportacion.Fecha(registro.FechaHoraUtc, zona),
             FormatoColumnasExportacion.Hora(registro.FechaHoraUtc, zona),
             registro.NombreEvento,
+            // El Evento 2 nunca lleva pasos ni cambia el estado: DIASPRE, DIASABO y RESABO salen como los del Evento 1, que (por la
+            // regla de combinación) no tiene pasos, o sea vacíos. Las observaciones no se exportan.
+            registro.NombreEvento2,
             diasPreniez, diasAborto, resultado);
     }
 }

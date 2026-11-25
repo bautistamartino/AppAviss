@@ -30,9 +30,11 @@ internal static class AyudaExportacion
     }
 
     // Tres vacas con evento: una con "Preñada fecha previa" (días de preñez), una con Aborto (días y resultado) y una OK.
-    public static readonly ValoresExportacion Previa = new("24/11/2026", "0905", "Preñada fecha previa", "215", "", "");
-    public static readonly ValoresExportacion Aborto = new("24/11/2026", "1530", "Aborto", "", "120", "Vacía OK");
-    public static readonly ValoresExportacion Ok = new("24/11/2026", "0010", "OK", "", "", "");
+    public static readonly ValoresExportacion Previa = new("24/11/2026", "0905", "Preñada fecha previa", "", "215", "", "");
+    public static readonly ValoresExportacion Aborto = new("24/11/2026", "1530", "Aborto", "", "", "120", "Vacía OK");
+    public static readonly ValoresExportacion Ok = new("24/11/2026", "0010", "OK", "", "", "", "");
+    /// <summary>Un tacto con dos eventos (spec 011): el mismo SCDAT/SCTIM, el Evento 2 por su nombre y los días vacíos.</summary>
+    public static readonly ValoresExportacion DosEventos = new("24/11/2026", "0010", "OK", "PROSTAG", "", "", "");
 
     /// <summary>Los valores de tres vacas de la muestra de 226 (IDs 10000, 10013 y 10026).</summary>
     public static Dictionary<string, ValoresExportacion> Valores226() => new()

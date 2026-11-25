@@ -38,16 +38,16 @@ public class EscritorCsvTests
         var generado = Latin1(Csv(Csv282(), Valores282()).Contenido!);
         var lineas = generado.Split('\n');
 
-        // Encabezado: los originales y los nuevos entre comillas, y el ";" final de siempre (12 originales + 6 nuevos).
-        Assert.EndsWith("\"LECHE\";\"SCDAT\";\"SCTIM\";\"Evento1\";\"DIASPRE\";\"DIASABO\";\"RESABO\";", lineas[0]);
-        Assert.Equal(18, lineas[0].Count(c => c == ';'));
+        // Encabezado: los originales y los nuevos entre comillas, y el ";" final de siempre (12 originales + 7 nuevos).
+        Assert.EndsWith("\"LECHE\";\"SCDAT\";\"SCTIM\";\"Evento1\";\"Evento2\";\"DIASPRE\";\"DIASABO\";\"RESABO\";", lineas[0]);
+        Assert.Equal(19, lineas[0].Count(c => c == ';'));
 
-        // La primera vaca (ID 20001, con "Preñada fecha previa"): termina en sus seis valores y su ";" final.
-        Assert.EndsWith(";     0 ;24/11/2026;0905;Preñada fecha previa;215;;;", lineas[1]);
-        // Una vaca sin evento: seis campos vacíos, cada uno con su separador.
-        Assert.EndsWith(";     0 ;;;;;;;", lineas[4]);
+        // La primera vaca (ID 20001, con "Preñada fecha previa"): termina en sus siete valores y su ";" final.
+        Assert.EndsWith(";     0 ;24/11/2026;0905;Preñada fecha previa;;215;;;", lineas[1]);
+        // Una vaca sin evento: siete campos vacíos, cada uno con su separador.
+        Assert.EndsWith(";     0 ;;;;;;;;", lineas[4]);
         // Todas las líneas con datos tienen la misma cantidad de separadores que el encabezado.
-        Assert.All(lineas.Take(lineas.Length - 1), l => Assert.Equal(18, l.Count(c => c == (char)59)));
+        Assert.All(lineas.Take(lineas.Length - 1), l => Assert.Equal(19, l.Count(c => c == (char)59)));
     }
 
     [Fact]
@@ -69,7 +69,7 @@ public class EscritorCsvTests
         var generado = Latin1(Csv(Csv282(), Valores282()).Contenido!);
         var total = generado.Split('\n').Single(l => l.StartsWith("Total:"));
 
-        Assert.Equal("Total:;282;;;;;;;;;;;" + ";;;;;;", total);
+        Assert.Equal("Total:;282;;;;;;;;;;;" + ";;;;;;;", total);
     }
 
     // ---- Codificaciones y formas del CSV (datos inventados) ----
@@ -85,7 +85,7 @@ public class EscritorCsvTests
 
         Assert.Equal(new byte[] { 0xEF, 0xBB, 0xBF }, generado[..3]);
         var texto = new UTF8Encoding(false).GetString(generado, 3, generado.Length - 3);
-        Assert.Equal(Base + ";\"SCDAT\";\"SCTIM\";\"Evento1\";\"DIASPRE\";\"DIASABO\";\"RESABO\";\n1001;SECA;Ñandú;24/11/2026;0905;Preñada fecha previa;215;;;\n", texto);
+        Assert.Equal(Base + ";\"SCDAT\";\"SCTIM\";\"Evento1\";\"Evento2\";\"DIASPRE\";\"DIASABO\";\"RESABO\";\n1001;SECA;Ñandú;24/11/2026;0905;Preñada fecha previa;;215;;;\n", texto);
     }
 
     [Fact]
@@ -96,7 +96,7 @@ public class EscritorCsvTests
         var generado = Csv(original, new Dictionary<string, ValoresExportacion> { [Clave("1001")] = Ok }).Contenido!;
 
         Assert.NotEqual((byte)0xEF, generado[0]);
-        Assert.EndsWith("Ñandú;24/11/2026;0010;OK;;;;\n", Encoding.UTF8.GetString(generado));
+        Assert.EndsWith("Ñandú;24/11/2026;0010;OK;;;;;\n", Encoding.UTF8.GetString(generado));
     }
 
     [Fact]
@@ -108,7 +108,7 @@ public class EscritorCsvTests
 
         Assert.Equal(new byte[] { 0xFF, 0xFE }, generado[..2]);
         var texto = Encoding.Unicode.GetString(generado, 2, generado.Length - 2);
-        Assert.Contains("\"RESABO\";\r\n1001;SECA;Ñandú;24/11/2026;0010;OK;;;;\r\n", texto);
+        Assert.Contains("\"RESABO\";\r\n1001;SECA;Ñandú;24/11/2026;0010;OK;;;;;\r\n", texto);
     }
 
     [Fact]
@@ -120,8 +120,8 @@ public class EscritorCsvTests
         var generado = Csv(original, valores).Contenido!;
 
         var texto = Encoding.UTF8.GetString(generado);
-        Assert.Contains("1001;SECA;\"linea uno\nlinea dos\";24/11/2026;0010;OK;;;;\n", texto);
-        Assert.Contains("1002;VACIA;sin nota;24/11/2026;0905;Preñada fecha previa;215;;;\n", texto);
+        Assert.Contains("1001;SECA;\"linea uno\nlinea dos\";24/11/2026;0010;OK;;;;;\n", texto);
+        Assert.Contains("1002;VACIA;sin nota;24/11/2026;0905;Preñada fecha previa;;215;;;\n", texto);
     }
 
     [Fact]
@@ -133,9 +133,9 @@ public class EscritorCsvTests
         var generado = Latin1(Csv(original, new Dictionary<string, ValoresExportacion> { [Clave("20001")] = Ok }).Contenido!);
 
         Assert.Equal(
-            "\"ID\";\"RPRO\";\"LECHE\";\"SCDAT\";\"SCTIM\";\"Evento1\";\"DIASPRE\";\"DIASABO\";\"RESABO\";\r\n" +
-            " 20001 ;SECA;12,5;24/11/2026;0010;OK;;;;\r\n" +
-            "20002;VACIA;  3,25 ;;;;;;;\n",
+            "\"ID\";\"RPRO\";\"LECHE\";\"SCDAT\";\"SCTIM\";\"Evento1\";\"Evento2\";\"DIASPRE\";\"DIASABO\";\"RESABO\";\r\n" +
+            " 20001 ;SECA;12,5;24/11/2026;0010;OK;;;;;\r\n" +
+            "20002;VACIA;  3,25 ;;;;;;;;\n",
             generado);
     }
 
@@ -146,7 +146,7 @@ public class EscritorCsvTests
 
         var generado = Encoding.UTF8.GetString(Csv(original, new Dictionary<string, ValoresExportacion> { [Clave("1002")] = Aborto }).Contenido!);
 
-        Assert.Equal("ID,RPRO,LACT,SCDAT,SCTIM,Evento1,DIASPRE,DIASABO,RESABO\n1001,SECA,2,,,,,,\n1002,VACIA,3,24/11/2026,1530,Aborto,,120,Vacía OK", generado);
+        Assert.Equal("ID,RPRO,LACT,SCDAT,SCTIM,Evento1,Evento2,DIASPRE,DIASABO,RESABO\n1001,SECA,2,,,,,,,\n1002,VACIA,3,24/11/2026,1530,Aborto,,,120,Vacía OK", generado);
     }
 
     [Fact]
@@ -155,7 +155,7 @@ public class EscritorCsvTests
         var original = Encoding.UTF8.GetBytes("ID;RPRO\n1001;SECA\n");
         var valores = new Dictionary<string, ValoresExportacion>
         {
-            [Clave("1001")] = new("24/11/2026", "0905", "Evento; \"raro\"", "", "", ""),
+            [Clave("1001")] = new("24/11/2026", "0905", "Evento; \"raro\"", "", "", "", ""),
         };
 
         var generado = Encoding.UTF8.GetString(Csv(original, valores).Contenido!);
@@ -171,7 +171,7 @@ public class EscritorCsvTests
         var original = Concat(Encoding.Latin1.GetBytes("ID;RPRO\n1001;"), [0xD1], Encoding.Latin1.GetBytes("\n"));
         var valores = new Dictionary<string, ValoresExportacion>
         {
-            [Clave("1001")] = new("24/11/2026", "0905", "Evento € nuevo", "", "", ""),
+            [Clave("1001")] = new("24/11/2026", "0905", "Evento € nuevo", "", "", "", ""),
         };
 
         var r = new ExportadorDairyComp().Generar(original, FormatoExportacion.Csv, valores);
@@ -190,12 +190,12 @@ public class EscritorCsvTests
 
         // Encabezados entre comillas con su ";" final, saltos CRLF, y las columnas nuevas al final.
         Assert.StartsWith("\"ID\";\"CVET\";", lineas[0]);
-        Assert.EndsWith("\"FAPAR\";\"SCDAT\";\"SCTIM\";\"Evento1\";\"DIASPRE\";\"DIASABO\";\"RESABO\";", lineas[0]);
+        Assert.EndsWith("\"FAPAR\";\"SCDAT\";\"SCTIM\";\"Evento1\";\"Evento2\";\"DIASPRE\";\"DIASABO\";\"RESABO\";", lineas[0]);
         Assert.DoesNotContain((byte)0xEF, generado.Contenido!); // sin marca UTF-8
 
         // Una vaca con evento (ID 10000, número) lleva sus valores; los números salen sin ceros de más.
         var vaca = lineas.Single(l => l.StartsWith("10000;"));
-        Assert.EndsWith(";24/11/2026;0905;Preñada fecha previa;215;;;", vaca);
+        Assert.EndsWith(";24/11/2026;0905;Preñada fecha previa;;215;;;", vaca);
 
         // La fila final "Total:226" sale como lo hace Dairy Comp: "Total:;226", con las columnas nuevas vacías.
         Assert.Contains(lineas, l => l.StartsWith("Total:;226;"));

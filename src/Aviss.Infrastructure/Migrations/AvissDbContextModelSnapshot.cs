@@ -509,6 +509,9 @@ namespace Aviss.Infrastructure.Migrations
                     b.Property<int?>("DiasAborto")
                         .HasColumnType("INTEGER");
 
+                    b.Property<Guid?>("Evento2Id")
+                        .HasColumnType("TEXT");
+
                     b.Property<Guid?>("EventoId")
                         .HasColumnType("TEXT");
 
@@ -519,10 +522,15 @@ namespace Aviss.Infrastructure.Migrations
                     b.Property<string>("Observaciones")
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("Observaciones2")
+                        .HasColumnType("TEXT");
+
                     b.Property<long>("OrdenInsercion")
                         .HasColumnType("INTEGER");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("Evento2Id");
 
                     b.HasIndex("EventoId");
 
@@ -540,6 +548,10 @@ namespace Aviss.Infrastructure.Migrations
                             t.HasCheckConstraint("CK_Rechazo_DiasAborto", "DiasAborto IS NULL OR DiasAborto BETWEEN 0 AND 400");
 
                             t.HasCheckConstraint("CK_Rechazo_DiasConEvento", "DiasAborto IS NULL OR EventoId IS NOT NULL");
+
+                            t.HasCheckConstraint("CK_Rechazo_Evento2ConEvento", "Evento2Id IS NULL OR (EventoId IS NOT NULL AND DiasAborto IS NULL AND Evento2Id IS NOT EventoId)");
+
+                            t.HasCheckConstraint("CK_Rechazo_Observaciones2", "Observaciones2 IS NULL OR Evento2Id IS NOT NULL");
                         });
                 });
 
@@ -638,6 +650,9 @@ namespace Aviss.Infrastructure.Migrations
                     b.Property<Guid?>("EstadoNuevoId")
                         .HasColumnType("TEXT");
 
+                    b.Property<Guid?>("Evento2Id")
+                        .HasColumnType("TEXT");
+
                     b.Property<Guid?>("EventoId")
                         .HasColumnType("TEXT");
 
@@ -646,6 +661,9 @@ namespace Aviss.Infrastructure.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Observaciones")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Observaciones2")
                         .HasColumnType("TEXT");
 
                     b.Property<long>("OrdenInsercion")
@@ -663,6 +681,8 @@ namespace Aviss.Infrastructure.Migrations
                     b.HasIndex("EstadoAnteriorId");
 
                     b.HasIndex("EstadoNuevoId");
+
+                    b.HasIndex("Evento2Id");
 
                     b.HasIndex("EventoId");
 
@@ -685,6 +705,8 @@ namespace Aviss.Infrastructure.Migrations
 
                             t.HasCheckConstraint("CK_Tacto_AnulacionSinEvento", "Tipo = 'Normal' OR (EventoId IS NULL AND DiasPreniezInformados IS NULL AND DiasAborto IS NULL)");
 
+                            t.HasCheckConstraint("CK_Tacto_AnulacionSinEvento2", "Tipo = 'Normal' OR Evento2Id IS NULL");
+
                             t.HasCheckConstraint("CK_Tacto_Dias", "DiasPrenez IS NULL OR DiasPrenez BETWEEN 0 AND 300");
 
                             t.HasCheckConstraint("CK_Tacto_DiasAborto", "DiasAborto IS NULL OR DiasAborto BETWEEN 0 AND 400");
@@ -697,7 +719,13 @@ namespace Aviss.Infrastructure.Migrations
 
                             t.HasCheckConstraint("CK_Tacto_EstadoNuevo", "Tipo = 'Anulacion' OR EstadoNuevoId IS NOT NULL");
 
+                            t.HasCheckConstraint("CK_Tacto_Evento2Distinto", "Evento2Id IS NULL OR (Evento2Id IS NOT EstadoNuevoId AND Evento2Id IS NOT EventoId)");
+
+                            t.HasCheckConstraint("CK_Tacto_Evento2SinDias", "Evento2Id IS NULL OR (DiasPreniezInformados IS NULL AND DiasAborto IS NULL)");
+
                             t.HasCheckConstraint("CK_Tacto_NoAnulaAnulacion", "Tipo = 'Normal' OR Anulado = 0");
+
+                            t.HasCheckConstraint("CK_Tacto_Observaciones2", "Observaciones2 IS NULL OR Evento2Id IS NOT NULL");
 
                             t.HasCheckConstraint("CK_Tacto_Tipo", "Tipo IN ('Normal','Anulacion')");
                         });
@@ -786,6 +814,11 @@ namespace Aviss.Infrastructure.Migrations
 
                     b.HasOne("Aviss.Domain.Entidades.EstadoReproductivo", null)
                         .WithMany()
+                        .HasForeignKey("Evento2Id")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Aviss.Domain.Entidades.EstadoReproductivo", null)
+                        .WithMany()
                         .HasForeignKey("EventoId")
                         .OnDelete(DeleteBehavior.Restrict);
                 });
@@ -815,6 +848,11 @@ namespace Aviss.Infrastructure.Migrations
                     b.HasOne("Aviss.Domain.Entidades.EstadoReproductivo", null)
                         .WithMany()
                         .HasForeignKey("EstadoNuevoId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Aviss.Domain.Entidades.EstadoReproductivo", null)
+                        .WithMany()
+                        .HasForeignKey("Evento2Id")
                         .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("Aviss.Domain.Entidades.EstadoReproductivo", null)

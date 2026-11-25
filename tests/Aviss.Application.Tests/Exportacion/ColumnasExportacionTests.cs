@@ -9,7 +9,7 @@ public class ColumnasExportacionTests
     public void Solo_SCDAT_y_SCTIM_reemplazan_si_existen()
     {
         Assert.Equal(["SCDAT", "SCTIM"], ColumnasExportacion.Todas.Where(c => c.ReemplazaSiExiste).Select(c => c.Nombre));
-        Assert.Equal(["Evento1", "DIASPRE", "DIASABO", "RESABO"], ColumnasExportacion.Todas.Where(c => !c.ReemplazaSiExiste).Select(c => c.Nombre));
+        Assert.Equal(["Evento1", "Evento2", "DIASPRE", "DIASABO", "RESABO"], ColumnasExportacion.Todas.Where(c => !c.ReemplazaSiExiste).Select(c => c.Nombre));
     }
 
     [Fact]
