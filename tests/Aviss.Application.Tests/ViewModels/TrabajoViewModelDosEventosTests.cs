@@ -554,4 +554,107 @@ public class TrabajoViewModelDosEventosTests
         Assert.Equal(MensajeIgnorada, b.Vm.MensajeInfo);
         Assert.Equal(Prostag, b.Vm.Evento2Elegido);
     }
+
+    // ---- Detalles de pantalla vistos en la tablet (fix/detalles-dos-eventos)
+
+    /// <summary>Deja en pantalla el aviso "se quitó el evento 2": Evento 1 OK, Evento 2 PROSTAG y el Evento 1 pasa a Aborto (que no admite segundo).</summary>
+    private static async Task ProvocarAvisoSeQuitoEvento2Async(Banco b)
+    {
+        await b.ElegirEvento1Async(Ok);
+        await b.ElegirEvento2Async(Prostag);
+        await b.Vm.AbrirEventosCommand.ExecuteAsync(null);
+        await b.Vm.Selector.ElegirCommand.ExecuteAsync(Aborto);
+        b.Vm.Selector.TextoDias = "30";
+        await b.Vm.Selector.ConfirmarDiasCommand.ExecuteAsync(null);
+        await b.Vm.Selector.ElegirResultadoCommand.ExecuteAsync(ResultadoAborto.Seca);
+        Assert.Equal(TrabajoViewModel.MensajeSeQuitoEvento2, b.Vm.MensajeInfo);
+    }
+
+    [Fact]
+    public async Task Saltar_limpia_el_aviso_de_se_quito_el_evento_2()
+    {
+        var b = new Banco();
+        await b.AbrirFichaAsync();
+        await ProvocarAvisoSeQuitoEvento2Async(b);
+
+        await b.Vm.CerrarFichaCommand.ExecuteAsync(null);
+
+        Assert.Null(b.Vm.Ficha);
+        Assert.Null(b.Vm.MensajeInfo);
+        Assert.False(b.Vm.HayMensajeInfo);
+    }
+
+    [Fact]
+    public async Task En_espera_limpia_el_aviso_de_se_quito_el_evento_2()
+    {
+        var b = new Banco();
+        await b.AbrirFichaAsync();
+        await ProvocarAvisoSeQuitoEvento2Async(b);
+
+        await b.Vm.PonerEnEsperaCommand.ExecuteAsync(null);
+
+        Assert.Null(b.Vm.Ficha);
+        Assert.Null(b.Vm.MensajeInfo);
+    }
+
+    [Fact]
+    public async Task Entrar_limpia_el_aviso_de_se_quito_el_evento_2()
+    {
+        var b = new Banco();
+        await b.AbrirFichaAsync();
+        await ProvocarAvisoSeQuitoEvento2Async(b);
+
+        await b.Vm.EntrarCommand.ExecuteAsync(null);
+
+        Assert.Null(b.Vm.Ficha);
+        Assert.Null(b.Vm.MensajeInfo);
+    }
+
+    [Fact]
+    public async Task El_aviso_de_se_quito_el_evento_2_sigue_mientras_la_ficha_esta_abierta()
+    {
+        var b = new Banco();
+        await b.AbrirFichaAsync();
+        await ProvocarAvisoSeQuitoEvento2Async(b);
+
+        Assert.NotNull(b.Vm.Ficha);
+        Assert.True(b.Vm.HayMensajeInfo);
+    }
+
+    [Fact]
+    public async Task La_ayuda_de_la_observacion_dice_a_que_evento_pertenece()
+    {
+        var b = new Banco();
+        await b.AbrirFichaAsync();
+        await b.ElegirEvento1Async(Ok);
+        await b.ElegirEvento2Async(Prostag);
+
+        await b.Vm.AbrirObservacionCommand.ExecuteAsync(null);
+        Assert.Equal("Opcional. Se guarda junto con el próximo evento que elijas.", b.Vm.TextoAyudaObservacion);
+        await b.Vm.CerrarCuadroAgregarCommand.ExecuteAsync(null);
+
+        await b.Vm.AbrirObservacion2Command.ExecuteAsync(null);
+        Assert.Equal("Opcional. Se guarda junto con el evento 2.", b.Vm.TextoAyudaObservacion);
+        await b.Vm.CerrarCuadroAgregarCommand.ExecuteAsync(null);
+
+        await b.Vm.AbrirObservacionCommand.ExecuteAsync(null);   // volvió la fila 1: vuelve el texto de siempre
+        Assert.Equal("Opcional. Se guarda junto con el próximo evento que elijas.", b.Vm.TextoAyudaObservacion);
+    }
+
+    [Fact]
+    public async Task La_ayuda_de_la_observacion_avisa_el_cambio_al_cambiar_de_fila()
+    {
+        var b = new Banco();
+        await b.AbrirFichaAsync();
+        await b.ElegirEvento1Async(Ok);
+        await b.ElegirEvento2Async(Prostag);
+        await b.Vm.AbrirObservacionCommand.ExecuteAsync(null);   // la capa de la fila 1 (FilaActiva = 1)
+        await b.Vm.CerrarCuadroAgregarCommand.ExecuteAsync(null);
+        var cambios = new List<string?>();
+        b.Vm.PropertyChanged += (_, e) => cambios.Add(e.PropertyName);
+
+        await b.Vm.AbrirObservacion2Command.ExecuteAsync(null);
+
+        Assert.Contains(nameof(TrabajoViewModel.TextoAyudaObservacion), cambios);
+    }
 }
