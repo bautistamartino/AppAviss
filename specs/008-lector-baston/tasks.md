@@ -28,7 +28,8 @@ Regla de verificación: tras cada tarea se corren **solo los proyectos de tests 
   - RF: RF-1 a RF-6, RF-12 a RF-16, RF-23, RF-24, RF-26
   - Hecho cuando: `dotnet build` en verde; pasan `Aviss.Application.Tests` y `Aviss.Rfid.Tests` (sin Rendimiento).
 
-- [ ] **T5** — Pantallas, bastón real en la tablet y cierre
+- [x] **T5** — Pantallas, bastón real en la tablet y cierre
+  - **Nota del cierre (2026-11-24):** pantallas hechas y `dotnet build` (Debug y Release) y `has-pending-model-changes` en verde. La corrida completa de `dotnet test` con Rendimiento **no pudo ejecutarse** en esta PC (Control de aplicaciones bloqueó los ensamblados de test; solo corrió Domain, 257 en verde): queda pendiente correrla donde la política lo permita antes de dar la spec por cerrada.
   - Qué hace: `TrabajoPage.xaml` (chip de estado siempre visible en la barra, cartel de 72 dp con el botón de reconectar y "Cambiar bastón", fila "Bastón: ..." en la configuración del engranaje) y su code-behind (`Window.Stopped` y `Resumed`); `ElegirBastonPage.xaml` completa (botones de 72 dp, vertical). **Cierre:** `dotnet build`; `has-pending-model-changes`; **`dotnet test` completo con rendimiento**; documentos al día (`MEMORY.md` con estado, decisiones y valores provisorios 3 s, 8 s y esperas, con el aviso del socket inseguro; `docs/arquitectura.md` sección 6; `docs/prueba-baston-en-casa.md`; `docs/plan.md` 5.1; notas "(modificado por la 008)" en las specs 003 y 010); se tildan los criterios que la suite demuestra y se dejan sin tildar los de la tablet.
   - Tests primero: la lógica ya está cubierta en T1 a T4; esta tarea es de pantalla y de cierre.
   - RF: RF-3, RF-12, RF-13, RF-15, RF-16, RF-27 (y el cierre de toda la spec)

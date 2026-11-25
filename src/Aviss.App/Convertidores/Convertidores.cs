@@ -14,6 +14,15 @@ public sealed class InvertirBooleanoConverter : IValueConverter
     public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) => value is not true;
 }
 
+/// <summary>Un color en texto hexadecimal ("#1B5E20") a <see cref="Color"/>: el chip y el cartel del bastón (spec 008) traen el color del ViewModel.</summary>
+public sealed class HexAColorConverter : IValueConverter
+{
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+        => value is string hex && Color.TryParse(hex, out var color) ? color : Colors.Gray;
+
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) => throw new NotSupportedException();
+}
+
 /// <summary>
 /// Línea de fecha de un evento del historial de la ficha: "05/11/2026 · hace 12 días". Si la fecha del Excel no se pudo
 /// interpretar se muestra el texto tal cual (RF-14). Los eventos anulados se marcan.

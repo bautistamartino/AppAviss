@@ -15,6 +15,7 @@
         <conv:EventoFichaFechaConverter x:Key="FechaEvento" />
         <conv:FechaUtcALocalConverter x:Key="FechaLocal" />
         <conv:EstadoActualConverter x:Key="EstadoActual" />
+        <conv:HexAColorConverter x:Key="HexAColor" />
     </ContentPage.Resources>
 
     <!--
@@ -35,7 +36,7 @@
             <Border Grid.Row="0" BackgroundColor="{StaticResource CampoPanel}" StrokeThickness="0" Padding="8,4,12,4">
                 <VerticalStackLayout Spacing="6">
 
-                    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
                         <!-- Esquina de arriba a la izquierda: el engranaje (configuración, de un solo toque) y, bien separada para no tocar
                              una por la otra, la flechita que contrae o abre los datos. -->
                         <HorizontalStackLayout Grid.Column="0" Spacing="26" VerticalOptions="Center">
@@ -50,6 +51,15 @@
                         </HorizontalStackLayout>
                         <Label Grid.Column="1" Text="{Binding TituloBarra}" Style="{StaticResource TextoCampoClaro}" FontSize="22" FontAttributes="Bold"
                                HorizontalTextAlignment="Center" VerticalOptions="Center" LineBreakMode="TailTruncation" />
+                        <!-- Chip del bastón (spec 008, RF-13): siempre visible, con texto y color (nunca solo color). Verde conectado,
+                             ámbar buscando, rojo sin bastón. -->
+                        <Border Grid.Column="2" StrokeThickness="0" HeightRequest="40" Padding="12,0" VerticalOptions="Center"
+                                BackgroundColor="{Binding ColorFondoBaston, Converter={StaticResource HexAColor}}"
+                                SemanticProperties.Description="Estado del bastón">
+                            <Border.StrokeShape><RoundRectangle CornerRadius="20" /></Border.StrokeShape>
+                            <Label Text="{Binding TextoBaston}" TextColor="White" FontSize="16" FontAttributes="Bold"
+                                   VerticalOptions="Center" LineBreakMode="NoWrap" />
+                        </Border>
                     </Grid>
 
                     <!-- Lo que se contrae -->
@@ -105,6 +115,24 @@
 
             <!-- Mensajes (error en rojo, información en ámbar) -->
             <VerticalStackLayout Grid.Row="1" Spacing="0">
+                <!-- Cartel del bastón (spec 008, RF-12 y RF-13): 72 dp, a todo el ancho, mientras no esté conectado. Tocar el cartel
+                     hace lo que dice su segunda línea (reconectar, elegir, dar el permiso, abrir los ajustes); "Cambiar bastón" va aparte. -->
+                <Grid IsVisible="{Binding HayAvisoBaston}" ColumnDefinitions="*,Auto" HeightRequest="72"
+                      BackgroundColor="{Binding ColorFondoBaston, Converter={StaticResource HexAColor}}">
+                    <Grid.GestureRecognizers>
+                        <TapGestureRecognizer Command="{Binding ReconectarBastonCommand}" />
+                    </Grid.GestureRecognizers>
+                    <VerticalStackLayout Grid.Column="0" Padding="16,0" VerticalOptions="Center" Spacing="0"
+                                         SemanticProperties.Description="Estado del bastón. Tocá para actuar">
+                        <Label Text="{Binding TextoCartelBaston}" TextColor="White" FontSize="21" FontAttributes="Bold" LineBreakMode="TailTruncation" MaxLines="1" />
+                        <Label Text="{Binding TextoAccionBaston}" IsVisible="{Binding HayAccionBaston}" TextColor="White" FontSize="16"
+                               LineBreakMode="TailTruncation" MaxLines="1" />
+                    </VerticalStackLayout>
+                    <Button Grid.Column="1" Text="Cambiar bastón" BackgroundColor="White" TextColor="Black" FontSize="16" FontAttributes="Bold"
+                            HeightRequest="56" MinimumWidthRequest="0" Padding="12,0" CornerRadius="8" Margin="0,0,8,0" VerticalOptions="Center"
+                            Command="{Binding CambiarBastonCommand}"
+                            SemanticProperties.Hint="Elegir otro bastón de los emparejados" />
+                </Grid>
                 <Border IsVisible="{Binding HayMensajeError}" BackgroundColor="{StaticResource CampoPeligro}" StrokeThickness="0" Padding="20,12">
                     <Label Text="{Binding MensajeError}" TextColor="White" FontSize="24" FontAttributes="Bold"
                            SemanticProperties.Description="Mensaje de error" />
@@ -520,6 +548,18 @@
                         </VerticalStackLayout>
                         <Switch Grid.Column="1" IsToggled="{Binding UsaMangas}" VerticalOptions="Center"
                                 SemanticProperties.Description="Llevar control por manga" />
+                    </Grid>
+
+                    <!-- Bastón (spec 008, RF-3): cuál se usa y el camino a cambiarlo. -->
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12" BackgroundColor="{StaticResource CampoClaro}" Padding="12,10">
+                        <VerticalStackLayout Grid.Column="0" Spacing="2" VerticalOptions="Center">
+                            <Label Text="Bastón" Style="{StaticResource TextoCampo}" FontSize="20" FontAttributes="Bold" />
+                            <Label Text="{Binding NombreBaston}" Style="{StaticResource TextoCampo}" FontSize="16" TextColor="{StaticResource Gray600}"
+                                   LineBreakMode="TailTruncation" />
+                        </VerticalStackLayout>
+                        <Button Grid.Column="1" Text="Cambiar" Style="{StaticResource BotonCampoSecundario}" HeightRequest="56" FontSize="18" Padding="18,0"
+                                Command="{Binding CambiarBastonCommand}"
+                                SemanticProperties.Hint="Elegir otro bastón de los emparejados" />
                     </Grid>
 
                     <Button Text="Cerrar" Style="{StaticResource BotonCampo}" HeightRequest="56" FontSize="20"

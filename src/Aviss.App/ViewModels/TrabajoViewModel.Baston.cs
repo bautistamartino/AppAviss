@@ -16,7 +16,7 @@ public sealed partial class TrabajoViewModel
 
     /// <summary>Lo que se muestra hoy del bastón; se rearma entero cada vez que el lector avisa un cambio.</summary>
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(EstadoBaston), nameof(TextoBaston), nameof(DetalleBaston), nameof(TextoAccionBaston),
+    [NotifyPropertyChangedFor(nameof(EstadoBaston), nameof(TextoBaston), nameof(DetalleBaston), nameof(TextoCartelBaston), nameof(TextoAccionBaston),
         nameof(ColorFondoBaston), nameof(HayAvisoBaston), nameof(HayAccionBaston))]
     private PresentacionBaston _baston = PresentacionBaston.Crear(EstadoConexionRfid.Desconectado, MotivoSinBaston.Ninguno);
 
@@ -25,6 +25,8 @@ public sealed partial class TrabajoViewModel
     public string TextoBaston => Baston.Texto;
     /// <summary>El motivo del cartel: "Elegí el bastón", "Falta el permiso de Bluetooth", etc.</summary>
     public string DetalleBaston => Baston.Detalle;
+    /// <summary>La línea grande del cartel: el motivo si lo hay ("Elegí el bastón") y si no el estado ("Buscando el bastón").</summary>
+    public string TextoCartelBaston => string.IsNullOrEmpty(Baston.Detalle) ? Baston.Texto : Baston.Detalle;
     public string TextoAccionBaston => Baston.TextoAccion;
     /// <summary>Color de fondo (hex) del chip y del cartel; el texto va en blanco.</summary>
     public string ColorFondoBaston => Baston.ColorFondo;

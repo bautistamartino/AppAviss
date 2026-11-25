@@ -8,36 +8,55 @@
              Title="Elegir el bastón">
 
     <!--
-        Elegir el bastón (spec 008, RF-1 y RF-2). VERSIÓN MÍNIMA de la T4 para que la navegación compile y ande: la T5 la
-        completa (botones de 72 dp, vertical, alto contraste). Sin lógica acá: todo está en ElegirBastonViewModel.
+        Elegir el bastón (spec 008, RF-1, RF-2, RF-3). Pensada para la tablet en vertical y con una mano: cada bastón es un botón
+        de 72 dp con el nombre grande y la dirección chica; el elegido hoy lleva el texto "Elegido" (no solo color). Sin lógica
+        acá: todo está en ElegirBastonViewModel (lista, permiso, ajustes).
     -->
-    <Grid RowDefinitions="Auto,Auto,*,Auto" Padding="24,16" RowSpacing="12">
+    <Grid RowDefinitions="Auto,Auto,*,Auto" Padding="20,16" RowSpacing="12">
 
-        <Label Grid.Row="0" Text="¿Con qué bastón trabajás?" Style="{StaticResource TituloCuadro}" FontSize="32"
+        <Label Grid.Row="0" Text="¿Con qué bastón trabajás?" Style="{StaticResource TituloCuadro}" FontSize="30"
                SemanticProperties.HeadingLevel="Level1" />
 
-        <Border Grid.Row="1" IsVisible="{Binding HayMensaje}" BackgroundColor="{StaticResource CampoAlerta}" StrokeThickness="0" Padding="16,10">
-            <VerticalStackLayout Spacing="8">
+        <!-- Motivo por el que no hay lista (sin permiso, Bluetooth apagado, nada emparejado). -->
+        <Border Grid.Row="1" IsVisible="{Binding HayMensaje}" BackgroundColor="{StaticResource CampoAlerta}" StrokeThickness="0" Padding="16,12">
+            <VerticalStackLayout Spacing="10">
                 <Label Text="{Binding Mensaje}" TextColor="Black" FontSize="22" FontAttributes="Bold" />
-                <Button Text="Abrir los ajustes de la app" Style="{StaticResource BotonCampoSecundario}"
-                        IsVisible="{Binding HayAjustesApp}" Command="{Binding AbrirAjustesAppCommand}" />
+                <Button Text="Abrir los ajustes de la app" Style="{StaticResource BotonCampoSecundario}" HeightRequest="72"
+                        IsVisible="{Binding HayAjustesApp}" Command="{Binding AbrirAjustesAppCommand}"
+                        SemanticProperties.Hint="Para dar el permiso: Permisos, Dispositivos cercanos" />
             </VerticalStackLayout>
         </Border>
 
         <CollectionView Grid.Row="2" ItemsSource="{Binding Bastones}" SelectionMode="None">
             <CollectionView.ItemTemplate>
                 <DataTemplate x:DataType="vm:OpcionBaston">
-                    <Button Text="{Binding Nombre}" Style="{StaticResource BotonCampo}" HeightRequest="72" Margin="0,0,0,8"
-                            Command="{Binding Source={RelativeSource AncestorType={x:Type vm:ElegirBastonViewModel}}, Path=ElegirCommand, x:DataType=vm:ElegirBastonViewModel}"
-                            CommandParameter="{Binding .}" />
+                    <!-- Un toque en cualquier parte del renglón elige ese bastón y vuelve a la pantalla de trabajo. -->
+                    <Border StrokeThickness="0" BackgroundColor="{StaticResource Primary}" HeightRequest="72" Margin="0,0,0,10" Padding="16,0"
+                            SemanticProperties.Description="{Binding Nombre}" SemanticProperties.Hint="Tocá para trabajar con este bastón">
+                        <Border.StrokeShape><RoundRectangle CornerRadius="8" /></Border.StrokeShape>
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer
+                                Command="{Binding Source={RelativeSource AncestorType={x:Type vm:ElegirBastonViewModel}}, Path=ElegirCommand, x:DataType=vm:ElegirBastonViewModel}"
+                                CommandParameter="{Binding .}" />
+                        </Border.GestureRecognizers>
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                            <VerticalStackLayout Grid.Column="0" VerticalOptions="Center" Spacing="0">
+                                <Label Text="{Binding Nombre}" TextColor="White" FontSize="24" FontAttributes="Bold" LineBreakMode="TailTruncation" MaxLines="1" />
+                                <Label Text="{Binding Direccion}" TextColor="White" FontSize="14" LineBreakMode="TailTruncation" MaxLines="1" />
+                            </VerticalStackLayout>
+                            <Label Grid.Column="1" Text="Elegido" IsVisible="{Binding EsElegido}" TextColor="White" FontSize="18" FontAttributes="Bold"
+                                   VerticalOptions="Center" />
+                        </Grid>
+                    </Border>
                 </DataTemplate>
             </CollectionView.ItemTemplate>
         </CollectionView>
 
-        <VerticalStackLayout Grid.Row="3" Spacing="8">
-            <Button Text="Actualizar" Style="{StaticResource BotonCampoSecundario}" Command="{Binding ActualizarCommand}" />
-            <Button Text="Ajustes de Bluetooth" Style="{StaticResource BotonCampoSecundario}" Command="{Binding AbrirAjustesBluetoothCommand}" />
-            <Button Text="Volver" Style="{StaticResource BotonCampoSecundario}" Command="{Binding VolverCommand}" />
+        <VerticalStackLayout Grid.Row="3" Spacing="10">
+            <Button Text="Actualizar" Style="{StaticResource BotonCampoSecundario}" HeightRequest="72" Command="{Binding ActualizarCommand}" />
+            <Button Text="Ajustes de Bluetooth" Style="{StaticResource BotonCampoSecundario}" HeightRequest="72" Command="{Binding AbrirAjustesBluetoothCommand}"
+                    SemanticProperties.Hint="Para emparejar un bastón nuevo" />
+            <Button Text="Volver" Style="{StaticResource BotonCampo}" HeightRequest="72" Command="{Binding VolverCommand}" />
         </VerticalStackLayout>
     </Grid>
 </ContentPage>

@@ -109,14 +109,14 @@ Entonces los motivos realistas de perder la conexión son: bastón apagado, bate
 - [ ] Sin bastón recordado, el cartel dice "Elegí el bastón", la lista muestra los emparejados con los XRS primero, elegir uno lo recuerda y al volver conecta; la próxima vez no pregunta (RF-1, RF-2).
 - [ ] Desde el engranaje se ve el bastón actual y se puede cambiar (RF-3); con el bastón desemparejado el cartel lo dice (RF-4).
 - [ ] El permiso de Bluetooth se pide al entrar a trabajar (no al abrir la app); denegado deja "Falta el permiso de Bluetooth" y la búsqueda a mano anda; Bluetooth apagado dice "Prendé el Bluetooth" (RF-5, RF-6).
-- [ ] Un test con un enlace falso comprueba el orden de los métodos (inseguro primero y después el último que anduvo), el límite de 8 s por intento, las esperas 1, 2, 4, 8, 15 y 15 s, el reinicio de la espera al conectar y que el reintento manual salta la espera (RF-7, RF-8, RF-10, RF-12).
-- [ ] Un test de estados comprueba Buscando, Conectado, Sin bastón con cada motivo y que el cartel no parpadea entre reintentos (RF-9, RF-11, RF-13).
+- [x] Un test con un enlace falso comprueba el orden de los métodos (inseguro primero y después el último que anduvo), el límite de 8 s por intento, las esperas 1, 2, 4, 8, 15 y 15 s, el reinicio de la espera al conectar y que el reintento manual salta la espera (RF-7, RF-8, RF-10, RF-12).
+- [x] Un test de estados comprueba Buscando, Conectado, Sin bastón con cada motivo y que el cartel no parpadea entre reintentos (RF-9, RF-11, RF-13).
 - [ ] Con la conexión perdida: vibra una vez, reintenta solo, y la ficha abierta con su evento y observación queda intacta; se puede buscar a mano y guardar con **Entrar** (RF-14, RF-15).
 - [ ] Salir de la pantalla o pasar a segundo plano corta la conexión y volver reconecta de inmediato; lo pendiente se descarta (RF-16, RF-17).
-- [ ] Con tramas inventadas (EID de prueba con prefijo `999`): EID con y sin espacios, CRLF, CR y LF; partido en paquetes; varias líneas juntas; basura ignorada sin efecto; repetida a menos de 3 s se ignora y a más de 3 s pasa; cada línea entra una sola vez y en orden, también a través de una reconexión (RF-18 a RF-22).
-- [ ] La lectura del bastón y la búsqueda a mano dan el mismo resultado en todos los casos de la spec 003, 009 y 010; un EID desconocido da "Caravana no encontrada" (RF-23, RF-24).
+- [x] Con tramas inventadas (EID de prueba con prefijo `999`): EID con y sin espacios, CRLF, CR y LF; partido en paquetes; varias líneas juntas; basura ignorada sin efecto; repetida a menos de 3 s se ignora y a más de 3 s pasa; cada línea entra una sola vez y en orden, también a través de una reconexión (RF-18 a RF-22).
+- [x] La lectura del bastón y la búsqueda a mano dan el mismo resultado en todos los casos de la spec 003, 009 y 010; un EID desconocido da "Caravana no encontrada" (RF-23, RF-24).
 - [ ] La compilación que se distribuye usa el lector real, no tiene simulador ni Diagnóstico, y su manifiesto solo pide Bluetooth de conexión; la de desarrollo conserva el simulador por el mismo camino (RF-25, RF-26).
-- [ ] No hay migración; `dotnet ef migrations has-pending-model-changes` sin cambios.
+- [x] No hay migración; `dotnet ef migrations has-pending-model-changes` sin cambios.
 - [ ] **A verificar en la tablet con el bastón** (no con tests): leer un botón de una vaca del rodeo con EID importado y ver su ficha; apagar y prender el bastón con la pantalla de trabajo abierta y ver que reconecta solo; el botón grande, el cartel y el permiso en 800x1340 (ver `tasks.md`, T5).
 - [ ] `dotnet build` y `dotnet test` en verde.
 

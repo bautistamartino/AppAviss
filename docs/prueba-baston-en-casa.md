@@ -56,3 +56,22 @@ Probá en este orden, mirando el motivo en pantalla y en el archivo:
 - Formato del número leído y cómo se compara con la columna EID del archivo.
 - Si se repite igual al leer la misma caravana varias veces.
 - Qué pasa al apagar el bastón o alejarse (¿se corta? ¿reconecta solo?).
+
+## Lo que se vio con el spike (2026-11-24) y qué hace ahora la app (spec 008)
+
+Con la tablet SM-X110 (Android 16) y el bastón "XRS2i 6769" se comprobó:
+
+- **Transporte:** Bluetooth clásico SPP (`00001101-0000-1000-8000-00805f9b34fb`).
+- **Trama:** un botón llega como texto ASCII `982 000458467499` seguido de CRLF (15 dígitos con un espacio después de `982`; una línea por lectura). Es el EID que se importa en la columna `EID` (spec 010).
+- **Conexión:** el socket **inseguro** conectó al primer intento en 1,4 s; el **seguro** falló 3 de 4 veces (11 s o 60 s de espera). Por eso la app prueba primero el inseguro y deja el seguro de respaldo.
+- **Cortes:** el bastón no corta solo por estar en reposo; los cortes vistos fueron por apagarlo o alejarlo.
+
+La **spec 008** convirtió eso en el lector real de la pantalla de trabajo. Para probarlo con el bastón y no con el Diagnóstico:
+
+1. Emparejá el bastón en los ajustes de Bluetooth de Android (como antes) y abrí un rodeo **con EID importado** (archivo del padre, spec 010).
+2. Entrá a **Trabajar**. La primera vez el cartel dice "Elegí el bastón": tocalo, aceptá el permiso de Bluetooth y elegí el tuyo en la lista (los XRS salen primero). La app lo recuerda; la próxima vez no pregunta.
+3. El chip de arriba a la derecha pasa de "Buscando el bastón" a **Conectado** (verde). Leé un botón: se abre la ficha de esa vaca igual que escribiendo su número.
+4. Probá apagar el bastón (el cartel pasa a "Sin bastón · prendelo o acercalo", vibra una vez) y prenderlo (reconecta solo). Con el bastón apagado, el botón grande "Tocá para reconectar" intenta de inmediato.
+5. La lista completa de cosas a mirar está en `specs/008-lector-baston/tasks.md` (T5, "Qué mirar en la tablet"). Anotá además: cuánto tarda en reconectar, si leer con el bastón apagado y prenderlo reenvía esas lecturas, qué pasa con varios botones distintos muy seguidos y si el socket inseguro anduvo siempre.
+
+El Diagnóstico del bastón sigue en la compilación de desarrollo, por si hace falta volver a mirar bytes.
