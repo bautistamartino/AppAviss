@@ -170,6 +170,7 @@ public sealed partial class TrabajoViewModel
         if (!PuedeAbrirCuadroDeFicha) return;
         MensajeCuadro = null;
         HayFormularioEvento = false;
+        FilaActiva = 1;
         // Siempre se abre en los principales, con resaltado: el evento ya elegido o, si no hay, el estado actual de la vaca (RF-9).
         // Con un evento ya elegido se le pasan sus datos (días, resultado): si se lo vuelve a tocar, sus pasos abren con los valores actuales.
         Selector.Abrir(EventoElegido?.Id ?? Ficha?.EstadoId, EleccionElegida);
@@ -251,16 +252,20 @@ public sealed partial class TrabajoViewModel
     private async Task AbrirObservacionAsync()
     {
         if (!PuedeAbrirCuadroDeFicha) return;
+        FilaActiva = 1;
         TextoObservacion = ObservacionPendiente;
         await CambiarCuadroAsync(CuadroTrabajo.Observacion);
     }
 
-    /// <summary>Guarda el texto como observación pendiente (vacío = sin observación). No guarda ningún tacto todavía.</summary>
+    /// <summary>
+    /// Guarda el texto como observación pendiente de la fila que lo abrió (vacío = sin observación). No guarda ningún tacto todavía.
+    /// </summary>
     [RelayCommand]
     private async Task GuardarObservacionAsync()
     {
         if (Cuadro != CuadroTrabajo.Observacion) return;
-        ObservacionPendiente = TextoObservacion.Trim();
+        if (FilaActiva == 2) Observacion2Pendiente = TextoObservacion.Trim();
+        else ObservacionPendiente = TextoObservacion.Trim();
         await CambiarCuadroAsync(CuadroTrabajo.Ninguno);
     }
 
@@ -310,6 +315,13 @@ public sealed partial class TrabajoViewModel
         if (estado is null || Ficha is null || Etapa != EtapaTrabajo.Ficha
             || Cuadro is not (CuadroTrabajo.Ninguno or CuadroTrabajo.Eventos)) return;
 
+        // La lista se abrió desde la fila 2: lo elegido es el Evento 2 (spec 011).
+        if (Cuadro == CuadroTrabajo.Eventos && FilaActiva == 2)
+        {
+            await ElegirEvento2Async(estado);
+            return;
+        }
+
         // Los datos los armó el selector; un evento sin pasos no necesita ninguno. Un evento con pasos sin sus datos completos no se elige.
         var eleccion = Selector.EleccionActual is { } e && e.EventoId == estado.Id ? e : new EleccionEvento(estado.Id);
         if (estado.TienePasos && !SelectorEventosViewModel.EstaCompleta(estado, eleccion)) return;
@@ -317,6 +329,17 @@ public sealed partial class TrabajoViewModel
         EleccionElegida = eleccion;
         EventoElegido = estado;
         MensajeError = null;
+        if (MensajeInfo == MensajeSeQuitoEvento2) MensajeInfo = null;   // el aviso de un cambio anterior ya cumplió
+
+        // RF-7: si el nuevo Evento 1 ya no admite un segundo, es igual al Evento 2 o lo deja no combinable, el Evento 2 y su observación
+        // se descartan con un aviso fijo. El Evento 1 elegido no se pierde. Una fila 2 vacía se cierra sin avisar: no se perdió nada.
+        if (HayFila2 && (!estado.AdmiteSegundo || estado.Id == Evento2Elegido?.Id || Evento2Elegido?.PuedeSerSegundo == false))
+        {
+            var habiaAlgo = Evento2Elegido is not null || Observacion2Pendiente.Length > 0;
+            LimpiarFila2();
+            if (habiaAlgo) MensajeInfo = MensajeSeQuitoEvento2;
+        }
+
         if (Cuadro == CuadroTrabajo.Eventos) await CambiarCuadroAsync(CuadroTrabajo.Ninguno);
     }
 
@@ -333,19 +356,30 @@ public sealed partial class TrabajoViewModel
         {
             MensajeError = null;
             var observacion = HayObservacionPendiente ? ObservacionPendiente : null;
+
+            // Con la fila 2 abierta hace falta elegir el Evento 2 (o tocar "Quitar"): no se guarda nada a medias.
+            if (HayFila2 && Evento2Elegido is null)
+            {
+                MensajeError = MensajeFalta2;
+                return;
+            }
             // El evento elegido decide qué se guarda: "Rechazo" es otro tipo de registro (el motivo va en la observación); un estado
             // del catálogo es un tacto. Si la vaca estaba en espera, el servicio la resuelve en la misma transacción.
             // Un solo evento (OK, Revisar Nuevamente, Rechazo) y un Aborto que termina en Rechazo se guardan como registro de rechazo: no
             // cambian el estado. El resto (un estado, Preñada fecha previa, un Aborto con estado) es un tacto. Los datos de los pasos
             // (días, resultado) viajan en la elección (spec 005, RF-24, RF-29, RF-30).
             var eleccion = EleccionElegida ?? new EleccionEvento(estado.Id);
+            // El Evento 2 (spec 011) viaja dentro de la elección; el servicio lo revalida y guarda todo en una sola operación.
+            var evento2 = HayFila2 ? Evento2Elegido : null;
+            if (evento2 is not null)
+                eleccion = eleccion with { Segundo = new SegundoEventoElegido(evento2.Id, Observacion2Pendiente.Length > 0 ? Observacion2Pendiente : null) };
             var esRechazo = eleccion.RegistraComoRechazo || !estado.CambiaEstado;
             var resultado = esRechazo
                 ? await EnCampoAsync(() => _campo.RegistrarSoloEventoAsync(
                     new RegistrarSoloEventoCommand(ficha.AnimalId, eleccion.EventoId, observacion, eleccion)))
                 : await EnCampoAsync(() => _campo.RegistrarTactoAsync(
                     new RegistrarTactoCommand(ficha.AnimalId, eleccion.EventoId, null, observacion, null, eleccion)));
-            var texto = SelectorEventosViewModel.Resumen(estado, eleccion);
+            var texto = SelectorEventosViewModel.Resumen(estado, eleccion, evento2);
             if (!resultado.EsCorrecto)
             {
                 // Rechazo: motivo en español, nada cambia (el evento y la observación siguen elegidos), la ficha queda abierta
@@ -366,6 +400,122 @@ public sealed partial class TrabajoViewModel
         {
             MensajeError = MensajeFalla;
         }
+    }
+
+    // ================================================================== segundo evento (spec 011)
+    // Un tacto puede llevar dos eventos (por ejemplo OK + PROSTAG), cada uno con su observación. La fila 2 arranca cerrada en cada ficha;
+    // el Evento 2 nunca cambia el estado ni lleva pasos: eso lo decide el servicio y lo anticipan las banderas del DTO.
+
+    /// <summary>Aviso fijo al descartar el Evento 2 porque el Evento 1 cambió a uno que no se combina (RF-7).</summary>
+    public const string MensajeSeQuitoEvento2 = "Ese evento no se combina con otro: se quitó el evento 2";
+
+    /// <summary>Entrar con la fila 2 abierta pero sin Evento 2 elegido: no se guarda nada.</summary>
+    public const string MensajeFalta2 = "Elegí el evento 2 o tocá Quitar.";
+
+    /// <summary>Los textos fijos de los dos botones chicos de la ficha (spec 011, RF-2): el XAML los muestra tal cual.</summary>
+    public string TextoMasEvento => "+ evento";
+    public string TextoQuitarEvento2 => "Quitar";
+
+    /// <summary>La segunda fila está abierta (se tocó "+ evento"). Arranca cerrada en cada ficha.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(PuedeAgregarEvento2))]
+    private bool _hayFila2;
+
+    /// <summary>El Evento 2 elegido (nulo = fila abierta, todavía sin elegir).</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(TextoEvento2Elegido), nameof(HayEvento2Elegido))]
+    private EventoCampoDto? _evento2Elegido;
+
+    /// <summary>La observación propia del Evento 2: se descarta con la fila.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HayObservacion2Pendiente), nameof(TextoCasilleroObservacion2))]
+    private string _observacion2Pendiente = "";
+
+    /// <summary>
+    /// Qué fila abrió el cuadro de eventos o el de observación que está a la vista: 1 o 2. Las capas del XAML son las mismas para las dos
+    /// filas; esto decide a quién se le asigna lo que se elige o se escribe.
+    /// </summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(EsFila2Activa))]
+    private int _filaActiva = 1;
+
+    public bool EsFila2Activa => FilaActiva == 2;
+
+    public bool HayEvento2Elegido => Evento2Elegido is not null;
+    public bool HayObservacion2Pendiente => Observacion2Pendiente.Length > 0;
+
+    public string TextoEvento2Elegido => Evento2Elegido is { } e ? e.Nombre : "Tocá para elegir";
+    public string TextoCasilleroObservacion2 => HayObservacion2Pendiente ? Observacion2Pendiente : "Opcional";
+
+    /// <summary>El tope de caracteres de cada observación, para que el XAML lo ponga en el cuadro (la pantalla no deja escribir más).</summary>
+    public const int MaximoObservacion = 300;
+
+    /// <summary>Se ve "+ evento": hay una ficha con un Evento 1 que admite un segundo y todavía no hay fila 2 (como máximo dos eventos, RF-6).</summary>
+    public bool PuedeAgregarEvento2 => HayFicha && EventoElegido?.AdmiteSegundo == true && !HayFila2;
+
+    // El Evento 1 cambia o se limpia: "+ evento" aparece o desaparece.
+    partial void OnEventoElegidoChanged(EventoCampoDto? value) => OnPropertyChanged(nameof(PuedeAgregarEvento2));
+
+    /// <summary>"+ evento": abre la fila 2 vacía. No guarda nada ni abre la lista.</summary>
+    [RelayCommand]
+    private void AgregarEvento2()
+    {
+        if (!PuedeAgregarEvento2 || Etapa != EtapaTrabajo.Ficha || Cuadro != CuadroTrabajo.Ninguno) return;
+        MensajeError = null;
+        HayFila2 = true;
+    }
+
+    /// <summary>"Quitar": descarta el Evento 2 y su observación; el Evento 1 y la suya no se tocan (RF-5).</summary>
+    [RelayCommand]
+    private void QuitarEvento2()
+    {
+        if (!HayFila2 || Cuadro != CuadroTrabajo.Ninguno) return;
+        MensajeError = null;
+        LimpiarFila2();
+    }
+
+    /// <summary>El casillero "Evento" de la fila 2: abre la lista con solo los eventos combinables y sin el Evento 1 (RF-3).</summary>
+    [RelayCommand]
+    private async Task AbrirEventos2Async()
+    {
+        if (!PuedeAbrirCuadroDeFicha || !HayFila2 || EventoElegido is not { } evento1) return;
+        MensajeCuadro = null;
+        HayFormularioEvento = false;
+        FilaActiva = 2;
+        Selector.AbrirSegundo(Evento2Elegido?.Id, evento1.Id);
+        await CambiarCuadroAsync(CuadroTrabajo.Eventos);
+    }
+
+    /// <summary>El casillero "Observación" de la fila 2: el mismo cuadro de texto, con lo ya escrito para el Evento 2.</summary>
+    [RelayCommand]
+    private async Task AbrirObservacion2Async()
+    {
+        if (!PuedeAbrirCuadroDeFicha || !HayFila2) return;
+        FilaActiva = 2;
+        TextoObservacion = Observacion2Pendiente;
+        await CambiarCuadroAsync(CuadroTrabajo.Observacion);
+    }
+
+    [RelayCommand]
+    private void QuitarObservacion2() => Observacion2Pendiente = "";
+
+    // Lo elegido en la lista abierta desde la fila 2: queda en la fila y se vuelve a la ficha. No guarda nada.
+    private async Task ElegirEvento2Async(EventoCampoDto estado)
+    {
+        // Solo un evento que puede ser segundo y distinto del Evento 1: la lista ya lo filtra, esto es el cinturón de seguridad.
+        if (!estado.PuedeSerSegundo || estado.Id == EventoElegido?.Id) return;
+        Evento2Elegido = estado;
+        MensajeError = null;
+        await CambiarCuadroAsync(CuadroTrabajo.Ninguno);
+    }
+
+    /// <summary>Cierra la fila 2 y descarta el Evento 2 y su observación. Se usa al cerrar la ficha, en En espera, en Saltar y al cambiar el Evento 1.</summary>
+    private void LimpiarFila2()
+    {
+        HayFila2 = false;
+        Evento2Elegido = null;
+        Observacion2Pendiente = "";
+        FilaActiva = 1;
     }
 
 }

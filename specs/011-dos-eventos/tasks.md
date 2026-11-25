@@ -18,7 +18,7 @@ Regla de verificación: tras cada tarea se corren **solo los proyectos de `tests
   - RF: RF-3 (banderas), RF-9, RF-10, RF-11, RF-12, RF-14, RF-15, RF-16 (servicio), RF-17, RF-24
   - Hecho cuando: `dotnet build` en verde; pasan `Aviss.Infrastructure.Tests` y `Aviss.Application.Tests` (sin Rendimiento); `has-pending-model-changes` sin cambios.
 
-- [ ] **T3** — ViewModels: la segunda fila, el selector y Editar
+- [x] **T3** — ViewModels: la segunda fila, el selector y Editar
   - Qué hace: `SelectorEventosViewModel` con modo "segundo evento" (filtra por `PuedeSerSegundo`, esconde el Evento 1, lista vacía con "No hay otros eventos para combinar"); en `TrabajoViewModel` el estado de la fila 2 (`HayFila2`, `PuedeAgregarEvento2`, `Evento2Elegido`, `Observacion2Pendiente`, textos), comandos `AgregarEvento2`, `QuitarEvento2`, `AbrirEventos2`, `AbrirObservacion2` (cuadros reutilizados con `FilaActiva`), descarte con el aviso fijo al cambiar el Evento 1 (RF-7), `EntrarAsync` con `Segundo`, `UltimoGuardado` y aviso `1000: OK + PROSTAG`, limpieza en cerrar ficha, En espera y Saltar, lecturas ignoradas con la fila, su lista o su observación abiertas; `MovimientosViewModel` con Evento 2 y observación 2 en Editar (precarga, agregar, quitar, guardar).
   - Tests primero: `Application.Tests` › `TrabajoViewModelDosEventosTests`, `SelectorEventosViewModelSegundoTests`, `MovimientosViewModelDosEventosTests`; los de un solo evento (specs 005 y 009) siguen verdes.
   - Proyectos de tests que toca: `Aviss.Application.Tests`.

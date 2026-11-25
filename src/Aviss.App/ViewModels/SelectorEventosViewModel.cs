@@ -46,6 +46,44 @@ public sealed partial class SelectorEventosViewModel : ObservableObject
     /// <summary>Los resultados que se ofrecen al elegir Aborto: los de los estados activos y Rechazo siempre (RF-28).</summary>
     public ObservableCollection<ResultadoAborto> ResultadosDisponibles { get; } = [];
 
+    // Las listas completas tal como las armó el servicio: las colecciones de arriba son lo que se ve (filtradas en "modo segundo").
+    private IReadOnlyList<EventoCampoDto> _todosPrincipales = [];
+    private IReadOnlyList<EventoCampoDto> _todosOtros = [];
+
+    /// <summary>Texto fijo cuando, en modo segundo, no queda ningún evento para combinar (spec 011, RF-3).</summary>
+    public const string TextoSinCombinables = "No hay otros eventos para combinar";
+
+    /// <summary>
+    /// "Modo segundo" (spec 011): el selector elige el Evento 2. Muestra solo los eventos que pueden ser segundo
+    /// (<see cref="EventoCampoDto.PuedeSerSegundo"/>) y esconde el Evento 1 (<see cref="IdExcluido"/>). Es la misma clase y la misma lista:
+    /// solo cambia el filtro.
+    /// </summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ListaSegundoVacia), nameof(TextoListaVacia))]
+    private bool _modoSegundo;
+
+    /// <summary>En modo segundo, el Evento 1 de la vaca: no se ofrece como Evento 2 (RF-8).</summary>
+    public Guid? IdExcluido { get; private set; }
+
+    /// <summary>En modo segundo no hay ningún evento para combinar: la lista dice <see cref="TextoSinCombinables"/> y deja volver.</summary>
+    public bool ListaSegundoVacia => ModoSegundo && Principales.Count == 0 && Otros.Count == 0;
+
+    public string TextoListaVacia => ListaSegundoVacia ? TextoSinCombinables : "";
+
+    // Arma lo que se ve a partir de las listas completas y del modo actual.
+    private void Refiltrar()
+    {
+        bool Visible(EventoCampoDto e) => !ModoSegundo || (e.PuedeSerSegundo && e.Id != IdExcluido);
+        Principales.Clear();
+        foreach (var e in _todosPrincipales.Where(Visible)) Principales.Add(e);
+        Otros.Clear();
+        foreach (var e in _todosOtros.Where(Visible)) Otros.Add(e);
+        OnPropertyChanged(nameof(HayPrincipales));
+        OnPropertyChanged(nameof(OtroEventoResaltado));
+        OnPropertyChanged(nameof(ListaSegundoVacia));
+        OnPropertyChanged(nameof(TextoListaVacia));
+    }
+
     /// <summary>Se está viendo la lista de "Otro evento" (y no los principales).</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(MostrandoPrincipales), nameof(PuedeCrearNuevo))]
@@ -79,14 +117,11 @@ public sealed partial class SelectorEventosViewModel : ObservableObject
     /// </summary>
     public void Actualizar(ListaEventosDto lista)
     {
-        Principales.Clear();
-        foreach (var e in lista.Principales) Principales.Add(e);
-        Otros.Clear();
-        foreach (var e in lista.Otros) Otros.Add(e);
+        _todosPrincipales = lista.Principales;
+        _todosOtros = lista.Otros;
+        Refiltrar();   // respeta el modo actual (un evento creado en modo segundo aparece si es combinable)
         ResultadosDisponibles.Clear();
         foreach (var r in lista.ResultadosAborto) ResultadosDisponibles.Add(r);
-        OnPropertyChanged(nameof(HayPrincipales));
-        OnPropertyChanged(nameof(OtroEventoResaltado));
     }
 
     /// <summary>
@@ -98,8 +133,26 @@ public sealed partial class SelectorEventosViewModel : ObservableObject
     {
         DescartarPasos();
         MostrandoOtros = false;
+        ModoSegundo = false;
+        IdExcluido = null;
+        Refiltrar();
         Resaltado = resaltado;
         EleccionActual = eleccion;
+    }
+
+    /// <summary>
+    /// Deja el selector listo para elegir el <b>Evento 2</b> (spec 011): en los principales, sin el Evento 1 (<paramref name="idEvento1"/>) y solo
+    /// con los que pueden ser segundo. <paramref name="resaltado"/> es el Evento 2 ya elegido, si hay.
+    /// </summary>
+    public void AbrirSegundo(Guid? resaltado, Guid idEvento1)
+    {
+        DescartarPasos();
+        MostrandoOtros = false;
+        ModoSegundo = true;
+        IdExcluido = idEvento1;
+        Refiltrar();
+        Resaltado = resaltado;
+        EleccionActual = null;
     }
 
     /// <summary>Olvida la elección (la ficha se cerró o cambió de vaca): nada de una vaca pasa a la siguiente.</summary>
@@ -108,11 +161,17 @@ public sealed partial class SelectorEventosViewModel : ObservableObject
         DescartarPasos();
         EleccionActual = null;
         Resaltado = null;
+        if (ModoSegundo)
+        {
+            ModoSegundo = false;
+            IdExcluido = null;
+            Refiltrar();
+        }
     }
 
-    /// <summary>Busca un evento por su id en cualquiera de las dos listas.</summary>
+    /// <summary>Busca un evento por su id en cualquiera de las dos listas completas (aunque el modo segundo lo esconda).</summary>
     public EventoCampoDto? Buscar(Guid? id) =>
-        id is null ? null : Principales.Concat(Otros).FirstOrDefault(e => e.Id == id);
+        id is null ? null : _todosPrincipales.Concat(_todosOtros).FirstOrDefault(e => e.Id == id);
 
     [RelayCommand]
     private void VerOtros() => MostrandoOtros = true;
@@ -169,10 +228,11 @@ public sealed partial class SelectorEventosViewModel : ObservableObject
     public bool PuedeVolverDePaso => PasoActual is not null && _indicePaso > 0;
 
     /// <summary>El resumen del casillero: "Aborto, 45 días, Vacía OK", "Preñada fecha previa, 130 días" o solo el nombre.</summary>
-    public static string Resumen(EventoCampoDto evento, EleccionEvento? eleccion) =>
+    /// <param name="evento2">Spec 011: el segundo evento, si hay; se une con " + " ("OK + PROSTAG").</param>
+    public static string Resumen(EventoCampoDto evento, EleccionEvento? eleccion, EventoCampoDto? evento2 = null) =>
         eleccion is { } e && e.EventoId == evento.Id
-            ? DescripcionEvento.Armar(evento.Nombre, e.DiasPreniez, e.DiasAborto, e.ResultadoAborto)
-            : evento.Nombre;
+            ? DescripcionEvento.Armar(evento.Nombre, e.DiasPreniez, e.DiasAborto, e.ResultadoAborto, evento2?.Nombre)
+            : DescripcionEvento.Armar(evento.Nombre, nombreEvento2: evento2?.Nombre);
 
     /// <summary>La elección trae todos los datos que los pasos del evento piden (un Aborto viejo, sin días ni resultado, no la cumple).</summary>
     public static bool EstaCompleta(EventoCampoDto evento, EleccionEvento? eleccion)
