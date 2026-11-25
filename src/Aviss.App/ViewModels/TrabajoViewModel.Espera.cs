@@ -121,8 +121,8 @@ public sealed partial class TrabajoViewModel
 
     // ---- Poner en espera (RF-1)
 
-    /// <summary>La ficha abierta (también la de CVET 0, spec 009 RF-15), sin cuadros encima y que todavía no está en espera: se ve el botón "En espera".</summary>
-    public bool PuedePonerEnEspera => Ficha is { EnEspera: false } && Etapa == EtapaTrabajo.Ficha && Cuadro == CuadroTrabajo.Ninguno;
+    /// <summary>La ficha abierta (también la de CVET 0, spec 009 RF-15), sin cuadros encima: se ve el botón "En espera" (modificado 2026-11-25: también si la vaca ya está en espera).</summary>
+    public bool PuedePonerEnEspera => HayFicha && Etapa == EtapaTrabajo.Ficha && Cuadro == CuadroTrabajo.Ninguno;
 
     /// <summary>La ficha abierta viene de una espera: se ve el cartel "en espera" y Saltar saltea la espera (RF-3).</summary>
     public bool EsEsperaAbierta => HayFicha && Ficha!.EnEspera;
@@ -135,6 +135,18 @@ public sealed partial class TrabajoViewModel
         try
         {
             MensajeError = null;
+
+            // La vaca ya estaba en espera (modificado 2026-11-25): solo se cierra la ficha y se descarta lo elegido. No se llama al
+            // servicio (no hay espera nueva ni historial): la espera original queda intacta, con su misma hora y lugar.
+            if (ficha.EnEspera)
+            {
+                _avisos.Confirmacion();
+                CerrarFichaInterno();
+                UltimoGuardado = $"{ficha.Caravana}: sigue en espera";
+                await CargarEsperasAsync();   // solo lee: deja la botonera al día
+                return;
+            }
+
             var resultado = await EnCampoAsync(() => _campo.PonerEnEsperaAsync(new PonerEnEsperaCommand(ficha.AnimalId)));
             if (!resultado.EsCorrecto)
             {
