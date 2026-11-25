@@ -22,16 +22,16 @@ public class FormatoColumnasExportacionTests
     }
 
     [Fact]
-    public void La_fecha_sale_con_dia_mes_y_anio_de_cuatro_cifras_con_ceros()
-        => Assert.Equal("05/11/2026", FormatoColumnasExportacion.Fecha(Utc(2026, 11, 5, 12), TimeZoneInfo.Utc));
+    public void La_fecha_sale_con_dia_mes_y_anio_de_dos_cifras_con_ceros()
+        => Assert.Equal("05/11/26", FormatoColumnasExportacion.Fecha(Utc(2026, 11, 5, 12), TimeZoneInfo.Utc));
 
     [Theory]
-    [InlineData(15, 30, "1530")]
-    [InlineData(9, 5, "0905")]
-    [InlineData(0, 10, "0010")]
-    [InlineData(0, 0, "0000")]
-    [InlineData(23, 59, "2359")]
-    public void La_hora_sale_militar_con_ceros_a_la_izquierda_y_sin_separadores(int h, int min, string esperado)
+    [InlineData(15, 30, "15:30")]
+    [InlineData(9, 5, "09:05")]
+    [InlineData(0, 10, "00:10")]
+    [InlineData(0, 0, "00:00")]
+    [InlineData(23, 59, "23:59")]
+    public void La_hora_sale_con_ceros_a_la_izquierda_y_dos_puntos(int h, int min, string esperado)
         => Assert.Equal(esperado, FormatoColumnasExportacion.Hora(Utc(2026, 11, 5, h, min), TimeZoneInfo.Utc));
 
     [Fact]
@@ -39,8 +39,8 @@ public class FormatoColumnasExportacionTests
     {
         // 12:30 UTC = 09:30 en UTC-3.
         var u = Utc(2026, 11, 5, 12, 30);
-        Assert.Equal("05/11/2026", FormatoColumnasExportacion.Fecha(u, Fija(-3)));
-        Assert.Equal("0930", FormatoColumnasExportacion.Hora(u, Fija(-3)));
+        Assert.Equal("05/11/26", FormatoColumnasExportacion.Fecha(u, Fija(-3)));
+        Assert.Equal("09:30", FormatoColumnasExportacion.Hora(u, Fija(-3)));
     }
 
     [Fact]
@@ -48,10 +48,10 @@ public class FormatoColumnasExportacionTests
     {
         // 02:10 UTC del 6 = 23:10 local del 5.
         var u = Utc(2026, 11, 6, 2, 10);
-        Assert.Equal("05/11/2026", FormatoColumnasExportacion.Fecha(u, Fija(-3)));
-        Assert.Equal("2310", FormatoColumnasExportacion.Hora(u, Fija(-3)));
+        Assert.Equal("05/11/26", FormatoColumnasExportacion.Fecha(u, Fija(-3)));
+        Assert.Equal("23:10", FormatoColumnasExportacion.Hora(u, Fija(-3)));
         // Y al revés: 23:30 UTC del 5 ya es el día 6 en UTC+2.
-        Assert.Equal("06/11/2026", FormatoColumnasExportacion.Fecha(Utc(2026, 11, 5, 23, 30), Fija(2)));
+        Assert.Equal("06/11/26", FormatoColumnasExportacion.Fecha(Utc(2026, 11, 5, 23, 30), Fija(2)));
     }
 
     [Fact]
@@ -59,9 +59,9 @@ public class FormatoColumnasExportacionTests
     {
         var zona = ConVerano();   // UTC-3 en invierno, UTC-2 en verano
         // Verano (noviembre): 12:00 UTC = 10:00 local.
-        Assert.Equal("1000", FormatoColumnasExportacion.Hora(Utc(2026, 11, 5, 12), zona));
+        Assert.Equal("10:00", FormatoColumnasExportacion.Hora(Utc(2026, 11, 5, 12), zona));
         // Invierno (junio): 12:00 UTC = 09:00 local.
-        Assert.Equal("0900", FormatoColumnasExportacion.Hora(Utc(2026, 6, 5, 12), zona));
+        Assert.Equal("09:00", FormatoColumnasExportacion.Hora(Utc(2026, 6, 5, 12), zona));
     }
 
     [Fact]

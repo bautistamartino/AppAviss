@@ -163,11 +163,11 @@ public sealed class ExportacionServiceTests : IDisposable
 
         // El archivo entregado tiene las columnas nuevas con lo que corresponde: solo las vacas con tacto (la CVET 0 incluida) llevan valores.
         var lectura = Leer(guardado.Contenido);
-        Assert.Equal("16/11/2026", Celda(lectura, Pasada, ColumnasExportacion.Fecha.Nombre));
-        Assert.Equal("1200", Celda(lectura, Pasada, ColumnasExportacion.Hora.Nombre));
+        Assert.Equal("16/11/26", Celda(lectura, Pasada, ColumnasExportacion.Fecha.Nombre));
+        Assert.Equal("12:00", Celda(lectura, Pasada, ColumnasExportacion.Hora.Nombre));
         Assert.Equal("SECA", Celda(lectura, Pasada, ColumnasExportacion.Evento.Nombre));
         // La vaca de CVET 0 tactada a propósito sale como cualquier otra (decisión 2026-11-24).
-        Assert.Equal("16/11/2026", Celda(lectura, CvetCero, ColumnasExportacion.Fecha.Nombre));
+        Assert.Equal("16/11/26", Celda(lectura, CvetCero, ColumnasExportacion.Fecha.Nombre));
         Assert.Equal("SECA", Celda(lectura, CvetCero, ColumnasExportacion.Evento.Nombre));
         foreach (var vacia in new[] { SinPasar, Anulada })
             foreach (var columna in ColumnasExportacion.Todas)
