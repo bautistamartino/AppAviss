@@ -45,13 +45,23 @@ public sealed class Tacto : EntidadEditable
     /// <summary>Días de aborto informados al elegir "Aborto" (0 a 400).</summary>
     public int? DiasAborto { get; private set; }
 
+    /// <summary>
+    /// Spec 011: el segundo evento del mismo tacto (OK + PROSTAG). Nunca cambia el estado de la vaca ni su último tacto: eso lo
+    /// decide solo el evento 1. Nulo en todo lo anterior a la spec y en un tacto de anulación (que no lo copia).
+    /// </summary>
+    public Guid? Evento2Id { get; private set; }
+
+    /// <summary>Spec 011: la observación del evento 2. Solo existe si hay <see cref="Evento2Id"/>.</summary>
+    public string? Observaciones2 { get; private set; }
+
     private Tacto() { }
     private Tacto(DateTime ahoraUtc) : base(ahoraUtc) { }
 
     public static Tacto Registrar(
         Guid animalId, DateTime fechaHoraUtc, long ordenInsercion, Guid? estadoAnteriorId, Guid estadoNuevoId,
         int? diasPrenez, string? observaciones, DateTime ahoraUtc,
-        Guid? eventoId = null, int? diasPreniezInformados = null, int? diasAborto = null)
+        Guid? eventoId = null, int? diasPreniezInformados = null, int? diasAborto = null,
+        Guid? evento2Id = null, string? observaciones2 = null)
     {
         if (diasPrenez is int d && (d < ReglasTacto.DiasPrenezMinimo || d > ReglasTacto.DiasPrenezMaximo))
             throw new DominioException("Los días de preñez deben estar entre 0 y 300.");
@@ -63,6 +73,19 @@ public sealed class Tacto : EntidadEditable
             throw new DominioException("Un tacto no puede informar días de preñez y de aborto a la vez.");
         if (eventoId is null && (diasPreniezInformados is not null || diasAborto is not null))
             throw new DominioException("Los días informados necesitan el evento que los pide.");
+        // Spec 011: el evento 2 es un segundo evento "liviano": ni pasos, ni el mismo evento, ni observación suelta.
+        var obs2 = Validar.TextoOpcional(observaciones2);
+        if (obs2 is not null && evento2Id is null)
+            throw new DominioException("La observación del evento 2 necesita el evento 2.");
+        if (obs2 is not null && obs2.Length > ReglasSegundoEvento.MaximoObservaciones)
+            throw new DominioException($"La observación no puede superar los {ReglasSegundoEvento.MaximoObservaciones} caracteres.");
+        if (evento2Id is Guid e2)
+        {
+            if (e2 == estadoNuevoId || e2 == eventoId)
+                throw new DominioException("El evento 2 no puede ser el mismo que el evento 1.");
+            if (diasPreniezInformados is not null || diasAborto is not null)
+                throw new DominioException("Un evento con pasos no admite un segundo evento.");
+        }
         return new Tacto(ahoraUtc)
         {
             AnimalId = Validar.IdObligatorio(animalId, "El animal"),
@@ -75,7 +98,9 @@ public sealed class Tacto : EntidadEditable
             Tipo = TipoTacto.Normal,
             EventoId = eventoId,
             DiasPreniezInformados = diasPreniezInformados,
-            DiasAborto = diasAborto
+            DiasAborto = diasAborto,
+            Evento2Id = evento2Id,
+            Observaciones2 = obs2
         };
     }
 

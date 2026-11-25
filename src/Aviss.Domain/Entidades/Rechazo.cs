@@ -31,6 +31,15 @@ public sealed class Rechazo : EntidadEditable
     /// </summary>
     public int? DiasAborto { get; private set; }
 
+    /// <summary>
+    /// Spec 011: el segundo evento del mismo registro (OK + PROSTAG). Solo con <see cref="EventoId"/> (el Rechazo fijo y un
+    /// Aborto no combinan). Nulo en todo lo anterior a la spec.
+    /// </summary>
+    public Guid? Evento2Id { get; private set; }
+
+    /// <summary>Spec 011: la observación del evento 2. Solo existe si hay <see cref="Evento2Id"/>.</summary>
+    public string? Observaciones2 { get; private set; }
+
     public string? Observaciones { get; private set; }
     public bool Anulado { get; private set; }
     public DateTime? AnuladoEnUtc { get; private set; }
@@ -40,7 +49,8 @@ public sealed class Rechazo : EntidadEditable
 
     public static Rechazo Registrar(
         Guid animalId, DateTime fechaHoraUtc, long ordenInsercion, string? observaciones,
-        DateTime ahoraUtc, Guid? eventoId = null, int? diasAborto = null)
+        DateTime ahoraUtc, Guid? eventoId = null, int? diasAborto = null,
+        Guid? evento2Id = null, string? observaciones2 = null)
     {
         var obs = Validar.TextoOpcional(observaciones);
         if (obs is not null && obs.Length > MaximoObservaciones)
@@ -49,6 +59,21 @@ public sealed class Rechazo : EntidadEditable
             throw new DominioException($"Los días de aborto deben estar entre {RangosDias.Aborto.Minimo} y {RangosDias.Aborto.Maximo}.");
         if (diasAborto is not null && eventoId is null)
             throw new DominioException("Los días de aborto necesitan el evento Aborto.");
+        // Spec 011: el segundo evento solo acompaña a un evento común del catálogo.
+        var obs2 = Validar.TextoOpcional(observaciones2);
+        if (obs2 is not null && evento2Id is null)
+            throw new DominioException("La observación del evento 2 necesita el evento 2.");
+        if (obs2 is not null && obs2.Length > MaximoObservaciones)
+            throw new DominioException($"La observación no puede superar los {MaximoObservaciones} caracteres.");
+        if (evento2Id is not null)
+        {
+            if (eventoId is null)
+                throw new DominioException("El rechazo no admite un segundo evento.");
+            if (diasAborto is not null)
+                throw new DominioException("Un evento con pasos no admite un segundo evento.");
+            if (evento2Id == eventoId)
+                throw new DominioException("El evento 2 no puede ser el mismo que el evento 1.");
+        }
         return new(ahoraUtc)
         {
             AnimalId = Validar.IdObligatorio(animalId, "El animal"),
@@ -57,6 +82,8 @@ public sealed class Rechazo : EntidadEditable
             EventoId = eventoId,
             DiasAborto = diasAborto,
             Observaciones = obs,
+            Evento2Id = evento2Id,
+            Observaciones2 = obs2,
         };
     }
 
