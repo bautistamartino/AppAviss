@@ -95,16 +95,16 @@ internal sealed class ConsultaCampoService
                             join a in _db.Animales on t.AnimalId equals a.Id
                             where a.RodeoId == rodeoId && t.Tipo == TipoTacto.Normal
                             orderby t.FechaHoraUtc descending, t.OrdenInsercion descending
-                            select new { t.Id, t.AnimalId, a.NumeroCaravana, a.DatosOriginalesJson, t.Observaciones, t.FechaHoraUtc, t.OrdenInsercion, t.EstadoNuevoId, t.Anulado, t.EventoId, t.DiasPreniezInformados, t.DiasAborto })
+                            select new { t.Id, t.AnimalId, a.NumeroCaravana, a.DatosOriginalesJson, t.Observaciones, t.FechaHoraUtc, t.OrdenInsercion, t.EstadoNuevoId, t.Anulado, t.EventoId, t.DiasPreniezInformados, t.DiasAborto, t.Evento2Id, t.Observaciones2 })
             .Take(MaximoMovimientos).ToListAsync(ct);
         foreach (var t in tactos)
         {
             // Descripción completa ("Aborto, 45 días, Vacía OK"); el EventoId efectivo es el elegido o, en un tacto común, el estado.
-            var (estado, resultado) = DescriptorEventos.DescribirConResultado(estados, t.EventoId, t.EstadoNuevoId, t.DiasPreniezInformados, t.DiasAborto, false);
+            var (estado, resultado) = DescriptorEventos.DescribirConResultado(estados, t.EventoId, t.EstadoNuevoId, t.DiasPreniezInformados, t.DiasAborto, false, t.Evento2Id);
             candidatos.Add((new MovimientoDto(TipoMovimiento.Tacto, t.Id, t.AnimalId, t.NumeroCaravana, null, estado,
                 t.FechaHoraUtc, t.Anulado, false, null, null, null,
                 ConstructorFicha.LeerCvet(t.DatosOriginalesJson), t.Observaciones, t.EventoId ?? t.EstadoNuevoId,
-                t.DiasPreniezInformados, t.DiasAborto, resultado), t.OrdenInsercion + 1));
+                t.DiasPreniezInformados, t.DiasAborto, resultado, t.Evento2Id, t.Observaciones2), t.OrdenInsercion + 1));
         }
 
         var marcas = await (from m in _db.MarcasPasada.AsNoTracking()
@@ -137,12 +137,12 @@ internal sealed class ConsultaCampoService
         {
             var (caravana, json) = animalesRechazados.GetValueOrDefault(r.AnimalId);
             // Un solo evento del catálogo muestra su nombre (aunque esté desactivado: salen de todo el catálogo); el Rechazo fijo, "Rechazo".
-            var (descripcion, resultadoRechazo) = DescriptorEventos.DescribirConResultado(estados, r.EventoId, null, null, r.DiasAborto, true);
+            var (descripcion, resultadoRechazo) = DescriptorEventos.DescribirConResultado(estados, r.EventoId, null, null, r.DiasAborto, true, r.Evento2Id);
             var nombreEvento = descripcion ?? EventosCampo.NombreRechazo;
             candidatos.Add((new MovimientoDto(TipoMovimiento.Rechazo, r.Id, r.AnimalId, caravana, null, nombreEvento,
                 r.FechaHoraUtc, r.Anulado, false, null, null, null,
                 ConstructorFicha.LeerCvet(json), r.Observaciones, r.EventoId ?? EventosCampo.Rechazo,
-                null, r.DiasAborto, resultadoRechazo), r.OrdenInsercion + 1));
+                null, r.DiasAborto, resultadoRechazo, r.Evento2Id, r.Observaciones2), r.OrdenInsercion + 1));
         }
 
         var cierres = await (from c in _db.CierresManga.AsNoTracking()

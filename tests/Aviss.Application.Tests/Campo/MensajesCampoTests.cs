@@ -31,6 +31,9 @@ public class MensajesCampoTests
             yield return new object[] { $"ParaRechazo.{m}", MensajesCampo.ParaRechazo(m).Mensaje };
         foreach (var m in Enum.GetValues<MotivoNoReabrir>())
             yield return new object[] { $"MotivoNoReabrir.{m}", MensajesCampo.Para(m).Mensaje };
+        // spec 011 (RF-12, RF-24): los rechazos del segundo evento
+        foreach (var m in Enum.GetValues<Aviss.Domain.Reglas.MotivoSegundoEvento>())
+            yield return new object[] { $"MotivoSegundoEvento.{m}", MensajesCampo.Para(m).Mensaje };
     }
 
     [Theory]

@@ -60,7 +60,8 @@ public class FakeCampoService : ICampoService
         EstadosCreados.Add((nombre, codigoDairyComp));
         if (OnCrearEstado is not null) return Task.FromResult(OnCrearEstado(nombre));
         var id = Guid.NewGuid();
-        Estados = [.. Estados, new EventoCampoDto(id, nombre.ToUpperInvariant(), true, false)];
+        // Un evento creado a mano (spec 011): admite un segundo y puede ser el segundo.
+        Estados = [.. Estados, new EventoCampoDto(id, nombre.ToUpperInvariant(), true, false, admiteSegundo: true, puedeSerSegundo: true)];
         return Task.FromResult(Resultado.Ok(id));
     }
 

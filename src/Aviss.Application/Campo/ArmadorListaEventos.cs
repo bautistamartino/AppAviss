@@ -48,6 +48,8 @@ public static class ArmadorListaEventos
         return new ListaEventosDto(principales, otros, resultados);
     }
 
+    // Spec 011: las banderas salen de la regla pura del dominio, así la pantalla no mira el catálogo ni los nombres.
     private static EventoCampoDto Dto(EstadoReproductivo e)
-        => new(e.Id, e.Nombre, e.Tipo == TipoEvento.Estado, e.EsPrincipal, e.ListarPasos(), e.EstadoDestinoId, e.ClaveEstandar);
+        => new(e.Id, e.Nombre, e.Tipo == TipoEvento.Estado, e.EsPrincipal, e.ListarPasos(), e.EstadoDestinoId, e.ClaveEstandar,
+            ReglasSegundoEvento.AdmiteSegundo(DatosEvento.De(e)), ReglasSegundoEvento.PuedeSerSegundo(DatosEvento.De(e)));
 }

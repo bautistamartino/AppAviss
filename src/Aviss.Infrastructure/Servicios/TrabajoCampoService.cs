@@ -137,6 +137,11 @@ internal sealed class TrabajoCampoService : ITrabajoCampoService
         else if (hayDatos)
             return Resultado.Error<Guid>(CodigoError.DatosInvalidos, "El Rechazo no lleva días ni resultado.");
 
+        // Spec 011: el Evento 2 (si hay) y el tope de las observaciones se validan acá, antes de tocar nada. El Rechazo fijo
+        // (evento nulo) no admite un segundo.
+        var (evento2, errorSegundo) = await ValidarSegundoAsync(evento, eleccion?.Segundo, c.Observaciones, ct);
+        if (errorSegundo is var (codigoSegundo, mensajeSegundo)) return Resultado.Error<Guid>(codigoSegundo, mensajeSegundo);
+
         var animal = await _animales.ObtenerAsync(c.AnimalId, ct);
         if (animal is null) return Resultado.Error<Guid>(CodigoError.NoEncontrado, "El animal no existe.");
         var rodeo = await _rodeos.ObtenerAsync(animal.RodeoId, ct);
@@ -157,12 +162,16 @@ internal sealed class TrabajoCampoService : ITrabajoCampoService
         try
         {
             var ordenRechazo = orden ?? await _registros.SiguienteOrdenAsync(ct);
-            var rechazo = Rechazo.Registrar(animal.Id, ahora, ordenRechazo, c.Observaciones, ahora, evento?.Id, diasAborto);
+            var rechazo = Rechazo.Registrar(animal.Id, ahora, ordenRechazo, c.Observaciones, ahora, evento?.Id, diasAborto,
+                evento2?.Id, eleccion?.Segundo?.Observaciones);
             _rechazos.Agregar(rechazo);
             // El Rechazo fijo historiza su motivo; un evento del catálogo, su nombre (así el historial lo dice aunque después se renombre o desactive).
             _historial.Agregar(evento is null
                 ? Historial.Crear("Rechazo", rechazo.Id, "Observaciones", null, rechazo.Observaciones, ahora, AccionHistorial.RechazoCreado)
                 : Historial.Crear("Rechazo", rechazo.Id, "Evento", null, evento.Nombre, ahora, AccionHistorial.RechazoCreado));
+            // Spec 011 (RF-14): una línea más por el Evento 2, misma acción, en la misma transacción.
+            if (evento2 is not null)
+                _historial.Agregar(Historial.Crear("Rechazo", rechazo.Id, CampoHistorialEvento2, null, evento2.Nombre, ahora, AccionHistorial.RechazoCreado));
             // Si la vaca estaba en espera, queda resuelta en esta misma transacción (RF-3).
             await _esperas.ResolverSiHayAsync(animal.Id, rechazo.Id, ahora, ct);
             return Resultado.Ok(rechazo.Id);
@@ -201,6 +210,7 @@ internal sealed class TrabajoCampoService : ITrabajoCampoService
         var establecimiento = rodeo is null ? null : await _establecimientos.ObtenerAsync(rodeo.EstablecimientoId, ct);
         if (rodeo is null || establecimiento is null) return Resultado.Error<Guid>(CodigoError.NoEncontrado, "El rodeo del animal no existe.");
         EstadoReproductivo? estadoNuevo;
+        EstadoReproductivo evento1; // el evento elegido (distinto del estado final cuando el evento tiene destino)
         Guid? eventoId = null;
         int? diasPreniezInformados = null, diasAborto = null;
         if (c.Eleccion is null)
@@ -214,6 +224,7 @@ internal sealed class TrabajoCampoService : ITrabajoCampoService
             // el resultado. Se rechaza acá con un error controlado y no se deja a cargo del trigger de la base.
             if (estadoNuevo.ListarPasos().Count > 0 || estadoNuevo.EstadoDestinoId is not null)
                 return Resultado.Error<Guid>(CodigoError.DatosInvalidos, "Ese evento pide días o resultado: hay que elegirlo con sus pasos.");
+            evento1 = estadoNuevo;
         }
         else
         {
@@ -221,8 +232,15 @@ internal sealed class TrabajoCampoService : ITrabajoCampoService
                 return Resultado.Error<Guid>(CodigoError.DatosInvalidos, "La elección no coincide con el evento.");
             var resolucion = await ResolverEleccionAsync(c.Eleccion, ct);
             if (!resolucion.EsCorrecto) return Resultado.Error<Guid>(resolucion.Codigo!.Value, resolucion.Mensaje!);
-            (estadoNuevo, eventoId, diasPreniezInformados, diasAborto) = resolucion.Valor;
+            var r = resolucion.Valor;
+            (estadoNuevo, eventoId, diasPreniezInformados, diasAborto) = (r.Estado, r.EventoId, r.DiasPreniez, r.DiasAborto);
+            evento1 = r.Evento1;
         }
+
+        // Spec 011: el Evento 2 (si hay) y el tope de 300 de las observaciones, validados antes de guardar nada. El estado y el
+        // último tacto salen solo del Evento 1 (más abajo); el Evento 2 solo queda registrado.
+        var (evento2, errorSegundo) = await ValidarSegundoAsync(evento1, c.Eleccion?.Segundo, c.Observaciones, ct);
+        if (errorSegundo is var (codigoSegundo, mensajeSegundo)) return Resultado.Error<Guid>(codigoSegundo, mensajeSegundo);
 
         // Un único "ahora": es la hora del tacto y la que se usa para validarlo (RF-8b).
         var ahora = _reloj.UtcAhora;
@@ -251,13 +269,16 @@ internal sealed class TrabajoCampoService : ITrabajoCampoService
             var estadoAnterior = animal.EstadoReproductivoId; // se toma antes de cambiarlo
             var ordenTacto = orden ?? await _registros.SiguienteOrdenAsync(ct); // orden compartido con las marcas de pasada
             var tacto = Tacto.Registrar(animal.Id, ahora, ordenTacto, estadoAnterior, estadoNuevo.Id, c.DiasPrenez,
-                c.Observaciones, ahora, eventoId, diasPreniezInformados, diasAborto);
+                c.Observaciones, ahora, eventoId, diasPreniezInformados, diasAborto, evento2?.Id, c.Eleccion?.Segundo?.Observaciones);
             animal.AplicarTacto(estadoNuevo.Id, ahora, ahora);
 
             _tactos.Agregar(tacto);
-            // Exactamente un registro de historial por tacto; los estados van por id, no por nombre.
+            // Un registro de historial por tacto (dos si hay Evento 2, RF-14); los estados van por id, no por nombre.
             _historial.Agregar(Historial.Crear("Tacto", tacto.Id, "Estado", Ayudas.IdATextoONulo(estadoAnterior),
                 Ayudas.IdATexto(estadoNuevo.Id), ahora, AccionHistorial.Tacto));
+            // El Evento 2 va por nombre (así el historial lo conserva aunque después se renombre o se dé de baja).
+            if (evento2 is not null)
+                _historial.Agregar(Historial.Crear("Tacto", tacto.Id, CampoHistorialEvento2, null, evento2.Nombre, ahora, AccionHistorial.Tacto));
             // Si la vaca estaba en espera, queda resuelta en esta misma transacción (spec 004, RF-3).
             await _esperas.ResolverSiHayAsync(animal.Id, tacto.Id, ahora, ct);
             return Resultado.Ok(tacto.Id);
@@ -268,7 +289,31 @@ internal sealed class TrabajoCampoService : ITrabajoCampoService
     /// <summary>
     /// Lo que un evento elegido deja guardado en un tacto: el estado final, el evento (solo si es distinto del estado) y los días.
     /// </summary>
-    private sealed record ResolucionTacto(EstadoReproductivo Estado, Guid? EventoId, int? DiasPreniez, int? DiasAborto);
+    private sealed record ResolucionTacto(EstadoReproductivo Estado, Guid? EventoId, int? DiasPreniez, int? DiasAborto, EstadoReproductivo Evento1);
+
+    /// <summary>Spec 011: el campo del historial de la línea extra del Evento 2.</summary>
+    private const string CampoHistorialEvento2 = "Evento2";
+
+    /// <summary>
+    /// Spec 011 (RF-12): valida el Evento 2 contra el Evento 1 con la regla pura del dominio y el catálogo de este momento, y el tope de
+    /// 300 caracteres de las observaciones (también la del Evento 1, aunque no haya segundo). <paramref name="evento1"/> nulo = el
+    /// Rechazo fijo, que no admite un segundo. Devuelve el Evento 2 (nulo si no hay) o el motivo del rechazo; no guarda nada.
+    /// </summary>
+    private async Task<(EstadoReproductivo? Evento2, (CodigoError, string)? Error)> ValidarSegundoAsync(
+        EstadoReproductivo? evento1, SegundoEventoElegido? segundo, string? observaciones1, CancellationToken ct)
+    {
+        if (segundo is null)
+        {
+            if (observaciones1 is not null && observaciones1.Trim().Length > ReglasSegundoEvento.MaximoObservaciones)
+                return (null, MensajesCampo.Para(MotivoSegundoEvento.ObservacionLarga));
+            return (null, null);
+        }
+        var evento2 = await _estados.ObtenerAsync(segundo.EventoId, ct);
+        var motivo = ReglasSegundoEvento.Validar(
+            evento1 is null ? null : DatosEvento.De(evento1), evento2 is null ? null : DatosEvento.De(evento2),
+            observaciones1, segundo.Observaciones);
+        return motivo is MotivoSegundoEvento m ? (null, MensajesCampo.Para(m)) : (evento2, null);
+    }
 
     // Resuelve y revalida una elección que se guarda como tacto (RF-24, RF-29): evento activo, pasos exigidos, días en rango,
     // resultado permitido y activo, que no sobren datos. Fecha previa deja a la vaca en su destino (PREÑADA); un Aborto, en el
@@ -298,7 +343,7 @@ internal sealed class TrabajoCampoService : ITrabajoCampoService
         if (!final.Activo) return Resultado.Error<ResolucionTacto>(CodigoError.EstadoDeBaja, "El estado en que queda la vaca está dado de baja.");
 
         // El evento solo se guarda aparte cuando es distinto del estado en que queda la vaca (en lo viejo queda nulo).
-        return Resultado.Ok(new ResolucionTacto(final, final.Id == evento.Id ? null : evento.Id, e.DiasPreniez, e.DiasAborto));
+        return Resultado.Ok(new ResolucionTacto(final, final.Id == evento.Id ? null : evento.Id, e.DiasPreniez, e.DiasAborto, evento));
     }
 
     /// <summary>Los datos de la elección deben coincidir con los pasos que el evento declara: ni faltan ni sobran, y los días van en rango.</summary>

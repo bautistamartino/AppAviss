@@ -146,6 +146,8 @@ public sealed record ResultadoDeshacerDto(
 /// <param name="Cvet">El CVET de la vaca (por qué estaba en la lista de tacto); vacío en los cierres o si el Excel no lo traía.</param>
 /// <param name="EventoId">Spec 005: el evento del registro (estado del tacto, solo evento o <see cref="EventosCampo.Rechazo"/>); sirve para resaltarlo al editar sin comparar nombres.</param>
 /// <param name="Observaciones">La observación del tacto, si la tenía.</param>
+/// <param name="Evento2Id">Spec 011: el segundo evento del registro, si lo tenía; precarga "Editar". El texto de <paramref name="Detalle"/> ya dice los dos ("OK + PROSTAG").</param>
+/// <param name="Observaciones2">Spec 011: la observación del segundo evento.</param>
 public sealed record MovimientoDto(
     TipoMovimiento Tipo,
     Guid RegistroId,
@@ -164,7 +166,9 @@ public sealed record MovimientoDto(
     Guid? EventoId = null,
     int? DiasPreniez = null,
     int? DiasAborto = null,
-    ResultadoAborto? ResultadoAborto = null);
+    ResultadoAborto? ResultadoAborto = null,
+    Guid? Evento2Id = null,
+    string? Observaciones2 = null);
 
 public sealed record RodeoParaTrabajarDto(
     Guid EstablecimientoId,
@@ -183,13 +187,16 @@ public sealed record RodeoParaTrabajarDto(
 /// <param name="Pasos">Spec 005 (segunda vuelta): lo que el evento pide después de elegirlo (días de preñez, días de aborto, resultado).</param>
 /// <param name="EstadoDestinoId">El estado en que queda la vaca si no es el propio evento (Preñada fecha previa → PREÑADA).</param>
 /// <param name="ClaveEstandar">Identidad estable del evento estándar; nula en los creados a mano.</param>
+/// <param name="AdmiteSegundo">Spec 011: puede ser el Evento 1 con un segundo ("+ evento"): activo, sin pasos ni destino. Falso en el Rechazo fijo.</param>
+/// <param name="PuedeSerSegundo">Spec 011: puede ser el Evento 2: admite segundo y es solo evento (OK, Revisar Nuevamente) o creado a mano.</param>
 public sealed record EventoCampoDto(
     Guid Id, string Nombre, bool CambiaEstado, bool EsPrincipal,
-    IReadOnlyList<PasoEvento> Pasos, Guid? EstadoDestinoId, string? ClaveEstandar)
+    IReadOnlyList<PasoEvento> Pasos, Guid? EstadoDestinoId, string? ClaveEstandar,
+    bool AdmiteSegundo = false, bool PuedeSerSegundo = false)
 {
     /// <summary>Un evento sin pasos (el Rechazo fijo y los eventos de antes de la segunda vuelta).</summary>
-    public EventoCampoDto(Guid Id, string Nombre, bool CambiaEstado, bool EsPrincipal)
-        : this(Id, Nombre, CambiaEstado, EsPrincipal, Array.Empty<PasoEvento>(), null, null) { }
+    public EventoCampoDto(Guid Id, string Nombre, bool CambiaEstado, bool EsPrincipal, bool admiteSegundo = false, bool puedeSerSegundo = false)
+        : this(Id, Nombre, CambiaEstado, EsPrincipal, Array.Empty<PasoEvento>(), null, null, admiteSegundo, puedeSerSegundo) { }
 
     public bool TienePasos => Pasos.Count > 0;
 }

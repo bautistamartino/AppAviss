@@ -292,7 +292,7 @@ internal sealed class RegistroCampoRepository : IRegistroCampoRepository
         var tacto = await _db.Tactos.AsNoTracking()
             .Where(t => t.AnimalId == animalId && t.Tipo == TipoTacto.Normal && !t.Anulado)
             .OrderByDescending(t => t.FechaHoraUtc).ThenByDescending(t => t.OrdenInsercion)
-            .Select(t => new RegistroCampoVigente(TipoRegistroCampo.Tacto, t.Id, t.FechaHoraUtc, t.OrdenInsercion, t.EstadoNuevoId, null, null, t.EventoId, t.DiasPreniezInformados, t.DiasAborto))
+            .Select(t => new RegistroCampoVigente(TipoRegistroCampo.Tacto, t.Id, t.FechaHoraUtc, t.OrdenInsercion, t.EstadoNuevoId, null, null, t.EventoId, t.DiasPreniezInformados, t.DiasAborto, t.Evento2Id))
             .FirstOrDefaultAsync(ct);
         var marca = await _db.MarcasPasada.AsNoTracking()
             .Where(m => m.AnimalId == animalId && !m.Anulado)
@@ -303,7 +303,7 @@ internal sealed class RegistroCampoRepository : IRegistroCampoRepository
         var rechazo = await _db.Rechazos.AsNoTracking()
             .Where(r => r.AnimalId == animalId && !r.Anulado)
             .OrderByDescending(r => r.FechaHoraUtc).ThenByDescending(r => r.OrdenInsercion)
-            .Select(r => new RegistroCampoVigente(TipoRegistroCampo.Rechazo, r.Id, r.FechaHoraUtc, r.OrdenInsercion, null, null, r.Observaciones, r.EventoId, null, r.DiasAborto))
+            .Select(r => new RegistroCampoVigente(TipoRegistroCampo.Rechazo, r.Id, r.FechaHoraUtc, r.OrdenInsercion, null, null, r.Observaciones, r.EventoId, null, r.DiasAborto, r.Evento2Id))
             .FirstOrDefaultAsync(ct);
 
         // Gana el de (fecha, orden) más alto entre los tres.

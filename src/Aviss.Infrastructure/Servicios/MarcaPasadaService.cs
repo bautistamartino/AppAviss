@@ -188,7 +188,7 @@ internal sealed class MarcaPasadaService
 // La descripción del evento ("Aborto, 45 días, Vacía OK", el estado de un tacto, el solo evento de un rechazo); el Rechazo fijo no tiene nombre propio.
             var catalogo = (await _estados.ListarAsync(ct)).ToDictionary(e => e.Id);
             var estado = DescriptorEventos.Describir(catalogo, ultimo.EventoId, ultimo.EstadoId,
-                ultimo.DiasPreniez, ultimo.DiasAborto, ultimo.Tipo == TipoRegistroCampo.Rechazo);
+                ultimo.DiasPreniez, ultimo.DiasAborto, ultimo.Tipo == TipoRegistroCampo.Rechazo, ultimo.Evento2Id);
             ultimoDto = new UltimoRegistroDto(ultimo.Tipo, ultimo.Id, ultimo.FechaHoraUtc, estado, numeroManga, ultimo.Observaciones);
         }
 
