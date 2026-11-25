@@ -59,8 +59,11 @@ public sealed partial class TrabajoViewModel : ObservableObject
     public TrabajoViewModel(
         ICampoService campo, IRfidReader lector, IPreferenciasMangas preferencias, IAvisosCampo avisos,
         IPantalla pantalla, ITemporizador temporizador, INavegacion navegacion, SesionTrabajo sesion,
-        ISimuladorLecturas? simulador = null, IRelojService? reloj = null)
+        ISimuladorLecturas? simulador = null, IRelojService? reloj = null,
+        IPreferenciasBaston? preferenciasBaston = null, Aviss.Rfid.IBluetoothBaston? bluetooth = null)
     {
+        _preferenciasBaston = preferenciasBaston;
+        _bluetooth = bluetooth;
         _campo = campo;
         _lector = lector;
         _preferencias = preferencias;
@@ -279,6 +282,7 @@ public sealed partial class TrabajoViewModel : ObservableObject
     /// <summary>La página lo llama al desaparecer: corta el lector y el refresco y deja que la pantalla se apague.</summary>
     public async Task DetenerAsync()
     {
+        DesuscribirBaston();   // antes de cortar: el corte no debe mover el cartel de una pantalla que ya se fue
         _ctsLector?.Cancel();
         _ctsLector = null;
         _ctsRefresco?.Cancel();
@@ -316,6 +320,7 @@ public sealed partial class TrabajoViewModel : ObservableObject
 
     private void IniciarLector()
     {
+        SuscribirBaston();   // el cartel del bastón sigue al lector mientras la pantalla está abierta (spec 008)
         if (_ctsLector is not null) return;
         var cts = _ctsLector = new CancellationTokenSource();
         _ = LeerAsync(cts.Token);

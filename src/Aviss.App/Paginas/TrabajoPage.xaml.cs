@@ -101,7 +101,11 @@ public partial class TrabajoPage : ContentPage
 
 		// Al volver de segundo plano se recalcula el contador y el avance (por si cambió el día o la zona horaria, RF-30).
 		_ventana = Window;
-		if (_ventana is not null) _ventana.Resumed += AlVolverDeSegundoPlano;
+		if (_ventana is not null)
+		{
+			_ventana.Resumed += AlVolverDeSegundoPlano;
+			_ventana.Stopped += AlPasarASegundoPlano;   // spec 008, RF-16: sin lectura en segundo plano
+		}
 
 		try
 		{
@@ -117,7 +121,11 @@ public partial class TrabajoPage : ContentPage
 	protected override async void OnDisappearing()
 	{
 		base.OnDisappearing();
-		if (_ventana is not null) _ventana.Resumed -= AlVolverDeSegundoPlano;
+		if (_ventana is not null)
+		{
+			_ventana.Resumed -= AlVolverDeSegundoPlano;
+			_ventana.Stopped -= AlPasarASegundoPlano;
+		}
 		_ventana = null;
 
 		try
@@ -132,7 +140,18 @@ public partial class TrabajoPage : ContentPage
 
 	private async void AlVolverDeSegundoPlano(object? sender, EventArgs e)
 	{
-		try { await _vm.RecalcularAsync(); }
+		try
+		{
+			await _vm.RecalcularAsync();
+			await _vm.ReanudarLectorAsync();   // spec 008: reconecta con el bastón de inmediato
+		}
+		catch (Exception) { }
+	}
+
+	// La app pasó a segundo plano o se apagó la pantalla: el lector corta la conexión (spec 008, RF-16).
+	private async void AlPasarASegundoPlano(object? sender, EventArgs e)
+	{
+		try { await _vm.PausarLectorAsync(); }
 		catch (Exception) { }
 	}
 

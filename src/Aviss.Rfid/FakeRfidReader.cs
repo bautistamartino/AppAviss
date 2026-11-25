@@ -29,18 +29,27 @@ public sealed class FakeRfidReader : IRfidReader, ISimuladorLecturas
 
     public EstadoConexionRfid Estado { get; private set; } = EstadoConexionRfid.Desconectado;
 
+    // El simulador no tiene el concepto de "motivo": o está conectado o no lo está.
+    public MotivoSinBaston Motivo => MotivoSinBaston.Ninguno;
+
+    public event Action? EstadoCambiado;
+
+    public Task ReconectarAhoraAsync(CancellationToken ct = default) => ConectarAsync(ct);
+
     /// <summary>"Lee" un código: queda disponible para quien esté escuchando <see cref="Lecturas"/>.</summary>
     public void Emitir(string codigo) => _canal.Writer.TryWrite(new TagRead(codigo, _ahoraUtc()));
 
     public Task ConectarAsync(CancellationToken ct = default)
     {
         Estado = EstadoConexionRfid.Conectado;
+        EstadoCambiado?.Invoke();
         return Task.CompletedTask;
     }
 
     public Task DesconectarAsync(CancellationToken ct = default)
     {
         Estado = EstadoConexionRfid.Desconectado;
+        EstadoCambiado?.Invoke();
         return Task.CompletedTask;
     }
 

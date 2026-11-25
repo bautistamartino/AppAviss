@@ -11,6 +11,13 @@ public sealed class LectorNoDisponible : IRfidReader
 {
     public EstadoConexionRfid Estado => EstadoConexionRfid.Desconectado;
 
+    public MotivoSinBaston Motivo => MotivoSinBaston.SinBluetooth;
+
+    // Nunca cambia de estado: el evento existe solo por la interfaz.
+    public event Action? EstadoCambiado { add { } remove { } }
+
+    public Task ReconectarAhoraAsync(CancellationToken ct = default) => Task.CompletedTask;
+
     public Task ConectarAsync(CancellationToken ct = default) => Task.CompletedTask;
 
     public Task DesconectarAsync(CancellationToken ct = default) => Task.CompletedTask;

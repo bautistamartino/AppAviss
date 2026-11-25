@@ -55,15 +55,29 @@ public static class MauiProgram
 		builder.Services.AddSingleton<ITemporizador, TemporizadorReal>();
 		builder.Services.AddSingleton<IAvisosCampo, AvisosAndroid>();
 
+		// Lector real del bastón (spec 008): el mismo en DEBUG y en Release. El lector no sabe nada de Android; lo de la plataforma
+		// (Bluetooth, permisos y socket SPP) entra por estos puertos.
+		builder.Services.AddSingleton<IPreferenciasBaston>(sp => sp.GetRequiredService<PreferenciasMaui>());
+		builder.Services.AddSingleton<Aviss.Rfid.IBluetoothBaston, Aviss.App.Bluetooth.BluetoothBastonAndroid>();
+		builder.Services.AddSingleton<Aviss.Rfid.IEnlaceSerieBaston, Aviss.App.Bluetooth.EnlaceSerieBastonAndroid>();
+		builder.Services.AddSingleton(sp => new Aviss.Rfid.LectorBastonXrs2(
+			sp.GetRequiredService<Aviss.Rfid.IBluetoothBaston>(),
+			sp.GetRequiredService<Aviss.Rfid.IEnlaceSerieBaston>(),
+			sp.GetRequiredService<IPreferenciasBaston>(),
+			sp.GetRequiredService<ITemporizador>(),
+			sp.GetRequiredService<IAvisosCampo>()));
+		builder.Services.AddSingleton<IRfidReader>(sp => sp.GetRequiredService<Aviss.Rfid.LectorBastonXrs2>());
+
 #if DEBUG
-		// Solo en la compilación de desarrollo: lector simulado y simulador de lecturas (RF-31). Es UNA instancia que
-		// cumple las dos interfaces, para que lo que emite el panel lo reciba el flujo. Nada de esto existe en Release.
-		builder.Services.AddSingleton<Aviss.Rfid.FakeRfidReader>();
-		builder.Services.AddSingleton<IRfidReader>(sp => sp.GetRequiredService<Aviss.Rfid.FakeRfidReader>());
-		builder.Services.AddSingleton<ISimuladorLecturas>(sp => sp.GetRequiredService<Aviss.Rfid.FakeRfidReader>());
-#else
-		// En la versión que se distribuye no hay simulador: el lector no entrega nada hasta la spec del bastón real.
-		builder.Services.AddSingleton<IRfidReader, Aviss.Rfid.LectorNoDisponible>();
+		// Solo en la compilación de desarrollo: el simulador de lecturas (RF-31) entra por el lector real (mismo filtro y
+		// misma cola que el bastón). Nada de esto existe en Release, que tampoco registra FakeRfidReader.
+		builder.Services.AddSingleton<ISimuladorLecturas, SimuladorLecturasBaston>();
+
+		// Spike del bastón (spec 008, paso 5.1): pantalla de diagnóstico del Bluetooth. Solo en DEBUG, como el simulador.
+		builder.Services.AddSingleton<Aviss.Rfid.Diagnostico.IBluetoothDiagnostico, Aviss.App.Diagnostico.BluetoothDiagnosticoAndroid>();
+		builder.Services.AddSingleton<Aviss.Rfid.Diagnostico.IEntregaRegistro, Aviss.App.Diagnostico.EntregaRegistroAndroid>();
+		builder.Services.AddTransient<Aviss.App.Diagnostico.DiagnosticoBastonViewModel>();
+		builder.Services.AddTransient<Aviss.App.Diagnostico.DiagnosticoBastonPage>();
 #endif
 
 		// ViewModels y páginas transitorios: cada vez que se abre la pantalla arranca limpia en el paso 1.
@@ -76,12 +90,14 @@ public static class MauiProgram
 		builder.Services.AddTransient<TrabajoViewModel>();
 		builder.Services.AddTransient<MovimientosViewModel>();
 		builder.Services.AddTransient<ExportarViewModel>();
+		builder.Services.AddTransient<ElegirBastonViewModel>();
 		builder.Services.AddTransient<InicioPage>();
 		builder.Services.AddTransient<ImportarPage>();
 		builder.Services.AddTransient<TrabajoPage>();
 		builder.Services.AddTransient<EleccionTrabajoPage>();
 		builder.Services.AddTransient<MovimientosPage>();
 		builder.Services.AddTransient<ExportarPage>();
+		builder.Services.AddTransient<ElegirBastonPage>();
 
 		var app = builder.Build();
 

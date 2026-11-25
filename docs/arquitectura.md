@@ -77,21 +77,31 @@ Repositorios: `IEstablecimientoRepository`, `IRodeoRepository`, `IAnimalReposito
 
 ## 6. Lector RFID (XRS2)
 
+Lo que existe hoy (spec 008, implementada; probado con tests y falta la tablet):
+
 ```
-IRfidReader      IAsyncEnumerable<TagRead> Lecturas, EstadoConexion, ConectarAsync(), DesconectarAsync()
-IRfidTransport   BluetoothClassicTransport (principal, SPP/RFCOMM) | BleTransport | HidKeyboardTransport | UsbSerialTransport
-ITagParser       TruTestAsciiParser, Iso11784Parser
-INormalizadorDeId  convierte el código leído al NumeroCaravana (regla configurable)
+Aviss.Application (puertos)
+  IRfidReader         Lecturas(ct), Estado (Desconectado | Conectando | Conectado), Motivo (MotivoSinBaston),
+                      EstadoCambiado, ConectarAsync(), DesconectarAsync(), ReconectarAhoraAsync()
+  IPreferenciasBaston Obtener() / Guardar(BastonRecordado)      IAvisosCampo.BastonPerdido() (vibración corta)
+Aviss.Rfid (sin Android)
+  LectorBastonXrs2    el lector: supervisor en segundo plano + canal de lecturas + Inyectar() para el simulador de DEBUG
+  AcumuladorLineas -> InterpreteLineaBaston -> FiltroRepetidas -> canal   PoliticaReintentos   OpcionesLectorBaston
+  IEnlaceSerieBaston / IConexionSerie / IBluetoothBaston   (puertos de plataforma)
+Aviss.App (Platforms/Android)
+  EnlaceSerieBastonAndroid (socket SPP)   BluetoothBastonAndroid (permiso, emparejados, estado, ajustes)
 ```
 
-- `IRfidReader` y `TagRead` viven en `Aviss.Application` (los puertos los define `Application`); `Aviss.Rfid` los implementa. Hoy hay `FakeRfidReader` (simulador, solo en compilaciones `DEBUG`) y `LectorNoDisponible` (el que se registra en la versión que se distribuye hasta que exista el lector real).
-- Hipótesis (confianza media, **sin validar**): el XRS2 usa Bluetooth clásico SPP y manda el ID como texto. No hay SDK .NET público conocido.
-- `TruTestXrs2Reader` = transporte + parser. Cambiar de método es cambiar una línea de DI.
-- Conexión robusta: servicio en primer plano, reconexión con backoff, debounce de lecturas repetidas.
-- Fallback: búsqueda manual por número.
-- Desarrollo sin hardware: `FakeRfidReader` que reproduce tramas grabadas, con el emulador de Android.
-- El Excel trae el número de caravana (ID corto). El bastón puede entregar un número de 15 dígitos, así que `INormalizadorDeId` queda configurable hasta ver una lectura real.
-- **EID (spec 010):** si el archivo trae la columna `EID`, la importación guarda el EID de 15 dígitos en `Animal.IdElectronico` y `MarcaPasadaService.BuscarAsync` ya lo encuentra (primero el número corto, después el EID, con o sin espacios). Sin cambios de código en la búsqueda ni en la base. Lo que el bastón entregue de verdad se confirma en la spec 008.
+- **Transporte confirmado en la prueba del 2026-11-24:** Bluetooth clásico SPP. La lectura de un botón llega como texto ASCII `982 000458467499` más CRLF (15 dígitos, una línea por lectura). Es el EID que la importación guarda (spec 010). Sin SDK ni BLE ni teclado.
+- **Estados** (los ve el veterinario en el chip de la barra y en el cartel de la pantalla de trabajo): *Buscando el bastón* (ámbar, solo en el primer ciclo de intentos), *Conectado* (verde) y *Sin bastón* (rojo) con su motivo: no elegido, sin permiso, Bluetooth apagado, sin Bluetooth, no emparejado, no responde. Mientras sigue sin conectar el estado no cambia (no parpadea).
+- **Estrategia de conexión:** `ConectarAsync` arranca el supervisor y vuelve enseguida. Sin bastón recordado no intenta nada (no elige solo). Un ciclo = socket **inseguro** y después el **seguro** (el que anduvo se prueba primero la vez siguiente), cada intento con **8 s** de límite que se corta cerrando el socket; entre ciclos espera 1, 2, 4, 8, 15 y 15 s (se reinicia al conectar) y "Tocá para reconectar" la salta. Si la conexión se pierde: una vibración corta, `Conectando` y vuelta a empezar con 1 s. Apagado y sin permiso se re-chequean en cada vuelta, así que prender el Bluetooth o conceder el permiso reconecta solo. Valores provisorios en `OpcionesLectorBaston` (3 s, 8 s y las esperas).
+- **Lectura:** un `AcumuladorLineas` nuevo por conexión arma líneas (CR, LF o CRLF, partidas en paquetes, con tope de bytes), el intérprete exige 15 dígitos (con o sin espacio; todo lo demás es basura que se ignora en silencio), el filtro ignora el mismo EID a menos de 3 s de la última aceptada y el código llega por el mismo camino que la búsqueda a mano (`EncolarLecturaAsync`): la ficha, la marca, el CVET 0 y el aviso de la spec 009 se comportan igual. Nada se guarda por perder el bastón: la ficha abierta, el evento y la observación quedan intactos.
+- **Ciclo de vida:** el lector corta al salir de la pantalla de trabajo y cuando la app pasa a segundo plano o se apaga la pantalla (`Window.Stopped`); vuelve a conectar de inmediato al volver (`Window.Resumed`). No hay servicio en primer plano ni lectura con la pantalla apagada.
+- **Bastón elegido:** se recuerda por tablet en las preferencias (no en la base), con la pantalla "Elegir el bastón" (emparejados, los XRS primero). El permiso de Bluetooth (`BLUETOOTH_CONNECT`; antes de Android 12, `BLUETOOTH`) se pide ahí o al entrar a trabajar con un bastón elegido, no al abrir la app. No se pide ubicación ni `BLUETOOTH_SCAN`; el manifiesto no tiene `INTERNET`.
+- **Versiones:** Debug y Release registran el lector real; el simulador (`FakeRfidReader`) solo se usa en tests y, en DEBUG, el panel del simulador entra por `LectorBastonXrs2.Inyectar` (mismo filtro y misma cola). La pantalla "Diagnóstico del bastón" (spike) sigue solo en DEBUG. `LectorNoDisponible` queda para una tablet sin Bluetooth.
+- **No resuelto, a ver en la tablet:** si el XRS2 guarda y reenvía lo leído con el bastón desconectado; si hay lecturas en ráfaga; cuánto tarda en aceptar una conexión tras prenderse. El socket inseguro es una decisión consciente (el bastón ya está emparejado y solo manda números de caravana).
+- El Excel trae el número de caravana (ID corto) y el bastón entrega el EID de 15 dígitos; la relación viene de la columna `EID` del archivo (spec 010): `MarcaPasadaService.BuscarAsync` busca primero el número corto y después el EID (con o sin espacios). `INormalizadorDeId` ya no hace falta: no se creó.
+- Desarrollo sin hardware: `FakeRfidReader` y `FakeEnlaceSerie` con tramas inventadas (prefijo `999`, nunca los EID reales).
 
 ## 7. Excel
 

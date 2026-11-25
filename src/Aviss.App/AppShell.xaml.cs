@@ -12,6 +12,10 @@ public partial class AppShell : Shell
 	public const string RutaEleccionTrabajo = "EleccionTrabajo";
 	public const string RutaTrabajo = "Trabajo";
 	public const string RutaMovimientos = "Movimientos";
+	public const string RutaElegirBaston = "ElegirBaston";   // spec 008
+
+	// Spike del bastón (spec 008): la ruta solo se registra en la compilación DEBUG.
+	public const string RutaDiagnosticoBaston = "DiagnosticoBaston";
 
 	public AppShell()
 	{
@@ -21,5 +25,9 @@ public partial class AppShell : Shell
 		Routing.RegisterRoute(RutaEleccionTrabajo, typeof(EleccionTrabajoPage));
 		Routing.RegisterRoute(RutaTrabajo, typeof(TrabajoPage));
 		Routing.RegisterRoute(RutaMovimientos, typeof(MovimientosPage));
+		Routing.RegisterRoute(RutaElegirBaston, typeof(ElegirBastonPage));
+#if DEBUG
+		Routing.RegisterRoute(RutaDiagnosticoBaston, typeof(Aviss.App.Diagnostico.DiagnosticoBastonPage));
+#endif
 	}
 }

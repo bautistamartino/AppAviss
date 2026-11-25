@@ -94,3 +94,30 @@ public class FakeRfidReaderTests
         Assert.False(await siguiente.WaitAsync(Espera));
     }
 }
+
+public class FakeRfidReaderEstadoTests
+{
+    [Fact]
+    public async Task Conectar_y_desconectar_avisan_del_cambio_de_estado()
+    {
+        var lector = new FakeRfidReader();
+        var avisos = 0;
+        lector.EstadoCambiado += () => avisos++;
+
+        await lector.ConectarAsync();
+        Assert.Equal(EstadoConexionRfid.Conectado, lector.Estado);
+        await lector.DesconectarAsync();
+
+        Assert.Equal(2, avisos);
+        Assert.Equal(MotivoSinBaston.Ninguno, lector.Motivo);
+    }
+
+    [Fact]
+    public async Task LectorNoDisponible_dice_que_no_hay_bluetooth_y_reconectar_no_hace_nada()
+    {
+        var lector = new LectorNoDisponible();
+        await lector.ReconectarAhoraAsync();
+        Assert.Equal(EstadoConexionRfid.Desconectado, lector.Estado);
+        Assert.Equal(MotivoSinBaston.SinBluetooth, lector.Motivo);
+    }
+}

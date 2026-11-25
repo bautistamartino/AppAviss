@@ -69,6 +69,8 @@ public class ImportarViewModelTests
         public Task IrAEleccionTrabajoAsync() => Task.CompletedTask;
         public Task IrATrabajoAsync() => Task.CompletedTask;
         public Task IrAMovimientosAsync() => Task.CompletedTask;
+        public Task IrAElegirBastonAsync() => Task.CompletedTask;
+        public Task VolverAsync() => Task.CompletedTask;
     }
 
     // ------------------------------------------------------------------ armado

@@ -30,6 +30,14 @@
                     HeightRequest="72"
                     Command="{Binding ExportarCommand}"
                     SemanticProperties.Hint="Generar el archivo con los tactos para volver a Dairy Comp" />
+
+            <!-- Solo compilación DEBUG (el código lo muestra): diagnóstico del bastón, spike de la spec 008. -->
+            <Button x:Name="BotonDiagnostico" Text="Diagnóstico del bastón"
+                    IsVisible="False"
+                    FontSize="24" FontAttributes="Bold"
+                    HeightRequest="72"
+                    BackgroundColor="{StaticResource CampoSecundario}" TextColor="White"
+                    SemanticProperties.Hint="Herramienta de prueba para ver qué manda el bastón por Bluetooth" />
         </VerticalStackLayout>
     </ScrollView>
 </ContentPage>
