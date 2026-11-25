@@ -12,16 +12,16 @@ public class ArmadorValoresExportacionTests
     public void Fecha_y_hora_salen_en_hora_local_con_el_formato_del_archivo()
     {
         var v = ArmadorValoresExportacion.Armar(R.Reg(fecha: R.Utc(2026, 11, 5, 12, 5)), Fija(-3));
-        Assert.Equal("05/11/2026", v.Fecha);
-        Assert.Equal("0905", v.Hora);
+        Assert.Equal("05/11/26", v.Fecha);
+        Assert.Equal("09:05", v.Hora);
     }
 
     [Fact]
     public void Cerca_de_la_medianoche_la_fecha_es_la_local()
     {
         var v = ArmadorValoresExportacion.Armar(R.Reg(fecha: R.Utc(2026, 11, 6, 2, 10)), Fija(-3));
-        Assert.Equal("05/11/2026", v.Fecha);
-        Assert.Equal("2310", v.Hora);
+        Assert.Equal("05/11/26", v.Fecha);
+        Assert.Equal("23:10", v.Hora);
     }
 
     [Theory]
@@ -87,7 +87,7 @@ public class ArmadorValoresExportacionTests
         var v = ArmadorValoresExportacion.Armar(R.Reg(evento: "Aborto", diasAborto: 7, resultado: ResultadoAborto.Seca), TimeZoneInfo.Utc);
         var enOrden = v.EnOrden();
         Assert.Equal(ColumnasExportacion.Todas.Count, enOrden.Count);
-        Assert.Equal(["05/11/2026", "1200", "Aborto", "", "7", "Seca"], enOrden);
+        Assert.Equal(["05/11/26", "12:00", "Aborto", "", "7", "Seca"], enOrden);
     }
 
     [Fact]

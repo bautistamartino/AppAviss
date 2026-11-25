@@ -76,8 +76,8 @@ public sealed class ConsultaExportacionTests : IDisposable
 
         var v = d.ValoresPorCaravana["100"];
         Assert.Equal("SECA", v.Evento);
-        Assert.Equal("05/11/2026", v.Fecha);
-        Assert.Equal("0905", v.Hora);
+        Assert.Equal("05/11/26", v.Fecha);
+        Assert.Equal("09:05", v.Hora);
         Assert.Equal("", v.DiasPreniez);
         Assert.Equal(new DateOnly(2026, 11, 5), d.Jornada);
         Assert.Equal(1, d.VacasConEvento);
@@ -185,7 +185,7 @@ public sealed class ConsultaExportacionTests : IDisposable
         var v = (await Consultar()).ValoresPorCaravana["100"];
 
         Assert.Equal("SECA", v.Evento);
-        Assert.Equal("1100", v.Hora);
+        Assert.Equal("11:00", v.Hora);
     }
 
     [Fact]
@@ -209,7 +209,7 @@ public sealed class ConsultaExportacionTests : IDisposable
         var v = (await Consultar()).ValoresPorCaravana["100"];
 
         Assert.Equal("RECHAZO", v.Evento);
-        Assert.Equal("1100", v.Hora);
+        Assert.Equal("11:00", v.Hora);
     }
 
     [Fact]

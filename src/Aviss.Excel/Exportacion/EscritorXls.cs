@@ -8,7 +8,7 @@ namespace Aviss.Excel.Exportacion;
 /// <summary>
 /// Agrega las columnas nuevas a la derecha sobre la hoja ya abierta del original (spec 007, RF-16) y escribe el libro. Se edita la
 /// hoja en memoria, no se reconstruye celda por celda, para conservar estilos cuando NPOI pudo abrir el libro. Fecha, hora y evento
-/// van como TEXTO (así salen "24/11/2026" y "0905" sin depender del formato regional); los días, como número.
+/// van como TEXTO (así salen "24/11/26" y "09:05" sin depender del formato regional); los días, como número.
 /// </summary>
 internal static class EscritorXls
 {
