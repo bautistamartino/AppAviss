@@ -16,7 +16,7 @@ Regla de verificación: tras cada tarea se corren **solo los proyectos de tests 
   - RF: RF-2 (no elige solo), RF-4 a RF-12, RF-14, RF-16, RF-17, RF-19 a RF-22, RF-25, RF-26
   - Hecho cuando: `dotnet build` en verde; pasa `Aviss.Rfid.Tests` completo (nuevo y anterior), sin esperas reales (los tests terminan en pocos segundos).
 
-- [ ] **T3** — Android: enlace SPP, permisos, preferencias y registro
+- [x] **T3** — Android: enlace SPP, permisos, preferencias y registro
   - Qué hace: `BluetoothBastonAndroid` (permiso en ejecución solo de conexión, emparejados, estado del Bluetooth, ajustes), `EnlaceSerieBastonAndroid` (socket inseguro o seguro con el UUID SPP, conexión en segundo plano que se corta cerrando el socket, lectura de bytes), `PreferenciasMaui` también como `IPreferenciasBaston`, manifiesto (`BLUETOOTH_CONNECT` y `BLUETOOTH` hasta API 30 en todas las compilaciones, `uses-feature` de Bluetooth no obligatorio; SCAN y ADMIN siguen solo en DEBUG), y `MauiProgram`: lector real en DEBUG y Release, simulador en DEBUG que entra por el lector real, sin `FakeRfidReader` en Release, spike intacto en DEBUG.
   - Tests primero: no hay tests de unidad de Android; se cuida con `dotnet build` en Debug y en Release y con los tests de la T2 (el lector no sabe nada de Android).
   - RF: RF-5 (permiso), RF-7, RF-8, RF-25, RF-26

@@ -4,4 +4,7 @@
 	<!-- Sin INTERNET ni ACCESS_NETWORK_STATE: la app es 100 % offline (constitución §1). -->
 	<!-- Vibración corta al guardar y al avisar "animal repetido" (spec 003). Es un permiso normal: no pide confirmación. -->
 	<uses-permission android:name="android.permission.VIBRATE" />
+	<!-- Bluetooth no obligatorio: la app se instala igual en una tablet sin Bluetooth (queda la búsqueda a mano). Los permisos
+	     BLUETOOTH_CONNECT y BLUETOOTH (hasta API 30) se declaran en PermisosBluetoothManifiesto.cs. -->
+	<uses-feature android:name="android.hardware.bluetooth" android:required="false" />
 </manifest>
