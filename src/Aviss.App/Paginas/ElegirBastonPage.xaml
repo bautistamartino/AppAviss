@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:Aviss.App.ViewModels"
+             x:Class="Aviss.App.Paginas.ElegirBastonPage"
+             x:DataType="vm:ElegirBastonViewModel"
+             BackgroundColor="White"
+             Title="Elegir el bastón">
+
+    <!--
+        Elegir el bastón (spec 008, RF-1 y RF-2). VERSIÓN MÍNIMA de la T4 para que la navegación compile y ande: la T5 la
+        completa (botones de 72 dp, vertical, alto contraste). Sin lógica acá: todo está en ElegirBastonViewModel.
+    -->
+    <Grid RowDefinitions="Auto,Auto,*,Auto" Padding="24,16" RowSpacing="12">
+
+        <Label Grid.Row="0" Text="¿Con qué bastón trabajás?" Style="{StaticResource TituloCuadro}" FontSize="32"
+               SemanticProperties.HeadingLevel="Level1" />
+
+        <Border Grid.Row="1" IsVisible="{Binding HayMensaje}" BackgroundColor="{StaticResource CampoAlerta}" StrokeThickness="0" Padding="16,10">
+            <VerticalStackLayout Spacing="8">
+                <Label Text="{Binding Mensaje}" TextColor="Black" FontSize="22" FontAttributes="Bold" />
+                <Button Text="Abrir los ajustes de la app" Style="{StaticResource BotonCampoSecundario}"
+                        IsVisible="{Binding HayAjustesApp}" Command="{Binding AbrirAjustesAppCommand}" />
+            </VerticalStackLayout>
+        </Border>
+
+        <CollectionView Grid.Row="2" ItemsSource="{Binding Bastones}" SelectionMode="None">
+            <CollectionView.ItemTemplate>
+                <DataTemplate x:DataType="vm:OpcionBaston">
+                    <Button Text="{Binding Nombre}" Style="{StaticResource BotonCampo}" HeightRequest="72" Margin="0,0,0,8"
+                            Command="{Binding Source={RelativeSource AncestorType={x:Type vm:ElegirBastonViewModel}}, Path=ElegirCommand, x:DataType=vm:ElegirBastonViewModel}"
+                            CommandParameter="{Binding .}" />
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+
+        <VerticalStackLayout Grid.Row="3" Spacing="8">
+            <Button Text="Actualizar" Style="{StaticResource BotonCampoSecundario}" Command="{Binding ActualizarCommand}" />
+            <Button Text="Ajustes de Bluetooth" Style="{StaticResource BotonCampoSecundario}" Command="{Binding AbrirAjustesBluetoothCommand}" />
+            <Button Text="Volver" Style="{StaticResource BotonCampoSecundario}" Command="{Binding VolverCommand}" />
+        </VerticalStackLayout>
+    </Grid>
+</ContentPage>

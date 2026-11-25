@@ -108,6 +108,51 @@ public sealed class FakeNavegacion : INavegacion
     public Task IrAEleccionTrabajoAsync() { Destinos.Add("Eleccion"); return Task.CompletedTask; }
     public Task IrATrabajoAsync() { Destinos.Add("Trabajo"); return Task.CompletedTask; }
     public Task IrAMovimientosAsync() { Destinos.Add("Movimientos"); return Task.CompletedTask; }
+    public Task IrAElegirBastonAsync() { Destinos.Add("ElegirBaston"); return Task.CompletedTask; }
+    public Task VolverAsync() { Destinos.Add("Volver"); return Task.CompletedTask; }
+}
+
+/// <summary>Bluetooth de la tablet de mentira (spec 008): se le dice qué hay, qué contesta el diálogo de permiso y qué ajustes se abrieron.</summary>
+public sealed class FakeBluetoothBaston : Aviss.Rfid.IBluetoothBaston
+{
+    public bool Hay { get; set; } = true;
+    public bool Encendido { get; set; } = true;
+    public bool Permisos { get; set; } = true;
+    /// <summary>Lo que contesta el usuario al diálogo del permiso.</summary>
+    public bool ConcederAlPedir { get; set; } = true;
+    public int PedidosDePermiso { get; private set; }
+    public int AjustesBluetoothAbiertos { get; private set; }
+    public int AjustesAppAbiertos { get; private set; }
+    public List<Aviss.Rfid.Diagnostico.DispositivoBluetooth> Dispositivos { get; } = [];
+
+    public Task<bool> PedirPermisosAsync()
+    {
+        PedidosDePermiso++;
+        if (ConcederAlPedir) Permisos = true;
+        return Task.FromResult(Permisos);
+    }
+
+    public bool TienePermisos() => Permisos;
+    public bool HayBluetooth() => Hay;
+    public bool EstaEncendido() => Encendido;
+    public IReadOnlyList<Aviss.Rfid.Diagnostico.DispositivoBluetooth> ListarEmparejados() => Dispositivos;
+    public bool EstaEmparejado(string direccion) => Dispositivos.Any(d => d.Direccion == direccion);
+    public void AbrirAjustesBluetooth() => AjustesBluetoothAbiertos++;
+    public void AbrirAjustesDeLaApp() => AjustesAppAbiertos++;
+
+    public FakeBluetoothBaston Con(string nombre, string direccion)
+    {
+        Dispositivos.Add(new Aviss.Rfid.Diagnostico.DispositivoBluetooth(nombre, direccion, Aviss.Rfid.Diagnostico.TipoDispositivoBluetooth.Dual, []));
+        return this;
+    }
+}
+
+public sealed class FakePreferenciasBaston : IPreferenciasBaston
+{
+    public BastonRecordado? Actual { get; set; }
+    public int Guardados { get; private set; }
+    public BastonRecordado? Obtener() => Actual;
+    public void Guardar(BastonRecordado baston) { Actual = baston; Guardados++; }
 }
 
 /// <summary>

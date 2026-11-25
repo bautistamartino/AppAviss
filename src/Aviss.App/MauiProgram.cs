@@ -90,12 +90,14 @@ public static class MauiProgram
 		builder.Services.AddTransient<TrabajoViewModel>();
 		builder.Services.AddTransient<MovimientosViewModel>();
 		builder.Services.AddTransient<ExportarViewModel>();
+		builder.Services.AddTransient<ElegirBastonViewModel>();
 		builder.Services.AddTransient<InicioPage>();
 		builder.Services.AddTransient<ImportarPage>();
 		builder.Services.AddTransient<TrabajoPage>();
 		builder.Services.AddTransient<EleccionTrabajoPage>();
 		builder.Services.AddTransient<MovimientosPage>();
 		builder.Services.AddTransient<ExportarPage>();
+		builder.Services.AddTransient<ElegirBastonPage>();
 
 		var app = builder.Build();
 

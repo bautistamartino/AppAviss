@@ -18,4 +18,10 @@ public sealed class NavegacionShell : INavegacion
     public Task IrATrabajoAsync() => MainThread.InvokeOnMainThreadAsync(() => Shell.Current.GoToAsync(AppShell.RutaTrabajo));
 
     public Task IrAMovimientosAsync() => MainThread.InvokeOnMainThreadAsync(() => Shell.Current.GoToAsync(AppShell.RutaMovimientos));
+
+    // Spec 008: la lista de bastones se apila sobre el trabajo y "Volver" (".." en el Shell) la saca; al reaparecer, la pantalla
+    // de trabajo vuelve a conectar con el bastón elegido.
+    public Task IrAElegirBastonAsync() => MainThread.InvokeOnMainThreadAsync(() => Shell.Current.GoToAsync(AppShell.RutaElegirBaston));
+
+    public Task VolverAsync() => MainThread.InvokeOnMainThreadAsync(() => Shell.Current.GoToAsync(".."));
 }

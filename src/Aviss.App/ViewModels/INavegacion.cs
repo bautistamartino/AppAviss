@@ -16,4 +16,10 @@ public interface INavegacion
     Task IrAEleccionTrabajoAsync();
     Task IrATrabajoAsync();
     Task IrAMovimientosAsync();
+
+    /// <summary>Lista de bastones emparejados para elegir cuál se usa (spec 008).</summary>
+    Task IrAElegirBastonAsync();
+
+    /// <summary>Vuelve a la pantalla anterior (por ejemplo, de elegir el bastón a la pantalla de trabajo).</summary>
+    Task VolverAsync();
 }

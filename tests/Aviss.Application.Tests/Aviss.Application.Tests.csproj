@@ -22,6 +22,8 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Aviss.Application\Aviss.Application.csproj" />
     <ProjectReference Include="..\..\src\Aviss.Domain\Aviss.Domain.csproj" />
+    <!-- Los ViewModels del bastón (spec 008) usan los puertos IBluetoothBaston y DispositivoBluetooth de Aviss.Rfid. -->
+    <ProjectReference Include="..\..\src\Aviss.Rfid\Aviss.Rfid.csproj" />
   </ItemGroup>
 
   <!-- Los ViewModels viven en Aviss.App (solo Android) y no usan tipos de MAUI: se compilan acá, enlazados, para probarlos con xUnit. -->

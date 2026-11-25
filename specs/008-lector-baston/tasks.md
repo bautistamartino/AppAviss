@@ -22,7 +22,7 @@ Regla de verificación: tras cada tarea se corren **solo los proyectos de tests 
   - RF: RF-5 (permiso), RF-7, RF-8, RF-25, RF-26
   - Hecho cuando: `dotnet build` en verde en Debug y en Release; se revisan a mano el manifiesto resultante (sin `INTERNET`, sin ubicación, sin SCAN en Release) y el registro de servicios de Release; pasan `Aviss.Rfid.Tests` y `Aviss.Application.Tests`.
 
-- [ ] **T4** — ViewModels: estado del bastón, reconexión manual, ciclo de vida y elegir bastón
+- [x] **T4** — ViewModels: estado del bastón, reconexión manual, ciclo de vida y elegir bastón
   - Qué hace: `TrabajoViewModel.Baston.cs` (suscripción al estado, `EstadoBaston`, textos y acción, `ReconectarBastonCommand`, `CambiarBastonCommand`, `NombreBaston`, `PausarLectorAsync` y `ReanudarLectorAsync`, desuscripción en `DetenerAsync`), `PresentacionBaston` (mapa puro estado y motivo a texto, acción y color), `ElegirBastonViewModel` (lista con los XRS primero, elegir y recordar, actualizar, ajustes de Bluetooth, volver) e `INavegacion.IrAElegirBastonAsync` con su implementación y ruta registrada en `AppShell` (sin la página todavía: `ElegirBastonPage` mínima para que compile, a completar en la T5).
   - Tests primero: `Application.Tests › TrabajoViewModelBastonTests` (con `FakeLector` ampliado: sin bastón elegido, estados y motivos, comando según el motivo, la lectura del bastón entra igual que la búsqueda a mano, con ficha abierta y evento cargado perder el bastón no toca nada y se guarda con **Entrar**, pausa y reanudación), `ElegirBastonViewModelTests`, `PresentacionBastonTests`; los tests existentes de `TrabajoViewModel` (specs 003, 004, 009 y 010) siguen verdes.
   - RF: RF-1 a RF-6, RF-12 a RF-16, RF-23, RF-24, RF-26
